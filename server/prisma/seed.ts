@@ -22,7 +22,7 @@ async function main() {
                 title: "Beber 2L água",
                 created_at: firstHabitCreationDate,
                 weekDays: {
-                    create: [{ week_day: 1 }, { week_day: 2 }, { week_day: 3 }],
+                    create: [{ week_day: 1 }, { week_day: 2 }, { week_day: 3 }], // Segunda, Terça e Quarta
                 },
             },
         }),
@@ -33,7 +33,7 @@ async function main() {
                 title: "Exercitar",
                 created_at: secondHabitCreationDate,
                 weekDays: {
-                    create: [{ week_day: 3 }, { week_day: 4 }, { week_day: 5 }],
+                    create: [{ week_day: 3 }, { week_day: 4 }, { week_day: 5 }], // Quarta, Quinta e Sexta
                 },
             },
         }),
@@ -44,13 +44,13 @@ async function main() {
                 title: "Dormir 8h",
                 created_at: thirdHabitCreationDate,
                 weekDays: {
-                    create: [
+                    create: [ // Segunda a Sexta
                         { week_day: 1 },
                         { week_day: 2 },
                         { week_day: 3 },
                         { week_day: 4 },
                         { week_day: 5 },
-                    ],
+                    ], 
                 },
             },
         }),
