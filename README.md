@@ -7,3 +7,7 @@ npx prisma studio:
 Typescript
 Fastify
 Node.js
+Prisma
+Tailwind CSS
+PostCSS
+Autoprefixer
