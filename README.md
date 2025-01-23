@@ -19,3 +19,6 @@ Dayjs
 
 React Native
 Expo
+
+<!-- Em tailwind os valores são divididos por 4
+gap-16 = 4rem = 64px -->
