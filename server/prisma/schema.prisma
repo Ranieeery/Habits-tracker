@@ -6,7 +6,8 @@ generator client {
 }
 
 generator erd {
-  provider = "prisma-erd-generator"
+  provider = "prisma-erd-generator-markdown"
+  output   = "./ERD.md"
 }
 
 datasource db {
