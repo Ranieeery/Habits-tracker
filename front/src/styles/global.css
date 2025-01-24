@@ -4,3 +4,6 @@
 @theme {
   --color-background: #09090A;
 }
+:root {
+  --grid-rows: repeat(7, minmax(0, 1fr));
+}
