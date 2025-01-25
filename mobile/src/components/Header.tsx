@@ -1,15 +1,22 @@
 import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 import { Feather } from "@expo/vector-icons";
 
 import Logo from "../assets/logo.svg";
 
 export function Header() {
+    const { navigate } = useNavigation();
+
     return (
         <View style={styles.view}>
             <Logo />
 
-            <TouchableOpacity activeOpacity={0.7} style={styles.touchable}>
+            <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.touchable}
+                onPress={() => navigate("new")}
+            >
                 <Feather name="plus" color="#8E51FF" size={20} />
                 <Text style={styles.text}>Novo</Text>
             </TouchableOpacity>
@@ -26,9 +33,9 @@ const styles = StyleSheet.create({
     },
     touchable: {
         flexDirection: "row",
-        height: 56 ,
-        paddingHorizontal: 16, 
-        borderWidth: 1, 
+        height: 56,
+        paddingHorizontal: 16,
+        borderWidth: 1,
         borderColor: "#8E51FF",
         borderRadius: 8,
         alignItems: "center",

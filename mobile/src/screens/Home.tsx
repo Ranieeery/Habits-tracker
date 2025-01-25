@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     text: {
-        color: "#a1a1aa",
+        color: "#A1A1AA",
         fontSize: 20,
         fontWeight: "bold",
         textAlign: "center",
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
         backgroundColor: "#18181b",
         borderRadius: 8,
         borderWidth: 2,
-        borderColor: "#27272a",
+        borderColor: "#27272A",
         margin: 4,
         opacity: 0.4,
     },

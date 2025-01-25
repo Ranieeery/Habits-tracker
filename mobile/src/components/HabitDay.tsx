@@ -25,10 +25,10 @@ export function HabitDay() {
 
 const styles = StyleSheet.create({
     touchable: {
-        backgroundColor: "#18181b",
+        backgroundColor: "#18181A",
         borderRadius: 8,
         borderWidth: 2,
-        borderColor: "#27272a",
+        borderColor: "#27272A",
         margin: 4,
     },
 });
