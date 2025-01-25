@@ -19,8 +19,8 @@ erDiagram
 		String habit_id FK
 		Int week_day
 	}
-	day_habits }o--|| habits : habit
 	day_habits }o--|| days : day
+	day_habits }o--|| habits : habit
 	habit_week_days }o--|| habits : habit
 
 ```

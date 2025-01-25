@@ -4,6 +4,8 @@ npx prisma migrate dev:
 npx npm-check-updates -u:
 npx prisma studio:
 npx prisma generate: 
+npx prisma db push:
+npx prisma db seed:
 npx create-expo-app@latest mobile --template:
 npx expo install expo-font @expo-google-fonts/inter:
 

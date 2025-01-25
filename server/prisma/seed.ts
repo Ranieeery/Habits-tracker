@@ -3,16 +3,16 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const firstHabitId = "0730ffac-d039-4194-9571-01aa2aa0efbd";
-const firstHabitCreationDate = new Date("2025-02-01T03:00:00.000");
+const firstHabitCreationDate = new Date("2025-01-01T03:00:00.000");
 
 const secondHabitId = "00880d75-a933-4fef-94ab-e05744435297";
-const secondHabitCreationDate = new Date("2025-02-03T03:00:00.000");
+const secondHabitCreationDate = new Date("2025-01-03T03:00:00.000");
 
 const thirdHabitId = "fa1a1bcf-3d87-4626-8c0d-d7fd1255ac00";
-const thirdHabitCreationDate = new Date("2025-02-08T03:00:00.000");
+const thirdHabitCreationDate = new Date("2025-01-08T03:00:00.000");
 
 async function main() {
-    await prisma.dayHabit.deleteMany()
+    await prisma.dayHabit.deleteMany();
     await prisma.day.deleteMany();
     await prisma.habit.deleteMany();
 
@@ -23,7 +23,15 @@ async function main() {
                 title: "Beber 2L água",
                 created_at: firstHabitCreationDate,
                 weekDays: {
-                    create: [{ week_day: 1 }, { week_day: 2 }, { week_day: 3 }], // Segunda, Terça e Quarta
+                    create: [
+                        { week_day: 0 },
+                        { week_day: 1 },
+                        { week_day: 2 },
+                        { week_day: 3 },
+                        { week_day: 4 },
+                        { week_day: 5 },
+                        { week_day: 6 },
+                    ],
                 },
             },
         }),
@@ -61,7 +69,7 @@ async function main() {
     await Promise.all([
         prisma.day.create({
             data: {
-                date: new Date("2025-02-03T03:00:00.000z"),
+                date: new Date("2025-01-03T03:00:00.000z"),
                 dayHabits: {
                     create: {
                         habit_id: firstHabitId,
@@ -72,7 +80,7 @@ async function main() {
 
         prisma.day.create({
             data: {
-                date: new Date("2025-02-09T03:00:00.000z"),
+                date: new Date("2025-01-09T03:00:00.000z"),
                 dayHabits: {
                     create: {
                         habit_id: firstHabitId,
@@ -83,7 +91,7 @@ async function main() {
 
         prisma.day.create({
             data: {
-                date: new Date("2025-03-13T03:00:00.000z"),
+                date: new Date("2025-02-13T03:00:00.000z"),
                 dayHabits: {
                     create: [
                         { habit_id: firstHabitId },
@@ -96,7 +104,7 @@ async function main() {
 }
 
 main()
-    .then(async () => {
+.then(async () => {
         await prisma.$disconnect();
     })
     .catch(async (e) => {
