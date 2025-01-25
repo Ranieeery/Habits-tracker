@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { View, StyleSheet, ScrollView, Text, TextInput } from "react-native";
+import {
+    View,
+    StyleSheet,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
 
 import { BackButton } from "../components/BackButton";
 import { Checkbox } from "../components/Checkbox";
@@ -16,10 +24,19 @@ const avaliableWeekDays = [
 
 export function New() {
     const [isFocused, setIsFocused] = useState(false);
+    const [weekDays, setWeekDays] = useState<number[]>([]);
+
+    function handleWeekDay(day: number) {
+        if (weekDays.includes(day)) {
+            setWeekDays((prevState) => prevState.filter((d) => d !== day));
+        } else {
+            setWeekDays((prevState) => [...prevState, day]);
+        }
+    }
 
     return (
         <View style={styles.view}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
                 <BackButton />
 
                 <Text style={styles.title}>Criar hábito</Text>
@@ -30,6 +47,8 @@ export function New() {
                     style={[styles.input, isFocused && styles.focused]}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
+                    placeholder="ex.: Estudar, exercícios, etc"
+                    placeholderTextColor={"#8E8E93"}
                 />
 
                 <Text
@@ -40,9 +59,19 @@ export function New() {
                 >
                     Quais dias da semana?
                 </Text>
-                {avaliableWeekDays.map((day) => (
-                    <Checkbox key={day} title={day} />
+                {avaliableWeekDays.map((day, i) => (
+                    <Checkbox
+                        key={day}
+                        title={day}
+                        checked={weekDays.includes(i)}
+                        onPress={() => handleWeekDay(i)}
+                    />
                 ))}
+
+                <TouchableOpacity style={styles.touchable}>
+                    <Feather name="check" size={24} color={"white"} />
+                    <Text style={styles.text}>Confirmar</Text>
+                </TouchableOpacity>
             </ScrollView>
         </View>
     );
@@ -78,5 +107,21 @@ const styles = StyleSheet.create({
     focused: {
         borderWidth: 2,
         borderColor: "#16A34A",
+    },
+    text: {
+        fontWeight: "600",
+        fontSize: 16,
+        color: "white",
+        marginLeft: 8,
+    },
+    touchable: {
+        width: "100%",
+        height: 56,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#16A34A",
+        borderRadius: 6,
+        marginTop: 24,
     },
 });

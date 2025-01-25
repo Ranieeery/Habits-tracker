@@ -1,14 +1,14 @@
-import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
+import { View, TouchableOpacity, TouchableOpacityProps, StyleSheet, Text } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
-interface Props {
+interface Props extends TouchableOpacityProps {
     title: string;
     checked?: boolean;
 }
 
-export function Checkbox({ title, checked = false }: Props) {
+export function Checkbox({ title, checked = false, ...rest }: Props) {
     return (
-        <TouchableOpacity activeOpacity={0.7} style={styles.touchable}>
+        <TouchableOpacity activeOpacity={0.7} style={styles.touchable} {...rest}>
             {checked ? (
                 <View style={styles.view}>
                     <Feather name="check" size={20} color={"white"} />
