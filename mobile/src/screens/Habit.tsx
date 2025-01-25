@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Text } from "react-native";
 import dayjs from "dayjs";
 
 import { BackButton } from "../components/BackButton";
+import { ProgressBar } from "../components/ProgressBar";
 
 interface Params {
     date: string;
@@ -25,6 +26,8 @@ export function Habit() {
 
                 <Text style={styles.title}>{dayOfWeek}</Text>
                 <Text style={styles.subtitle}>{dayAndMonth}</Text>
+
+                <ProgressBar progress={30}/>
             </ScrollView>
         </View>
     );
