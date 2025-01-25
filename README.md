@@ -18,6 +18,7 @@ PostCSS
 Autoprefixer
 Zod
 Dayjs
+Radix UI
 
 React Native
 Expo
