@@ -73,11 +73,11 @@ export async function appRoutes(server: FastifyInstance) {
     });
 
     server.patch("/habits/:id/toggle", async (request) => {
-        const completedHabitsParam = z.object({
+        const toggleHabitsParam = z.object({
             id: z.string().uuid(),
         });
 
-        const { id } = completedHabitsParam.parse(request.params);
+        const { id } = toggleHabitsParam.parse(request.params);
 
         const today = dayjs().startOf("day").toDate();
 
@@ -87,18 +87,20 @@ export async function appRoutes(server: FastifyInstance) {
             },
         });
 
-        if(!day){
+        if (!day) {
             day = await prisma.day.create({
                 data: {
                     date: today,
-                }
-            })
+                },
+            });
         }
 
-        const dayHabit = await prisma.dayHabit.findFirst({
+        const dayHabit = await prisma.dayHabit.findUnique({
             where: {
-                habit_id: id,
-                day_id: day.id,
+                day_id_habit_id: {
+                    day_id: day.id,
+                    habit_id: id,
+                },
             },
         });
 
@@ -116,5 +118,5 @@ export async function appRoutes(server: FastifyInstance) {
                 },
             });
         }
-    })
+    });
 }
