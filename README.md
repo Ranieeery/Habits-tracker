@@ -22,6 +22,7 @@ Zod
 Dayjs
 Radix UI
 CLSX
+Axios
 
 React Native
 Expo
