@@ -19,6 +19,7 @@ Autoprefixer
 Zod
 Dayjs
 Radix UI
+CLSX
 
 React Native
 Expo
