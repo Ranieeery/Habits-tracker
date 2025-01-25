@@ -1,3 +1,5 @@
+import "./src/lib/dayjs"
+
 import { StatusBar } from "expo-status-bar";
 import {
     useFonts,
@@ -7,7 +9,6 @@ import {
     Inter_800ExtraBold,
 } from "@expo-google-fonts/inter";
 import { Loading } from "./src/components/Loading";
-import { StyleSheet } from "react-native";
 import { Routes } from "./src/routes";
 
 export default function App() {
