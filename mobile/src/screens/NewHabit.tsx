@@ -6,11 +6,13 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
+    Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
 import { BackButton } from "../components/BackButton";
 import { Checkbox } from "../components/Checkbox";
+import { api } from "../../lib/axios";
 
 const avaliableWeekDays = [
     "Domingo",
@@ -25,6 +27,7 @@ const avaliableWeekDays = [
 export function New() {
     const [isFocused, setIsFocused] = useState(false);
     const [weekDays, setWeekDays] = useState<number[]>([]);
+    const [title, setTitle] = useState("");
 
     function handleWeekDay(day: number) {
         if (weekDays.includes(day)) {
@@ -34,9 +37,33 @@ export function New() {
         }
     }
 
+    async function handleCreateNewHabit() {
+        try {
+            if (!title.trim() || weekDays.length === 0) {
+                Alert.alert("Novo hábito", "O título e hábitos são obrigatórios");
+            }
+
+            await api.post("/habits", {
+                title,
+                weekDays,
+            });
+
+            Alert.alert("Novo hábito", "Hábito criado com sucesso!");
+        } catch (error) {
+            console.log(error);
+            Alert.alert("Opss", "Erro ao criar novo hábito");
+        } finally {
+            setTitle("");
+            setWeekDays([]);
+        }
+    }
+
     return (
         <View style={styles.view}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 50 }}
+            >
                 <BackButton />
 
                 <Text style={styles.title}>Criar hábito</Text>
@@ -49,6 +76,8 @@ export function New() {
                     onBlur={() => setIsFocused(false)}
                     placeholder="ex.: Estudar, exercícios, etc"
                     placeholderTextColor={"#8E8E93"}
+                    onChangeText={setTitle}
+                    value={title}
                 />
 
                 <Text
@@ -68,7 +97,11 @@ export function New() {
                     />
                 ))}
 
-                <TouchableOpacity style={styles.touchable}>
+                <TouchableOpacity
+                    style={styles.touchable}
+                    activeOpacity={0.7}
+                    onPress={handleCreateNewHabit}
+                >
                     <Feather name="check" size={24} color={"white"} />
                     <Text style={styles.text}>Confirmar</Text>
                 </TouchableOpacity>

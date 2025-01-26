@@ -10,9 +10,7 @@ const WEEK_DAYS = 7;
 const SCREEN_HORIZONTAL_PADDING = (32 * 2) / 5;
 
 export const DAY_MARGIN_BETWEEN = 8;
-export const DAY_SIZE =
-    Dimensions.get("screen").width / WEEK_DAYS -
-    (SCREEN_HORIZONTAL_PADDING + 5);
+export const DAY_SIZE = Dimensions.get("screen").width / WEEK_DAYS - (SCREEN_HORIZONTAL_PADDING + 5);
 
 interface Props extends TouchableOpacityProps {
     amount?: number;
@@ -21,9 +19,7 @@ interface Props extends TouchableOpacityProps {
 }
 
 export function HabitDay({ amount = 0, completed = 0, date, ...rest }: Props) {
-    const completedPercentage =
-        amount > 0 ? generateProgressPercentage(amount, completed) : 0;
-    console.log(completedPercentage);
+    const completedPercentage = amount > 0 ? generateProgressPercentage(amount, completed) : 0;
 
     const getColorStyles = () => {
         if (completedPercentage == 0) {
