@@ -40,15 +40,15 @@ export function New() {
     async function handleCreateNewHabit() {
         try {
             if (!title.trim() || weekDays.length === 0) {
-                Alert.alert("Novo hábito", "O título e hábitos são obrigatórios");
+                Alert.alert("Erro", "O título e hábitos são obrigatórios");
+            } else {
+                await api.post("/habits", {
+                    title,
+                    weekDays,
+                });
+
+                Alert.alert("Novo hábito", "Hábito criado com sucesso!");
             }
-
-            await api.post("/habits", {
-                title,
-                weekDays,
-            });
-
-            Alert.alert("Novo hábito", "Hábito criado com sucesso!");
         } catch (error) {
             console.log(error);
             Alert.alert("Opss", "Erro ao criar novo hábito");
