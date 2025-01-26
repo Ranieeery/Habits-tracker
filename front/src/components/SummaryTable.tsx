@@ -50,7 +50,7 @@ export function SummaryTable() {
                         return generateBlankSummaryDates(i);
                     })}
 
-                {summaryDates.map((date) => {
+                {summary.length > 0 && summaryDates.map((date) => {
                     const dayInSummary = summary.find((day) => {
                         return dayjs(date).isSame(dayjs(day.date), "day");
                     });
@@ -60,7 +60,7 @@ export function SummaryTable() {
                             key={date.toString()}
                             date={date}
                             amount={dayInSummary?.amount}
-                            completed={dayInSummary?.completed}
+                            defaultCompleted={dayInSummary?.completed}
                         />
                     );
                 })}

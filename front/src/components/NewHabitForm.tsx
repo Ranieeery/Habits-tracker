@@ -78,7 +78,7 @@ export function NewHabitForm() {
                                 handleToggleWeekDay(i);
                             }}
                         >
-                            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-zinc-900 border-2 border-zinc-800 group-data-[state=checked]:bg-green-500 group-data-[state=checked]:border-green-500">
+                            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-zinc-900 border-2 border-zinc-800 transition-all duration-200 ease-[ease] group-data-[state=checked]:bg-green-500 group-data-[state=checked]:border-green-500">
                                 <Checkbox.Indicator>
                                     <Check size={20} className="text-white" />
                                 </Checkbox.Indicator>
@@ -94,7 +94,7 @@ export function NewHabitForm() {
 
             <button
                 type="submit"
-                className="mt-6 rounded-lg p-4 flex items-center justify-center gap-3 font-semibold bg-green-600 cursor-pointer hover:bg-green-500"
+                className="mt-6 rounded-lg p-4 flex items-center justify-center gap-3 font-semibold bg-green-600 cursor-pointer hover:bg-green-500 transition-colors"
             >
                 <Check size={20} weight="bold" /> Criar hábito
             </button>

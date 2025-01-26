@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 
 interface HabitsListProps {
     date: Date;
+    onCompletedChange: (completed: number) => void;
 }
 
 interface HabitsInfo {
@@ -17,7 +18,7 @@ interface HabitsInfo {
     completedHabits: string[];
 }
 
-export function HabitsList({ date }: HabitsListProps) {
+export function HabitsList({ date, onCompletedChange }: HabitsListProps) {
     const [habitsInfo, setHabitsInfo] = useState<HabitsInfo>();
 
     useEffect(() => {
@@ -49,6 +50,8 @@ export function HabitsList({ date }: HabitsListProps) {
             possibleHabits: habitsInfo!.possibleHabits,
             completedHabits,
         });
+
+        onCompletedChange(completedHabits.length);
     }
 
     const dateIsInThePast = dayjs(date).endOf("day").isBefore(new Date());
@@ -64,7 +67,7 @@ export function HabitsList({ date }: HabitsListProps) {
                         disabled={dateIsInThePast}
                         className="flex items-center gap-3 group cursor-pointer"
                     >
-                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-zinc-900 border-2 border-zinc-800 group-data-[state=checked]:bg-green-500 group-data-[state=checked]:border-green-500">
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-zinc-900 border-2 border-zinc-800 transition-all duration-200 ease-[ease] group-data-[state=checked]:bg-green-500 group-data-[state=checked]:border-green-500">
                             <Checkbox.Indicator>
                                 <Check size={20} className="text-white" />
                             </Checkbox.Indicator>
