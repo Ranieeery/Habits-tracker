@@ -40,7 +40,7 @@ export function New() {
     async function handleCreateNewHabit() {
         try {
             if (!title.trim() || weekDays.length === 0) {
-                Alert.alert("Erro", "O título e hábitos são obrigatórios");
+                return Alert.alert("Erro", "O título e hábitos são obrigatórios");
             } else {
                 await api.post("/habits", {
                     title,
