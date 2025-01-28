@@ -3,11 +3,12 @@ import { useRoute } from "@react-navigation/native";
 import { View, StyleSheet, ScrollView, Text, Alert } from "react-native";
 import dayjs from "dayjs";
 
+import { api } from "../../lib/axios";
 import { BackButton } from "../components/BackButton";
 import { ProgressBar } from "../components/ProgressBar";
 import { Loading } from "../components/Loading";
-import { api } from "../../lib/axios";
 import { Checkbox } from "../components/Checkbox";
+import { HabitsEmpty } from "../components/HabitsEmpty";
 import { generateProgressPercentage } from "../utils/generate-progress-percentage";
 
 interface Params {
@@ -29,10 +30,17 @@ export function Habit() {
     const [dayInfo, setDayInfo] = useState<DayInfoProps | null>(null);
     const [completedHabits, setCompletedHabits] = useState<string[]>([]);
 
-    const dayOfWeek = dayjs(date).format("dddd");
-    const dayAndMonth = dayjs(date).format("DD/MM");
+    const parsedDate = dayjs(date);
+    const isDateInPast = parsedDate.endOf("day").isBefore(new Date());
+    const dayOfWeek = parsedDate.format("dddd");
+    const dayAndMonth = parsedDate.format("DD/MM");
 
-    const habitProgress = dayInfo?.possibleHabits.length ? generateProgressPercentage(dayInfo.possibleHabits.length, completedHabits.length) : 0; 
+    const habitProgress = dayInfo?.possibleHabits.length
+        ? generateProgressPercentage(
+              dayInfo.possibleHabits.length,
+              completedHabits.length
+          )
+        : 0;
 
     async function fetchHabit() {
         try {
@@ -67,6 +75,12 @@ export function Habit() {
         return <Loading />;
     }
 
+    const getColorStyles = () => {
+        if (isDateInPast) {
+            return { opacity: 0.5 };
+        }
+    };
+
     return (
         <View style={styles.view}>
             <ScrollView
@@ -80,17 +94,27 @@ export function Habit() {
 
                 <ProgressBar progress={habitProgress} />
 
-                <View style={{ marginTop: 24 }}>
-                    {dayInfo?.possibleHabits &&
+                <View style={[getColorStyles(), { marginTop: 24 }]}>
+                    {dayInfo?.possibleHabits.length ? (
                         dayInfo.possibleHabits.map((habit) => (
                             <Checkbox
                                 key={habit.id}
                                 title={habit.title}
+                                disabled={isDateInPast}
                                 checked={completedHabits.includes(habit.id)}
                                 onPress={() => handleToggleHabits(habit.id)}
                             />
-                        ))}
+                        ))
+                    ) : (
+                        <HabitsEmpty />
+                    )}
                 </View>
+
+                {isDateInPast && (
+                    <Text style={styles.past}>
+                        Não é possível alterar hábitos de dias passados
+                    </Text>
+                )}
             </ScrollView>
         </View>
     );
@@ -114,5 +138,10 @@ const styles = StyleSheet.create({
         color: "white",
         fontWeight: "800",
         fontSize: 30,
+    },
+    past: {
+        color: "white",
+        marginTop: 40,
+        textAlign: "center",
     },
 });
