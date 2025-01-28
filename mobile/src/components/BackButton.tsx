@@ -9,5 +9,5 @@ export function BackButton() {
         <TouchableOpacity activeOpacity={0.7} onPress={goBack}>
             <Feather name="arrow-left" size={32} color="#8F9AA0" />
         </TouchableOpacity>
-    )
+    );
 }

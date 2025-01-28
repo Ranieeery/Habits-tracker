@@ -11,10 +11,15 @@ interface HabitDayProps {
     amount?: number;
 }
 
-export function HabitDay({ defaultCompleted = 0, amount = 0, date }: HabitDayProps) {
+export function HabitDay({
+    defaultCompleted = 0,
+    amount = 0,
+    date,
+}: HabitDayProps) {
     const [completed, setCompleted] = useState(defaultCompleted);
 
-    const completedPercentage = amount > 0 ? Math.round((completed / amount) * 100) : 0;
+    const completedPercentage =
+        amount > 0 ? Math.round((completed / amount) * 100) : 0;
 
     const dayAndMonth = dayjs(date).format("DD/MM");
     const dayOfWeek = dayjs(date).format("dddd");
@@ -24,26 +29,31 @@ export function HabitDay({ defaultCompleted = 0, amount = 0, date }: HabitDayPro
 
     function handleCompletedChanged(completed: number) {
         setCompleted(completed);
-        
     }
 
     return (
         <Popover.Root>
             <Popover.Trigger
-                className={clsx("w-10 h-10 border-2 rounded-lg transition-all duration-200 ease-[ease]", {
-                    "bg-zinc-900 border-zinc-800": completedPercentage == 0,
-                    "bg-violet-500 border-violet-400":
-                        completedPercentage > 0 && completedPercentage < 20,
-                    "bg-violet-600 border-violet-500":
-                        completedPercentage >= 20 && completedPercentage < 40,
-                    "bg-violet-700 border-violet-600":
-                        completedPercentage >= 40 && completedPercentage < 60,
-                    "bg-violet-800 border-violet-700":
-                        completedPercentage >= 60 && completedPercentage < 80,
-                    "bg-violet-900 border-violet-800":
-                        completedPercentage >= 80,
-                    "border-8": isCurrentDay,
-                })}
+                className={clsx(
+                    "w-10 h-10 border-2 rounded-lg transition-all duration-200 ease-[ease]",
+                    {
+                        "bg-zinc-900 border-zinc-800": completedPercentage == 0,
+                        "bg-violet-500 border-violet-400":
+                            completedPercentage > 0 && completedPercentage < 20,
+                        "bg-violet-600 border-violet-500":
+                            completedPercentage >= 20 &&
+                            completedPercentage < 40,
+                        "bg-violet-700 border-violet-600":
+                            completedPercentage >= 40 &&
+                            completedPercentage < 60,
+                        "bg-violet-800 border-violet-700":
+                            completedPercentage >= 60 &&
+                            completedPercentage < 80,
+                        "bg-violet-900 border-violet-800":
+                            completedPercentage >= 80,
+                        "border-8": isCurrentDay,
+                    }
+                )}
             />
 
             <Popover.Portal>
@@ -57,7 +67,10 @@ export function HabitDay({ defaultCompleted = 0, amount = 0, date }: HabitDayPro
 
                     <ProgressBar progress={completedPercentage} />
 
-                    <HabitsList  date={date} onCompletedChange={handleCompletedChanged}/>
+                    <HabitsList
+                        date={date}
+                        onCompletedChange={handleCompletedChanged}
+                    />
 
                     <Popover.Arrow
                         height={8}

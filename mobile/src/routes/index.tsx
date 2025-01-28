@@ -11,11 +11,11 @@ export function Routes() {
             </NavigationContainer>
         </View>
     );
-} 
+}
 
 const styles = StyleSheet.create({
     view: {
         flex: 1,
         backgroundColor: "#09090A",
-    }
+    },
 });

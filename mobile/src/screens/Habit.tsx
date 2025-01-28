@@ -59,7 +59,7 @@ export function Habit() {
 
     async function handleToggleHabits(habitId: string) {
         try {
-            await api.patch(`/habits/${habitId}/toggle`)
+            await api.patch(`/habits/${habitId}/toggle`);
 
             if (completedHabits.includes(habitId)) {
                 setCompletedHabits(

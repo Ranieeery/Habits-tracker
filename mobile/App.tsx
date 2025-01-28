@@ -1,4 +1,4 @@
-import "./lib/dayjs"
+import "./lib/dayjs";
 
 import { StatusBar } from "expo-status-bar";
 import {
