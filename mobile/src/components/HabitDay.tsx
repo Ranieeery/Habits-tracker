@@ -29,7 +29,7 @@ export function HabitDay({ amount = 0, completed = 0, date, ...rest }: Props) {
             return { backgroundColor: "#18181B", borderColor: "#27272A" };
         }
         if (completedPercentage > 0 && completedPercentage < 20) {
-            return { backgroundColor: "#8B5CF6", borderColor: "#A78BFA" };
+            return { backgroundColor: "#A78BFA", borderColor: "#8B5CF6" };
         }
         if (completedPercentage >= 20 && completedPercentage < 40) {
             return { backgroundColor: "#7C3AED", borderColor: "#8B5CF6" };
