@@ -8,6 +8,25 @@ The Habits Tracker is a full-stack application that helps users track and mainta
 - Mobile app (React Native + Expo)
 - Backend server (Node.js + Fastify)
 
+ <details> <!-- Web Version -->
+<summary><h3>Web Version</h3></summary>
+<div align="center">
+<img alt="Habits View (Web/PC)" width="600" src="./assets/habits-pc.png">
+<br><br>
+<img alt="Create Habits View (Web/PC)" width="280" src="./assets/create-habit-pc.png">
+<img alt="Daily Habits View (Web/PC)" width="280" src="./assets/habit-view-pc.png">
+</div>
+</details>
+
+<details> <!-- Mobile Version -->
+<summary><h3>Mobile Version</h3></summary>
+<div align="center">
+<img alt="Habits View (Mobile)" width="250" src="./assets/habits-mobile.png">
+<img alt="Create Habits View (Mobile)" width="250" src="./assets/create-habit-mobile.png">
+<img alt="Daily Habits View (Mobile)" width="250" src="./assets/habit-view-mobile.png">
+</div>
+</details>
+
 ## Technology Stack
 
 ### Backend (server)
