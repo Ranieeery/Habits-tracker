@@ -116,7 +116,7 @@ export function New() {
 const styles = StyleSheet.create({
     view: {
         flex: 1,
-        backgroundColor: "#01010A",
+        backgroundColor: "#09090A",
         paddingHorizontal: 32,
         paddingTop: 64,
     },
