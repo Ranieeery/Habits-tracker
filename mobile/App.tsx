@@ -14,6 +14,7 @@ import * as Notifications from "expo-notifications";
 import * as NavigationBar from "expo-navigation-bar";
 import { useEffect } from "react";
 import { Button, Alert } from "react-native";
+import { log } from "console";
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -32,25 +33,29 @@ export default function App() {
     });
 
     async function requestNotificationPermissions() {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        const { status: existingStatus } =
+            await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
-        
-        if (existingStatus !== 'granted') {
+
+        if (existingStatus !== "granted") {
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
         }
-        
-        if (finalStatus !== 'granted') {
-            Alert.alert('Erro', 'Permissão de notificação negada!');
+
+        if (finalStatus !== "granted") {
+            Alert.alert(
+                "Error",
+                "You need to enable notifications in your settings."
+            );
             return false;
         }
-        
+
         return true;
     }
 
-    async function scheduleNotfication() {
+    async function scheduleNotification() {
         const hasPermission = await requestNotificationPermissions();
-        
+
         if (!hasPermission) {
             return;
         }
@@ -68,14 +73,21 @@ export default function App() {
                 date: trigger,
             },
         });
-        
+
         // Alert.alert('Success', 'Notification scheduled successfully!');
+    }
+
+    async function getScheduleNotification() {
+        const scheduledNotifications =
+            await Notifications.getAllScheduledNotificationsAsync();
+
+        console.log("Scheduled Notifications:", scheduledNotifications);
     }
 
     useEffect(() => {
         NavigationBar.setBackgroundColorAsync("#000000");
         NavigationBar.setButtonStyleAsync("light");
-        
+
         requestNotificationPermissions();
     }, []);
 
@@ -85,10 +97,6 @@ export default function App() {
 
     return (
         <>
-            <Button
-                title="Schedule Notification"
-                onPress={scheduleNotfication}
-            />
             <Routes />
             <StatusBar
                 style="light"
