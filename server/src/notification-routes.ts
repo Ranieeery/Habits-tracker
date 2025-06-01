@@ -1,5 +1,6 @@
 import WebPush from "web-push";
 import { FastifyInstance } from "fastify";
+import { z } from "zod";
 
 const publicKey =
     "BB5MZBPUwoToIqoAhvwalC1RNNKvruynbyILea1IBtb97gHicEM2dBeMGlimcS7KPzpLe8VKpmzI4EIbV_byPXg";
@@ -19,7 +20,19 @@ export async function notificationRoutes(app: FastifyInstance) {
     });
 
     app.post("/push/send", async (request, reply) => {
-        console.log(request.body);
+        const sendPushBody = z.object({
+            subscription: z.object({
+                endpoint: z.string(),
+                keys: z.object({
+                    p256dh: z.string(),
+                    auth: z.string(),
+                }),
+            }),
+        });
+
+        const { subscription } = sendPushBody.parse(request.body);
+
+        WebPush.sendNotification(subscription, "Hello World!" )
 
         return reply.status(201).send();
     });
