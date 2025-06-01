@@ -4,6 +4,8 @@ import "./styles/global.css";
 import { Header } from "./components/Header";
 import { SummaryTable } from "./components/SummaryTable";
 
+navigator.serviceWorker.register("service-worker.js");
+
 export function App() {
     return (
         <div className="w-screen h-screen flex justify-center items-center">
