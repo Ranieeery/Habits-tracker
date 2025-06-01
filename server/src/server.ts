@@ -9,6 +9,7 @@ import {
 } from "fastify-type-provider-zod";
 import { fastifySwagger } from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
+import { notificationRoutes } from "./notification-routes";
 
 const server = fastify().withTypeProvider<ZodTypeProvider>();
 const port = 3000;
@@ -32,6 +33,7 @@ server.register(fastifySwaggerUi, {
 });
 
 server.register(appRoutes);
+server.register(notificationRoutes)
 
 server
     .listen({
