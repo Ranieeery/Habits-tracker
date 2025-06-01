@@ -37,6 +37,7 @@ The Habits Tracker is a full-stack application that helps users track and mainta
 - SQLite as database
 - Zod for validation
 - Swagger for API documentation
+- WebPush for notifications
 
 ### Frontend (front)
 
