@@ -1,0 +1,160 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working in this repository.
+
+## Project
+
+Habit tracker with a GitHub-contribution-style heatmap. Single real user (the owner), but built so that multi-user is possible later (every row is scoped by `user_id`). **Mobile-first**; the web client is a secondary, fully functional PWA.
+
+This repository is a rewrite of a legacy app that lived as three independent npm projects (Fastify + Prisma/SQLite, React + Vite, Expo). The legacy code is kept under `legacy/` as a **read-only behavioral reference**. Never edit it, never import from it, and exclude it from lint, format, typecheck and build.
+
+Version: this rewrite is **2.0.0** in all three apps: api, web and mobile (see "Git and versioning").
+
+### Product scope
+
+Existing features to preserve:
+- Create habits that recur on chosen weekdays (Sunday = 0 ... Saturday = 6).
+- Mark a habit as done/undone for a day; a day's completion ratio drives the heatmap intensity.
+- Year-to-date heatmap grid, and a per-day view listing possible/completed habits.
+- UI text in Portuguese (pt-BR), dayjs locale `pt-br`.
+
+New features:
+1. Authentication and authorization (single-owner; public signup disabled after the first account).
+2. Push notifications: Expo push on mobile, Web Push + service worker on the web.
+3. Offline-first on mobile with background sync (delivered last, but the data model must support it from day one).
+4. Clean UI, keeping the existing color palette fully or partially (see Design).
+
+The product must stay **extensible**: new habit types/frequencies, new stats, new notification kinds. Prefer discriminated unions and versioned contracts over hardcoded assumptions.
+
+### Roadmap status (keep this section updated)
+
+- [ ] Phase 0: monorepo scaffold, legacy moved to `legacy/`
+- [ ] Phase 1: `packages/contracts` + `packages/core` (with tests)
+- [ ] Phase 2: D1 schema (Drizzle) + legacy data import script
+- [ ] Phase 3: API (Hono) + auth (Better Auth)
+- [ ] Phase 4: web client
+- [ ] Phase 5: mobile client
+- [ ] Phase 6: push notifications (web + mobile) + cron
+- [ ] Phase 7: offline sync (mobile)
+- [ ] Phase 8: CI/CD and production deploy
+
+## Repository layout
+
+pnpm workspaces + Turborepo monorepo. Run commands from the repo root with `pnpm --filter <name>` unless a command says otherwise.
+
+- `apps/api/` — Hono on Cloudflare Workers, D1 (SQLite) via Drizzle. The single backend service (the "monolith").
+- `apps/web/` — Vite + React 19 PWA, deployed as static assets on Cloudflare.
+- `apps/mobile/` — Expo (latest stable SDK) + Expo Router. Primary client.
+- `packages/contracts/` — Zod schemas and inferred types for every API request/response, plus sync protocol types. Single source of truth.
+- `packages/core/` — pure TypeScript domain logic: date handling, schedule evaluation ("is this habit possible on this date?"), completion ratios, streaks, heatmap grid generation. No I/O, no framework imports. Fully unit-tested.
+- `packages/api-client/` — typed client for the API (Hono RPC `hc` or generated from contracts), shared by web and mobile.
+- `packages/design-tokens/` — colors, spacing, radii extracted from the legacy palette; consumed by Tailwind (web) and NativeWind (mobile).
+- `legacy/` — old `server/`, `front/`, `mobile/`. Read-only reference.
+
+Formatting and linting are shared from the root: `.editorconfig` (tabs, width 2, LF; spaces only for YAML and Markdown), Prettier (`useTabs: true`, `tabWidth: 2`, double quotes, semicolons, `trailingComma: "es5"`, LF) and ESLint. Keep `.editorconfig` and the Prettier config consistent with each other; if they ever conflict, Prettier's config wins for code. TypeScript is `strict` everywhere.
+
+## Commands
+
+Update this section as soon as each app is scaffolded. Intended commands:
+
+```bash
+pnpm install
+pnpm dev                          # turbo: runs api, web (and mobile metro when requested)
+pnpm --filter api dev             # wrangler dev (local D1)
+pnpm --filter api db:generate     # drizzle-kit generate migration from schema
+pnpm --filter api db:migrate:local
+pnpm --filter api db:migrate:remote
+pnpm --filter web dev
+pnpm --filter mobile start        # expo start (use a development build, not Expo Go, for push)
+pnpm typecheck                    # turbo: tsc --noEmit in every package
+pnpm lint
+pnpm test                         # vitest in core, api (workers pool), web
+pnpm format
+```
+
+Always run `pnpm typecheck && pnpm test` for the packages you touched before declaring a task done.
+
+## Architecture
+
+### Domain model (D1 / Drizzle, `apps/api/src/db/schema.ts`)
+
+All tables carry `user_id`, `created_at`, `updated_at`; syncable tables also carry `deleted_at` (tombstone). IDs are client-generatable UUIDs (v7) stored as text so offline clients can create records.
+
+- `habits`: `id`, `user_id`, `name`, `schedule` (JSON, discriminated union validated by `contracts`; today only `{ type: "weekdays", days: number[] }`), `start_date` (date), `archived_at`.
+- `completions`: `id`, `user_id`, `habit_id`, `date` (`YYYY-MM-DD`), `completed_at`, `deleted_at`. Unique on `(habit_id, date)`. A row means "done"; un-checking sets `deleted_at` so the change can sync.
+- `user_settings`: `timezone` (default `America/Sao_Paulo`), `reminder_time`, notification preferences.
+- `push_subscriptions`: `kind` (`webpush` | `expo`), endpoint/keys or Expo token, device label, last seen.
+- Auth tables are owned by Better Auth.
+
+Differences from the legacy model (intentional):
+- No `Day` / `DayHabit` tables; a single `completions` table replaces them.
+- Dates are **local calendar dates as `YYYY-MM-DD` text**, never epoch milliseconds. This removes the legacy `strftime` weekday workaround and timezone bugs. The weekday is derived in `packages/core`, not in SQL.
+- "Possible on date D" = habit not archived-before-D, `start_date <= D`, and the schedule matches D. This logic lives only in `packages/core` and is reused by API and both clients.
+
+### API (`apps/api`)
+
+- Routes are defined with `@hono/zod-openapi` using schemas from `packages/contracts`; OpenAPI docs are served at `/docs` (and JSON at `/docs/json`) in non-production. Do not duplicate Zod schemas inside handlers.
+- All routes are under `/v1`. Keep changes backward compatible (expand/contract): old mobile builds and queued offline mutations may hit a newer API.
+- Date writes: the client sends the local date explicitly. The server accepts dates in `[today - BACKFILL_DAYS, today + 1]` relative to the user's timezone. `BACKFILL_DAYS` is a constant in `packages/core` (default 7, to allow offline sync). Legacy behavior was "today only"; do not widen the editing UI without being asked.
+- D1 has no interactive transactions; use `db.batch([...])` for multi-statement atomicity.
+- Summary/heatmap data is computed from `completions` + `habits` (SQL aggregation by date), then enriched by `core` for "possible" counts.
+- Cron Triggers (hourly) evaluate reminders per user timezone and send pushes.
+
+### Auth
+
+Better Auth with the Drizzle adapter on D1. Email + password (passkey can be added later). Signup is closed after the first user (`ALLOW_SIGNUP=false` in production). Web uses cookie sessions; mobile uses bearer tokens stored with `expo-secure-store` (Better Auth Expo plugin). Every query must filter by the authenticated `user_id`; authorization checks live in a single middleware plus per-query scoping, never only in the client.
+
+### Push notifications
+
+- Mobile: Expo Push Service from the Worker; tokens registered via `POST /v1/push/subscriptions`.
+- Web: standard Web Push with VAPID. The `web-push` npm package depends on Node APIs; use a Workers-compatible implementation (Web Crypto). Private VAPID key and other secrets are Wrangler secrets, never committed.
+- iOS web push only works for the installed PWA (Add to Home Screen).
+- Remove subscriptions on 404/410 responses from the push service.
+
+### Offline sync (mobile, last phase)
+
+Local-first storage in `expo-sqlite`. The UI reads from the local DB; writes go to local DB plus an **outbox** of mutations (each with a client-generated `mutation_id`).
+- `POST /v1/sync/push`: batch of mutations, idempotent by `mutation_id`.
+- `GET /v1/sync/pull?cursor=`: changes since a server cursor, including tombstones.
+- Conflict policy: per-record last-write-wins using `updated_at`; completions are idempotent per `(habit_id, date)`.
+- No CRDT or third-party sync engine unless the simple protocol proves insufficient.
+
+Design the REST endpoints and `contracts` in Phases 1-3 so the sync protocol drops in without breaking changes (client IDs, `updated_at`, tombstones).
+
+### Clients
+
+- Both clients compute the heatmap grid via `packages/core` and render from API (web) or local DB (mobile). No duplicated date/schedule logic in app code.
+- State/server cache: TanStack Query on both clients. Web routing: TanStack Router. Mobile routing: Expo Router.
+- Web: PWA via `vite-plugin-pwa` (Workbox), push handled in the service worker. Styling: Tailwind v4 + shadcn/ui.
+- Mobile: NativeWind, `expo-notifications`, development builds (Expo Go does not support all required push features).
+- API base URL comes from env/config (`VITE_API_URL`, `EXPO_PUBLIC_API_URL`), never hardcoded. In production the web app and API share one domain (`/api/*` routed to the Worker) to avoid CORS and cookie problems.
+
+## Design
+
+Clean, minimal, dark-first UI. Keep the legacy palette (dark neutral background, violet accent, violet shades for heatmap intensity). Extract the exact values from `legacy/front` Tailwind config and `legacy/mobile` styles into `packages/design-tokens` first, then use only tokens in app code. Light theme is optional and out of scope until requested. Mobile touch targets >= 44px; heatmap must remain legible on small screens (horizontal scroll by weeks, current week visible by default).
+
+## Conventions
+
+- TypeScript strict, no `any` without a comment explaining why.
+- Validate at the boundary with Zod from `packages/contracts`; infer types, do not hand-write duplicates.
+- Pure logic goes in `packages/core` with Vitest tests (schedules, streaks, date edge cases around timezone changes and year boundaries, sync merge rules).
+- Git and versioning rules: see the "Git and versioning" section below. They override any default behavior.
+- Do not add a dependency without stating why and checking it runs on the target runtime (Workers for api, Hermes for mobile, browsers for web).
+- Secrets only via Wrangler secrets / EAS secrets / local `.dev.vars` and `.env` files (all gitignored). Never commit keys.
+- UI text in pt-BR; code, identifiers, commits and docs in English.
+
+## Git and versioning
+
+- **Never commit.** Do not run `git add`, `git commit`, `git push`, `git stash`, `git reset`, `git rebase`, or any other command that stages, records or rewrites history. The owner reviews the diff and commits manually. Read-only commands (`git status`, `git diff`, `git log`) are fine.
+- **Never add co-authorship or attribution** of any kind: no `Co-Authored-By` trailer, no "Generated with Claude Code" line, in commit messages, PR descriptions or files.
+- Commit messages follow **Conventional Commits** (semantic): `type: imperative summary`, in English, lowercase type, **never use a scope in parentheses** (write `feat: add habit heatmap`, not `feat(web): ...`), no trailing period, summary up to ~72 chars. If the area matters, mention it in the summary itself (for example `fix: handle timezone in api date window`). Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `style`, `revert`. Use `!` after the type (`feat!: ...`) or a `BREAKING CHANGE:` footer for breaking changes.
+- When a task is finished, **propose** one or more commit messages in that format (one per logical change) in your final reply, and let the owner commit.
+- **Version 2.0.0**: this rewrite is version `2.0.0` in all three apps: `apps/api`, `apps/web` and `apps/mobile` (`version` in each `package.json`, and also `expo.version` in the Expo app config for mobile). The internal `packages/*` are private and keep their own version, which does not need to follow the apps. The legacy app is the 1.x line. Do not bump the version unless asked.
+
+## Working agreements for Claude Code
+
+- For any task touching more than one package or any schema/contract change: enter plan mode first and wait for approval.
+- Contracts first: change `packages/contracts` (and `core` tests), then API, then clients.
+- When behavior is unclear, check `legacy/` for how the old app behaved and say what you found; do not copy its bugs (hardcoded URLs and VAPID keys, epoch-ms dates, `/push/register` stub, duplicated Zod parsing).
+- Before finishing: run typecheck, lint and tests for touched packages; update the Roadmap status and the Commands section of this file if reality changed. Then propose semantic commit messages, without committing anything.
+- Prefer verifying current library APIs in their official docs over relying on memory; versions move fast (Expo SDK, Better Auth, Drizzle, Wrangler).
