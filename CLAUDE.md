@@ -178,7 +178,7 @@ Owner decisions taken before Phase 0. They override anything above that seems to
 - **Never commit.** Do not run `git add`, `git commit`, `git push`, `git stash`, `git reset`, `git rebase`, or any other command that stages, records or rewrites history. The owner reviews the diff and commits manually. Read-only commands (`git status`, `git diff`, `git log`) are fine.
 - **Never add co-authorship or attribution** of any kind: no `Co-Authored-By` trailer, no "Generated with Claude Code" line, in commit messages, PR descriptions or files.
 - Commit messages follow **Conventional Commits** (semantic): `type: imperative summary`, in English, lowercase type, **never use a scope in parentheses** (write `feat: add habit heatmap`, not `feat(web): ...`), no trailing period, summary up to ~72 chars. If the area matters, mention it in the summary itself (for example `fix: handle timezone in api date window`). Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `style`, `revert`. Use `!` after the type (`feat!: ...`) or a `BREAKING CHANGE:` footer for breaking changes.
-- When a task is finished, **propose** one or more commit messages in that format (one per logical change) in your final reply, and let the owner commit.
+- When a phase is finished, **propose a single commit message** in that format covering everything changed in the phase (a short body may list what it includes) in your final reply, and let the owner commit. Smaller tasks outside a phase also get one message.
 - **Version 2.0.0**: this rewrite is version `2.0.0` in all three apps: `apps/api`, `apps/web` and `apps/mobile` (`version` in each `package.json`, and also `expo.version` in the Expo app config for mobile). The internal `packages/*` are private and keep their own version, which does not need to follow the apps. The legacy app is the 1.x line. Do not bump the version unless asked.
 
 ## Working agreements for Claude Code
@@ -186,5 +186,5 @@ Owner decisions taken before Phase 0. They override anything above that seems to
 - For any task touching more than one package or any schema/contract change: enter plan mode first and wait for approval.
 - Contracts first: change `packages/contracts` (and `core` tests), then API, then clients.
 - When behavior is unclear, check `legacy/` for how the old app behaved and say what you found; do not copy its bugs (hardcoded URLs and VAPID keys, calendar days stored as epoch-ms in the server timezone, `/push/register` stub, duplicated Zod parsing).
-- Before finishing: run typecheck, lint and tests for touched packages; update the Roadmap status and the Commands section of this file if reality changed. Then propose semantic commit messages, without committing anything.
+- Before finishing: run typecheck, lint and tests for touched packages; update the Roadmap status and the Commands section of this file if reality changed. Then propose one semantic commit message for the whole phase, without committing anything.
 - Prefer verifying current library APIs in their official docs over relying on memory; versions move fast (Expo SDK, Better Auth, Drizzle, Wrangler).
