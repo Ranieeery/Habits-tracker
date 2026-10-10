@@ -1,0 +1,135 @@
+// D1 schema. Column names are snake_case and match the record schemas in
+// `@habits/contracts`, so a row minus `user_id` is the contract record (see
+// `records.ts`). Instants are integer UTC ms read as `number`; calendar dates
+// are `YYYY-MM-DD` text. There is no foreign key on `user_id` yet: the auth
+// tables arrive with Better Auth in Phase 3, and until then every query is
+// scoped by `user_id`.
+import { DEFAULT_TIME_ZONE, type Schedule } from "@habits/contracts";
+import { type SQL, sql } from "drizzle-orm";
+import {
+	type AnySQLiteColumn,
+	check,
+	index,
+	integer,
+	sqliteTable,
+	text,
+	uniqueIndex,
+} from "drizzle-orm/sqlite-core";
+
+/** Integer UTC milliseconds, read as `number` (not `Date`). */
+const timestampMs = () => integer({ mode: "number" });
+
+/** Record id: UUID (v7 when client-generated), stored as text. */
+const id = () => text().primaryKey();
+
+const userId = () => text().notNull();
+
+const timestamps = {
+	created_at: timestampMs().notNull(),
+	updated_at: timestampMs().notNull(),
+};
+
+/** Valid `YYYY-MM-DD` dates are the ones SQLite's `date()` returns unchanged. */
+const isCalendarDate = (column: AnySQLiteColumn): SQL =>
+	sql`date(${column}) IS ${column}`;
+
+export const habits = sqliteTable(
+	"habits",
+	{
+		id: id(),
+		user_id: userId(),
+		name: text().notNull(),
+		/**
+		 * Discriminated union validated with `Schedule` from contracts on every
+		 * write. The CHECK only guarantees JSON with a string `type`, so new
+		 * schedule types need no migration.
+		 */
+		schedule: text({ mode: "json" }).$type<Schedule>().notNull(),
+		start_date: text().notNull(),
+		archived_at: timestampMs(),
+		...timestamps,
+		deleted_at: timestampMs(),
+	},
+	(t) => [
+		index("habits_user_updated_idx").on(t.user_id, t.updated_at),
+		check("habits_start_date_check", isCalendarDate(t.start_date)),
+		check(
+			"habits_schedule_check",
+			sql`json_valid(${t.schedule}) AND json_type(${t.schedule}, '$.type') IS 'text'`
+		),
+	]
+);
+
+/** A row means "done"; un-checking sets `deleted_at` so the change syncs. */
+export const completions = sqliteTable(
+	"completions",
+	{
+		id: id(),
+		user_id: userId(),
+		habit_id: text()
+			.notNull()
+			.references(() => habits.id),
+		date: text().notNull(),
+		completed_at: timestampMs().notNull(),
+		...timestamps,
+		deleted_at: timestampMs(),
+	},
+	(t) => [
+		uniqueIndex("completions_habit_date_unique").on(t.habit_id, t.date),
+		index("completions_user_date_idx").on(t.user_id, t.date),
+		index("completions_user_updated_idx").on(t.user_id, t.updated_at),
+		check("completions_date_check", isCalendarDate(t.date)),
+	]
+);
+
+export const userSettings = sqliteTable(
+	"user_settings",
+	{
+		user_id: text().primaryKey(),
+		timezone: text().notNull().default(DEFAULT_TIME_ZONE),
+		/** `HH:MM` in `timezone`; null turns reminders off. */
+		reminder_time: text(),
+		...timestamps,
+	},
+	(t) => [
+		check(
+			"user_settings_reminder_time_check",
+			sql`${t.reminder_time} IS NULL OR (${t.reminder_time} GLOB '[0-2][0-9]:[0-5][0-9]' AND ${t.reminder_time} < '24:00')`
+		),
+	]
+);
+
+/**
+ * Flat storage for the `PushSubscription` union: `webpush` rows use
+ * endpoint/p256dh/auth, `expo` rows use token. Not syncable, so removal is a
+ * hard delete (e.g. after a 404/410 from the push service).
+ */
+export const pushSubscriptions = sqliteTable(
+	"push_subscriptions",
+	{
+		id: id(),
+		user_id: userId(),
+		kind: text({ enum: ["webpush", "expo"] }).notNull(),
+		endpoint: text(),
+		p256dh: text(),
+		auth: text(),
+		token: text(),
+		device_label: text(),
+		last_seen_at: timestampMs().notNull(),
+		...timestamps,
+	},
+	(t) => [
+		uniqueIndex("push_subscriptions_endpoint_unique").on(t.endpoint),
+		uniqueIndex("push_subscriptions_token_unique").on(t.token),
+		index("push_subscriptions_user_idx").on(t.user_id),
+		check(
+			"push_subscriptions_kind_check",
+			sql`(${t.kind} = 'webpush' AND ${t.endpoint} IS NOT NULL AND ${t.p256dh} IS NOT NULL AND ${t.auth} IS NOT NULL AND ${t.token} IS NULL) OR (${t.kind} = 'expo' AND ${t.token} IS NOT NULL AND ${t.endpoint} IS NULL AND ${t.p256dh} IS NULL AND ${t.auth} IS NULL)`
+		),
+	]
+);
+
+export type HabitRow = typeof habits.$inferSelect;
+export type CompletionRow = typeof completions.$inferSelect;
+export type UserSettingsRow = typeof userSettings.$inferSelect;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

@@ -5,9 +5,11 @@ import {
 	Completion,
 	Habit,
 	Mutation,
+	PushSubscription,
 	Schedule,
 	SyncPullResponse,
 	TimeZone,
+	UserSettings,
 } from "./index.ts";
 
 const id = "01928c6e-8a3f-7b2e-9c1d-2f3a4b5c6d7e";
@@ -168,5 +170,76 @@ describe("TimeZone", () => {
 	it("accepts IANA names and rejects garbage", () => {
 		expect(TimeZone.safeParse("America/Sao_Paulo").success).toBe(true);
 		expect(TimeZone.safeParse("Mars/Olympus_Mons").success).toBe(false);
+	});
+});
+
+describe("UserSettings", () => {
+	const settings = {
+		timezone: "America/Sao_Paulo",
+		reminder_time: "21:30",
+		created_at: 1_767_787_200_000,
+		updated_at: 1_767_787_200_000,
+	};
+
+	it("accepts a reminder time or null", () => {
+		expect(UserSettings.safeParse(settings).success).toBe(true);
+		expect(
+			UserSettings.safeParse({ ...settings, reminder_time: null }).success
+		).toBe(true);
+	});
+
+	it.each(["24:00", "9:00", "12:60", "12:00:00"])(
+		"rejects reminder time %s",
+		(reminder_time) => {
+			expect(
+				UserSettings.safeParse({ ...settings, reminder_time }).success
+			).toBe(false);
+		}
+	);
+});
+
+describe("PushSubscription", () => {
+	const base = {
+		id,
+		device_label: "Pixel 9",
+		last_seen_at: 1_767_787_200_000,
+		created_at: 1_767_787_200_000,
+		updated_at: 1_767_787_200_000,
+	};
+
+	it("accepts web push and expo subscriptions", () => {
+		expect(
+			PushSubscription.safeParse({
+				...base,
+				kind: "webpush",
+				endpoint: "https://push.example.com/send/abc",
+				p256dh: "BNc",
+				auth: "tBH",
+			}).success
+		).toBe(true);
+		expect(
+			PushSubscription.safeParse({
+				...base,
+				kind: "expo",
+				token: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+			}).success
+		).toBe(true);
+	});
+
+	it("rejects missing kind fields and unknown kinds", () => {
+		expect(
+			PushSubscription.safeParse({
+				...base,
+				kind: "webpush",
+				endpoint: "https://push.example.com/send/abc",
+			}).success
+		).toBe(false);
+		expect(
+			PushSubscription.safeParse({ ...base, kind: "expo", token: "abc" })
+				.success
+		).toBe(false);
+		expect(
+			PushSubscription.safeParse({ ...base, kind: "sms", token: "x" }).success
+		).toBe(false);
 	});
 });

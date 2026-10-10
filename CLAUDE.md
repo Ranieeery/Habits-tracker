@@ -32,7 +32,7 @@ The product must stay **extensible**: new habit types/frequencies, new stats, ne
 
 - [x] Phase 0: monorepo scaffold, legacy moved to `legacy/`
 - [x] Phase 1: `packages/contracts` + `packages/core` (with tests)
-- [ ] Phase 2: D1 schema (Drizzle) + dev seed
+- [x] Phase 2: D1 schema (Drizzle) + dev seed
 - [ ] Phase 3: API (Hono) + auth (Better Auth)
 - [ ] Phase 4: web client
 - [ ] Phase 5: mobile client
@@ -57,17 +57,17 @@ Formatting and linting are shared from the root: `.editorconfig` (tabs, width 2,
 
 ## Commands
 
-Available now (Phases 0-1). Commands marked "(Phase N)" do not exist yet.
+Available now (Phases 0-2). Commands marked "(Phase N)" do not exist yet.
 
 ```bash
 pnpm install                      # Node >= 22.13, pnpm 12 (packageManager pins the version)
 pnpm dev                          # turbo: api + web dev servers
 pnpm --filter api dev             # wrangler dev on http://localhost:8787 (GET /v1/health)
 pnpm --filter api cf-typegen      # regenerate src/worker-configuration.d.ts after editing wrangler.jsonc
-pnpm --filter api db:generate     # (Phase 2) drizzle-kit generate migration from schema
-pnpm --filter api db:migrate:local    # (Phase 2)
-pnpm --filter api db:migrate:remote   # (Phase 2)
-pnpm --filter api db:seed:local   # (Phase 2) sample habits/completions in local D1 (dev only)
+pnpm --filter api db:generate     # drizzle-kit generate: SQL migration in apps/api/migrations from schema.ts
+pnpm --filter api db:migrate:local    # wrangler d1 migrations apply DB --local
+pnpm --filter api db:migrate:remote   # needs the real database_id in wrangler.jsonc (placeholder until Phase 8)
+pnpm --filter api db:seed:local   # deterministic dev data in local D1 (run migrate:local first); --today YYYY-MM-DD (default 2026-10-09)
 pnpm --filter web dev             # vite
 pnpm --filter web build
 pnpm --filter mobile start        # expo start (use a development build, not Expo Go, for push)
@@ -82,6 +82,7 @@ pnpm format                       # prettier --write . (format:check to verify)
 Notes:
 
 - Internal `packages/*` export TypeScript source directly (no build step); relative imports use explicit `.ts` extensions.
+- Node-side scripts (`db:seed:local`, design-tokens `generate`) run `.ts` files with Node's built-in type stripping, which needs Node >= 22.18 (`.node-version` pins 24). Keep them to erasable syntax (no `enum`, no parameter properties).
 - Shared versions (TypeScript, Vitest, React, Zod) live in the `catalog:` of `pnpm-workspace.yaml`. Packages allowed to run install scripts are listed under `allowBuilds` there.
 - In `apps/mobile`, add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK. `apps/mobile/AGENTS.md` (from the Expo template) has Expo-specific guidance.
 - NativeWind's Babel transform imports `react-native-css-interop`, so it is a direct dependency of `apps/mobile` (pnpm isolated installs). Keep its version equal to the one `nativewind` pins.
@@ -96,9 +97,13 @@ All tables carry `user_id`, `created_at`, `updated_at`; syncable tables also car
 
 - `habits`: `id`, `user_id`, `name`, `schedule` (JSON, discriminated union validated by `contracts`; today only `{ type: "weekdays", days: number[] }`), `start_date` (date), `archived_at`.
 - `completions`: `id`, `user_id`, `habit_id`, `date` (`YYYY-MM-DD`), `completed_at`, `deleted_at`. Unique on `(habit_id, date)`. A row means "done"; un-checking sets `deleted_at` so the change can sync.
-- `user_settings`: `timezone` (default `America/Sao_Paulo`), `reminder_time`, notification preferences.
-- `push_subscriptions`: `kind` (`webpush` | `expo`), endpoint/keys or Expo token, device label, last seen.
-- Auth tables are owned by Better Auth.
+- `user_settings`: PK `user_id`, `timezone` (default `America/Sao_Paulo`), `reminder_time` (`HH:MM`, null = off). More notification preferences are added as columns when needed.
+- `push_subscriptions`: `kind` (`webpush` | `expo`), `endpoint`/`p256dh`/`auth` or Expo `token` (a CHECK enforces the fields per kind), `device_label`, `last_seen_at`. Not syncable: hard delete.
+- Auth tables are owned by Better Auth (Phase 3).
+
+The database row of every table, minus `user_id`, is exactly the contract record (`Habit`, `Completion`, `UserSettings`; `PushSubscription` is stored flat): `apps/api/test/rows.test.ts` asserts this at type level. Writes go through `apps/api/src/db/records.ts`, which parses with the contract first (the DB CHECK on `schedule` only requires JSON with a string `type`, so new schedule types need no migration).
+
+`user_id` has no foreign key yet. Phase 3 must: configure Better Auth to generate UUID ids, add `user_id` FKs (`ON DELETE CASCADE`) through a table-rebuild migration with `PRAGMA defer_foreign_keys = on` (D1 always enforces FKs), and make the dev seed also create the auth user with the fixed `DEV_USER_ID`.
 
 Differences from the legacy model (intentional):
 
@@ -155,7 +160,7 @@ Owner decisions taken before Phase 0. They override anything above that seems to
 
 - **Legacy data**: `legacy/server/prisma/dev.db` is test data only. There is no legacy data import or migration: do not create an `import-legacy` script. Phase 2 delivers a **local D1 dev seed** instead (`pnpm --filter api db:seed:local`) with sample habits and completions spread over the year, covering all heatmap intensities, streaks and the year boundary (completions in late December of the previous year and early January).
 - **Timezone and dates**: the server never uses `new Date()` or `Date.now()` to decide a user's calendar day. The client sends the local date as `YYYY-MM-DD`. Any server-side "today" (date window validation, reminder cron) is computed from the user's IANA timezone in `user_settings.timezone` (default `America/Sao_Paulo`), passed explicitly as a parameter to every date function in `packages/core`. Workers run in UTC regardless of the Cloudflare account or region, and the D1 region only affects latency. The cron trigger runs hourly in UTC and converts per user. `created_at`, `updated_at` and `deleted_at` are integer UTC milliseconds.
-- **Timestamps vs calendar dates**: `created_at`, `updated_at`, `deleted_at` (and other instants such as `completed_at`, `archived_at`) are integer ms (Drizzle `integer({ mode: "timestamp_ms" })`). Calendar dates (`start_date`, `completions.date`) stay `YYYY-MM-DD` text.
+- **Timestamps vs calendar dates**: `created_at`, `updated_at`, `deleted_at` (and other instants such as `completed_at`, `archived_at`) are integer UTC ms, read as `number` (Drizzle `integer({ mode: "number" })`, not `timestamp_ms`, which returns `Date`), so rows match the contracts without conversion. Calendar dates (`start_date`, `completions.date`) stay `YYYY-MM-DD` text.
 - **Design tokens**: canonical values are **hex**. Legacy front OKLCH values (Tailwind v4) are converted to hex where needed so web and mobile are identical. The heatmap has 6 levels with the mobile mapping (level 1 = violet-400 `#A78BFA`). Green stays the success color. `packages/design-tokens` generates both configs from one source: a Tailwind v4 `@theme` CSS file (web) and a Tailwind v3 preset (mobile/NativeWind).
 - **NativeWind**: v4 stable (Tailwind v3). Migrate to v5 when it leaves RC.
 - **TypeScript**: 6.0.x workspace-wide (typescript-eslint requires `typescript <6.1`). Do not move to TS 7 until typescript-eslint supports it.
