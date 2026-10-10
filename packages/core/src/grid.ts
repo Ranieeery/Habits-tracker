@@ -5,6 +5,7 @@ import {
 	diffInDays,
 	firstDayOfYear,
 	lastDayOfYear,
+	parseCalendarDate,
 	startOfWeek,
 } from "./dates.ts";
 import {
@@ -86,4 +87,27 @@ export function buildYearGrid({
 	});
 
 	return { year, weeks, today_week_index: todayWeekIndex };
+}
+
+export interface MonthLabel {
+	/** 1-12. */
+	month: number;
+	/** The week column that holds the 1st of the month. */
+	week_index: number;
+}
+
+/** Where each month of the grid's year starts, in week columns. */
+export function monthLabels(grid: YearGrid): MonthLabel[] {
+	const labels: MonthLabel[] = [];
+	grid.weeks.forEach((week, weekIndex) => {
+		for (const cell of week.days) {
+			if (cell.in_year && cell.date.endsWith("-01")) {
+				labels.push({
+					month: parseCalendarDate(cell.date).month,
+					week_index: weekIndex,
+				});
+			}
+		}
+	});
+	return labels;
 }

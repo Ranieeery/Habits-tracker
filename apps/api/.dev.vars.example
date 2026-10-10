@@ -10,8 +10,10 @@ BETTER_AUTH_SECRET=
 # Public URL of the API (Better Auth builds callback URLs from it).
 BETTER_AUTH_URL=http://localhost:8787
 
-# Browser origins allowed by CORS and Better Auth (comma-separated).
-TRUSTED_ORIGINS=http://localhost:5173
+# Browser origins allowed by CORS and Better Auth (comma-separated). Keep the
+# Vite dev (5173) and preview (4173) servers here even though they proxy /api:
+# Better Auth still checks the Origin header of sign-in and sign-out.
+TRUSTED_ORIGINS=http://localhost:5173,http://localhost:4173
 
 # Signup is open only while no user exists. "true" reopens it (dev only).
 ALLOW_SIGNUP=false

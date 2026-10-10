@@ -1,8 +1,31 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter/wght.css";
 @import "@habits/design-tokens/theme.css";
 
+/* Only design-token colors: shadcn/ui components were restyled with token
+   classes, so there is no second set of color variables here. */
+@theme {
+	--font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer base {
+	html {
+		color-scheme: dark;
+	}
+
 	body {
 		@apply bg-background text-foreground font-sans antialiased;
+	}
+
+	/* One visible focus style for every interactive element. */
+	:focus-visible {
+		outline: 2px solid var(--color-violet-400);
+		outline-offset: 2px;
+	}
+
+	button:not(:disabled),
+	[role="button"]:not([aria-disabled="true"]) {
+		cursor: pointer;
 	}
 }

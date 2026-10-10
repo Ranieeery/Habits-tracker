@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildYearGrid } from "./grid.ts";
+import { buildYearGrid, monthLabels } from "./grid.ts";
 
 describe("buildYearGrid", () => {
 	it("pads the first week of 2026 (Jan 1 is a Thursday)", () => {
@@ -88,5 +88,29 @@ describe("buildYearGrid", () => {
 		expect(byDate.get("2026-01-06")).toMatchObject({ ratio: 1, level: 5 });
 		expect(byDate.get("2026-01-07")).toMatchObject({ possible: 4, level: 0 });
 		expect(byDate.get("2026-01-08")).toMatchObject({ possible: 0, level: 0 });
+	});
+});
+
+describe("monthLabels", () => {
+	it("places each month at the week holding its 1st day (2026)", () => {
+		const labels = monthLabels(
+			buildYearGrid({ year: 2026, today: "2026-10-09" })
+		);
+		expect(labels.map((label) => label.month)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+		]);
+		// Jan 1 (Thu) is in the first week; Feb 1 (Sun) starts week 5.
+		expect(labels[0]).toEqual({ month: 1, week_index: 0 });
+		expect(labels[1]).toEqual({ month: 2, week_index: 5 });
+		// Dec 1, 2026 is a Tuesday in the week starting Nov 29 (index 48).
+		expect(labels[11]).toEqual({ month: 12, week_index: 48 });
+	});
+
+	it("ignores the padding days of the next year", () => {
+		// Jan 1, 2027 is in the last 2026 column but is not labeled.
+		const labels = monthLabels(
+			buildYearGrid({ year: 2026, today: "2026-10-09" })
+		);
+		expect(labels).toHaveLength(12);
 	});
 });

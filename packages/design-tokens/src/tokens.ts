@@ -27,6 +27,12 @@ export const colors = {
 		DEFAULT: "#16a34a", // checked checkbox, confirm button
 		hover: "#22c55e",
 	},
+	// Not in the legacy apps (they had no error UI). red-400 reads well on the
+	// dark background; red-950 is the background of error alerts.
+	danger: {
+		DEFAULT: "#f87171",
+		surface: "#450a0a",
+	},
 	// Heatmap levels 0 (nothing done) to 5 (>= 80%), legacy mobile mapping.
 	heatmap: {
 		0: "#18181b",

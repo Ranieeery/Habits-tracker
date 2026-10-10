@@ -34,7 +34,7 @@ The product must stay **extensible**: new habit types/frequencies, new stats, ne
 - [x] Phase 1: `packages/contracts` + `packages/core` (with tests)
 - [x] Phase 2: D1 schema (Drizzle) + dev seed
 - [x] Phase 3: API (Hono) + auth (Better Auth)
-- [ ] Phase 4: web client
+- [x] Phase 4: web client
 - [ ] Phase 5: mobile client
 - [ ] Phase 6: push notifications (web + mobile) + cron
 - [ ] Phase 7: offline sync (mobile)
@@ -58,7 +58,7 @@ Formatting and linting are shared from the root: `.editorconfig` (tabs, width 2,
 
 ## Commands
 
-Available now (Phases 0-3). Commands marked "(Phase N)" do not exist yet.
+Available now (Phases 0-4). Commands marked "(Phase N)" do not exist yet.
 
 ```bash
 pnpm install                      # Node >= 22.13, pnpm 12 (packageManager pins the version)
@@ -73,14 +73,17 @@ pnpm --filter api db:seed:local   # deterministic dev data in local D1 (run migr
                                   # also creates the auth user DEV_USER_ID: sign in as dev@habits.local / habits-dev-password
 pnpm --filter api auth:generate   # regenerate src/db/auth-schema.ts with the Better Auth CLI after changing src/auth/options.ts, then db:generate
 pnpm --filter api build:types     # emit the AppType declarations (dist/types) used by @habits/api-client; turbo runs it before typecheck
-pnpm --filter web dev             # vite
-pnpm --filter web build
+cp apps/web/.env.example apps/web/.env   # once: VITE_API_URL=/api and API_PROXY_TARGET (the local Worker)
+pnpm --filter web dev             # vite on http://localhost:5173 (strict port); proxies /api/* to API_PROXY_TARGET (start the api too)
+pnpm --filter web build           # typecheck (app, node configs, service worker) + vite build with the PWA service worker
+pnpm --filter web preview         # serve dist/ on http://localhost:4173 (same /api proxy): the only way to test the service worker and install the PWA locally
+pnpm --filter web test            # vitest + Testing Library (jsdom)
 pnpm --filter mobile start        # expo start (use a development build, not Expo Go, for push)
 pnpm --filter @habits/design-tokens generate   # rewrite src/generated/theme.css after editing tokens.ts
 pnpm --filter @habits/core test   # vitest for one package (also @habits/contracts, @habits/design-tokens, @habits/api-client)
 pnpm typecheck                    # turbo: tsc --noEmit in every package (api build:types runs first for its dependents)
 pnpm lint                         # turbo: eslint (root flat config; web/mobile extend it)
-pnpm test                         # turbo: vitest in contracts, core, design-tokens, api (@cloudflare/vitest-plugin), api-client, web
+pnpm test                         # turbo: vitest in contracts, core, design-tokens, api (@cloudflare/vitest-plugin), api-client, web (jsdom)
 pnpm format                       # prettier --write . (format:check to verify)
 ```
 
@@ -180,6 +183,7 @@ Owner decisions taken before Phase 0. They override anything above that seems to
 - **Password hashing**: Password hashing is deliberately lightweight to fit the free plan's CPU limit; revisit if moving to Workers Paid (raise scrypt to the Better Auth default via the versioned rehash). Details: own scrypt hasher (`apps/api/src/auth/password.ts`, `node:crypto`) with N=2048, r=8, p=1 (~4 ms per hash in local workerd, against ~70 ms for Better Auth's default N=16384, r=16), versioned format `$scrypt$v=1$n=…,r=…,p=…$salt$key`, constant-time comparison, re-hash on a successful sign-in when the stored parameters are weaker than `CURRENT_PARAMS`. Compensated by a 16-character minimum password (`PASSWORD_MIN_LENGTH` in contracts), closed signup and rate limiting.
 - **Auth layout** (Phase 3): Better Auth 1.7 under `/v1/auth`, plugins `bearer()` and `expo()`. The auth tables keep Better Auth's `timestamp_ms` columns (read as `Date`), an intentional exception to the "instants are numbers" rule because Better Auth owns those rows. Config: wrangler vars `ENVIRONMENT` (anything but `development` behaves as production), `ALLOW_SIGNUP`, `TRUSTED_ORIGINS`; secrets `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `OWNER_EMAIL` (`.dev.vars` / `wrangler secret put`, documented in `apps/api/.dev.vars.example`).
 - **Habit start date**: `POST /v1/habits` accepts `start_date >= today - BACKFILL_DAYS` (no upper bound), so a new habit cannot rewrite old heatmap days. Editing a schedule still changes past "possible" counts (no schedule versioning yet).
+- **Web client** (Phase 4): code-based TanStack Router routes (no `routeTree.gen.ts` codegen, so `tsc` never depends on a generated file); everything but `/login` sits under a pathless `app` route whose `beforeLoad` redirects to `/login?redirect=`, and any 401 from the API does the same. Sign-in only: the API exposes no "owner exists" check, so there is no signup screen. Session via `better-auth/client` with the cookie on the web origin. The web calls the API at `VITE_API_URL` (`/api`, same origin): the Vite dev and preview servers proxy `/api/*` to `API_PROXY_TARGET`, stripping `/api`; production must route `/api/*` to the Worker the same way (Worker paths start at `/v1`; Phase 8). "Today" is `todayIn(settings.timezone, now())`, re-evaluated on focus, `visibilitychange` and every minute; a different device time zone shows a banner (update or keep, never silent). shadcn/ui components are copied and restyled with token classes only (no shadcn color variables). `danger` (red-400, red-950 surface) was added to the tokens for error UI. PWA: vite-plugin-pwa `injectManifest` with `src/sw/sw.ts` (Phase 6 adds a `push.ts` module to it); precaches only the app shell (Latin font subsets), no runtime caching, `/api/*` excluded from the navigation fallback. Update strategy `prompt`: a new worker waits until the user taps "Atualizar" (SKIP_WAITING + reload); the page checks for updates hourly and on `visibilitychange`. Serve `index.html` and `sw.js` with `Cache-Control: no-cache` in production (Phase 8). Versions: Vite 8.3, @vitejs/plugin-react 6.1, TanStack Router 1.170, TanStack Query 5.104, vite-plugin-pwa 2.0 / Workbox 7.4, shadcn CLI 4.21 (not a dependency) with radix-ui 1.7, sonner 2.0, dayjs 1.11, jsdom 30, Testing Library 16.
 - **Versions pinned at scaffold** (verified 2026-10-09): pnpm 12.10.1, Turborepo 2.11, TypeScript 6.0.3, Vitest 4.x, Expo SDK 57 (React 19.2.3 in both web and mobile), NativeWind 4.2, Tailwind 4.3 (web), Zod 4, Hono 4.13, @hono/zod-openapi 1.6, Drizzle ORM 0.45 / drizzle-kit 0.31, Better Auth 1.7, Wrangler 4. Shared versions go through the pnpm catalog.
 
 ## Conventions
