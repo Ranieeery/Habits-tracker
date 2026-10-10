@@ -1,8 +1,4 @@
-import { Hono } from "hono";
-import { version } from "../package.json";
+import { createApp } from "./app.ts";
 
-const app = new Hono<{ Bindings: Env }>().basePath("/v1");
-
-app.get("/health", (c) => c.json({ status: "ok", version }));
-
-export default app;
+// The only place that reads the real clock (see `lib/clock.ts`).
+export default createApp({ now: () => Date.now() });

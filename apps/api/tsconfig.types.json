@@ -1,0 +1,19 @@
+{
+	// Emits declarations for `api/app` (the Hono RPC AppType) into dist/types,
+	// so clients type-check against .d.ts files (skipped by skipLibCheck)
+	// instead of compiling the Worker source with its Workers and Node globals,
+	// which clash with the DOM types of the web app.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"rootDir": ".",
+		"outDir": "dist/types"
+	},
+	"include": [
+		"src/app-type.ts",
+		"src/worker-configuration.d.ts",
+		"src/env.d.ts"
+	]
+}

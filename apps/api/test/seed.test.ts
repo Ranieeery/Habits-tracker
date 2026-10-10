@@ -7,19 +7,24 @@ import {
 } from "@habits/core";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import { hashPassword } from "../src/auth/password.ts";
 import { createDb } from "../src/db/client.ts";
 import { completions, habits, userSettings } from "../src/db/schema.ts";
 import { applySeed } from "../src/db/seed/apply.ts";
 import {
 	buildSeed,
 	DEFAULT_SEED_TODAY,
+	DEV_USER_EMAIL,
 	DEV_USER_ID,
+	DEV_USER_PASSWORD,
 	LONG_STREAK_DAYS,
 	SEED_TIME_ZONE,
 } from "../src/db/seed/build.ts";
 import { validateSeed } from "../src/db/seed/validate.ts";
+import { bearerOf, makeApi, signIn } from "./helpers.ts";
 
 const seed = validateSeed(buildSeed());
+const passwordHash = await hashPassword(DEV_USER_PASSWORD);
 const options = { timeZone: SEED_TIME_ZONE };
 const live = seed.completions.filter((c) => c.deleted_at === null);
 
@@ -108,6 +113,23 @@ describe("validateSeed", () => {
 });
 
 describe("applySeed", () => {
+	it("creates the dev auth user, who can sign in and read the seeded data", async () => {
+		const db = createDb(env.DB);
+		await applySeed(db, seed, passwordHash);
+		const api = makeApi(`${seed.today}T15:00:00Z`);
+
+		const response = await signIn(api, DEV_USER_EMAIL, DEV_USER_PASSWORD);
+		expect(response.status).toBe(200);
+		const { user } = (await response.json()) as { user: { id: string } };
+		expect(user.id).toBe(DEV_USER_ID);
+
+		const habitsResponse = await api.request("/v1/habits", {
+			headers: { Authorization: `Bearer ${bearerOf(response)}` },
+		});
+		const body = (await habitsResponse.json()) as { habits: unknown[] };
+		expect(body.habits).toHaveLength(seed.habits.length);
+	});
+
 	it("is idempotent", async () => {
 		const db = createDb(env.DB);
 		const snapshot = async () => ({
@@ -116,9 +138,9 @@ describe("applySeed", () => {
 			settings: await db.select().from(userSettings),
 		});
 
-		await applySeed(db, seed);
+		await applySeed(db, seed, passwordHash);
 		const first = await snapshot();
-		await applySeed(db, seed);
+		await applySeed(db, seed, passwordHash);
 		const second = await snapshot();
 
 		expect(first.habits).toHaveLength(seed.habits.length);
@@ -132,6 +154,7 @@ describe("applySeed", () => {
 		const otherUser = {
 			...other,
 			userId: "0199c9a0-0000-7000-8000-0000000000bb",
+			user: { ...other.user, email: "other@habits.local" },
 		};
 		// Different ids for the second user, same shape.
 		const remap = (id: string) => `${id.slice(0, -4)}ffff`;
@@ -142,8 +165,8 @@ describe("applySeed", () => {
 			habit_id: remap(c.habit_id),
 		}));
 
-		await applySeed(db, otherUser);
-		await applySeed(db, seed);
+		await applySeed(db, otherUser, passwordHash);
+		await applySeed(db, seed, passwordHash);
 
 		expect(await db.$count(habits)).toBe(2 * seed.habits.length);
 	});

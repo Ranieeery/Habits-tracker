@@ -4,6 +4,17 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2026-09-01",
 	"compatibility_flags": ["nodejs_compat"],
+	// Non-secret configuration. Production values here; local overrides and the
+	// secrets (BETTER_AUTH_SECRET, BETTER_AUTH_URL, OWNER_EMAIL) go in .dev.vars
+	// (see .dev.vars.example) or `wrangler secret put`.
+	"vars": {
+		"ENVIRONMENT": "production",
+		// "true" reopens signup after the owner exists (development only).
+		"ALLOW_SIGNUP": "false",
+		// Comma-separated browser origins allowed by CORS and Better Auth.
+		// Empty in production: web and API share one domain.
+		"TRUSTED_ORIGINS": "",
+	},
 	"observability": {
 		"enabled": true,
 	},

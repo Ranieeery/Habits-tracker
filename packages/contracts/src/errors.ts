@@ -8,6 +8,7 @@ export const ERROR_CODES = [
 	"conflict",
 	"date_out_of_range",
 	"signup_disabled",
+	"rate_limited",
 	"internal_error",
 ] as const;
 

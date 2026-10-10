@@ -1,7 +1,9 @@
 {
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"lib": ["ES2024"]
+		"lib": ["ES2024"],
+		// node:crypto and Buffer (nodejs_compat), used by the password hasher.
+		"types": ["node"]
 	},
 	"include": ["src"]
 }

@@ -1,18 +1,9 @@
-root = true
+feat: add hono api with better auth, user-scoped routes and typed client
 
-[*]
-charset = utf-8
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-indent_style = tab
-indent_size = 2
-
-# YAML does not allow tabs for indentation.
-[*.{yml,yaml}]
-indent_style = space
-
-# Tabs in Markdown can turn into code blocks.
-[*.md]
-indent_style = space
-trim_trailing_whitespace = false
+- contracts: auth requests (16-char minimum password), push registration and key-free subscription view, settings update, rate_limited error code
+- api: better auth on d1 (email/password, bearer and expo plugins, closed signup with OWNER_EMAIL/ALLOW_SIGNUP, db-backed rate limits on sign-in and sign-up, cors and trusted origins from config)
+- api: lightweight versioned scrypt hasher with constant-time verify and rehash on sign-in to fit the workers free plan cpu limit
+- api: habits, completions (write window in the user's time zone, tombstones), day, summary, settings and push routes with openapi docs at /v1/docs, injectable clock and per-user repositories
+- db: generated auth tables, user_id foreign keys with cascade, dev seed creates the auth user with the fixed id
+- api-client: hono rpc client over emitted AppType declarations
+- tests: auth, password, isolation, date window, push key leaks, docs

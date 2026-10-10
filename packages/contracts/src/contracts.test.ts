@@ -5,10 +5,16 @@ import {
 	Completion,
 	Habit,
 	Mutation,
+	PASSWORD_MIN_LENGTH,
 	PushSubscription,
+	PushSubscriptionView,
+	RegisterPushSubscriptionRequest,
 	Schedule,
+	SignInRequest,
+	SignUpRequest,
 	SyncPullResponse,
 	TimeZone,
+	UpdateUserSettingsRequest,
 	UserSettings,
 } from "./index.ts";
 
@@ -240,6 +246,93 @@ describe("PushSubscription", () => {
 		).toBe(false);
 		expect(
 			PushSubscription.safeParse({ ...base, kind: "sms", token: "x" }).success
+		).toBe(false);
+	});
+});
+
+describe("auth requests", () => {
+	it("requires passwords of at least PASSWORD_MIN_LENGTH characters", () => {
+		const request = { name: "Dono", email: "owner@example.com" };
+		const ok = "a".repeat(PASSWORD_MIN_LENGTH);
+		expect(SignUpRequest.safeParse({ ...request, password: ok }).success).toBe(
+			true
+		);
+		expect(
+			SignUpRequest.safeParse({ ...request, password: ok.slice(1) }).success
+		).toBe(false);
+		expect(
+			SignUpRequest.safeParse({ ...request, password: "a".repeat(129) }).success
+		).toBe(false);
+	});
+
+	it("rejects invalid emails", () => {
+		expect(
+			SignInRequest.safeParse({ email: "nope", password: "x" }).success
+		).toBe(false);
+	});
+});
+
+describe("RegisterPushSubscriptionRequest", () => {
+	it("accepts the browser toJSON() shape and expo tokens", () => {
+		expect(
+			RegisterPushSubscriptionRequest.safeParse({
+				kind: "webpush",
+				endpoint: "https://push.example.com/send/abc",
+				keys: { p256dh: "BNc", auth: "tBH" },
+			}).success
+		).toBe(true);
+		expect(
+			RegisterPushSubscriptionRequest.safeParse({
+				kind: "expo",
+				token: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+				device_label: "Pixel 9",
+			}).success
+		).toBe(true);
+	});
+
+	it("rejects web push without keys", () => {
+		expect(
+			RegisterPushSubscriptionRequest.safeParse({
+				kind: "webpush",
+				endpoint: "https://push.example.com/send/abc",
+			}).success
+		).toBe(false);
+	});
+});
+
+describe("PushSubscriptionView", () => {
+	it("strips the endpoint, keys and token", () => {
+		const view = PushSubscriptionView.parse({
+			id,
+			kind: "webpush",
+			device_label: null,
+			last_seen_at: 1,
+			created_at: 1,
+			updated_at: 1,
+			endpoint: "https://push.example.com/send/abc",
+			p256dh: "BNc",
+			auth: "tBH",
+			token: "ExponentPushToken[x]",
+		});
+		expect(Object.keys(view).sort()).toEqual([
+			"created_at",
+			"device_label",
+			"id",
+			"kind",
+			"last_seen_at",
+			"updated_at",
+		]);
+	});
+});
+
+describe("UpdateUserSettingsRequest", () => {
+	it("accepts partial updates and validates each field", () => {
+		expect(UpdateUserSettingsRequest.safeParse({}).success).toBe(true);
+		expect(
+			UpdateUserSettingsRequest.safeParse({ reminder_time: null }).success
+		).toBe(true);
+		expect(
+			UpdateUserSettingsRequest.safeParse({ timezone: "Mars/Olympus" }).success
 		).toBe(false);
 	});
 });

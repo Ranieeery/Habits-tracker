@@ -2,7 +2,6 @@ import type { Completion, Habit } from "@habits/contracts";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDb } from "../src/db/client.ts";
 import {
 	fromCompletionRow,
 	fromHabitRow,
@@ -10,24 +9,15 @@ import {
 	toHabitRow,
 	toPushSubscriptionRow,
 } from "../src/db/records.ts";
-import {
-	completions,
-	habits,
-	pushSubscriptions,
-	userSettings,
-} from "../src/db/schema.ts";
+import { completions, habits, pushSubscriptions } from "../src/db/schema.ts";
+import { db, insertUser, resetDb } from "./helpers.ts";
 
-const db = createDb(env.DB);
+const userId = "0199c9a0-0000-7000-8000-0000000000aa";
 
 beforeEach(async () => {
-	await db.batch([
-		db.delete(completions),
-		db.delete(habits),
-		db.delete(userSettings),
-		db.delete(pushSubscriptions),
-	]);
+	await resetDb();
+	await insertUser(userId);
 });
-const userId = "0199c9a0-0000-7000-8000-0000000000aa";
 const createdAt = 1_767_787_200_000;
 
 const habit: Habit = {

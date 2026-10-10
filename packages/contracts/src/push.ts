@@ -40,3 +40,51 @@ export const PushSubscription = z.discriminatedUnion("kind", [
 ]);
 export type PushSubscription = z.infer<typeof PushSubscription>;
 export type PushSubscriptionKind = PushSubscription["kind"];
+
+const RegisterPushSubscriptionBase = {
+	/** Client-generated id; the server generates one when omitted. */
+	id: Uuid.optional(),
+	device_label: PushSubscriptionBase.device_label.optional(),
+};
+
+/**
+ * Registers (or refreshes) a device. Web Push sends the browser's
+ * `PushSubscription.toJSON()` shape; Expo sends the push token.
+ */
+export const RegisterPushSubscriptionRequest = z.discriminatedUnion("kind", [
+	z.object({
+		...RegisterPushSubscriptionBase,
+		kind: z.literal("webpush"),
+		endpoint: WebPushSubscription.shape.endpoint,
+		keys: z.object({
+			p256dh: WebPushSubscription.shape.p256dh,
+			auth: WebPushSubscription.shape.auth,
+		}),
+	}),
+	z.object({
+		...RegisterPushSubscriptionBase,
+		kind: z.literal("expo"),
+		token: ExpoPushSubscription.shape.token,
+	}),
+]);
+export type RegisterPushSubscriptionRequest = z.infer<
+	typeof RegisterPushSubscriptionRequest
+>;
+
+/**
+ * What the API returns about a subscription. Never includes the endpoint, the
+ * keys or the token: they are credentials to push to the device.
+ */
+export const PushSubscriptionView = z.object({
+	...PushSubscriptionBase,
+	kind: z.enum(["webpush", "expo"]),
+});
+export type PushSubscriptionView = z.infer<typeof PushSubscriptionView>;
+
+export const PushSubscriptionResponse = z.object({
+	subscription: PushSubscriptionView,
+});
+export type PushSubscriptionResponse = z.infer<typeof PushSubscriptionResponse>;
+
+export const PushSubscriptionParams = z.object({ subscription_id: Uuid });
+export type PushSubscriptionParams = z.infer<typeof PushSubscriptionParams>;

@@ -33,12 +33,13 @@ The product must stay **extensible**: new habit types/frequencies, new stats, ne
 - [x] Phase 0: monorepo scaffold, legacy moved to `legacy/`
 - [x] Phase 1: `packages/contracts` + `packages/core` (with tests)
 - [x] Phase 2: D1 schema (Drizzle) + dev seed
-- [ ] Phase 3: API (Hono) + auth (Better Auth)
+- [x] Phase 3: API (Hono) + auth (Better Auth)
 - [ ] Phase 4: web client
 - [ ] Phase 5: mobile client
 - [ ] Phase 6: push notifications (web + mobile) + cron
 - [ ] Phase 7: offline sync (mobile)
 - [ ] Phase 8: CI/CD and production deploy
+  - [ ] After the first deploy, measure the password hash time (sign-up/sign-in CPU) in production against the free plan limit
 
 ## Repository layout
 
@@ -49,7 +50,7 @@ pnpm workspaces + Turborepo monorepo. Run commands from the repo root with `pnpm
 - `apps/mobile/` — Expo (latest stable SDK) + Expo Router. Primary client.
 - `packages/contracts/` — Zod schemas and inferred types for every API request/response, plus sync protocol types. Single source of truth.
 - `packages/core/` — pure TypeScript domain logic: date handling, schedule evaluation ("is this habit possible on this date?"), completion ratios, streaks, heatmap grid generation. No I/O, no framework imports. Fully unit-tested.
-- `packages/api-client/` — typed client for the API (Hono RPC `hc` or generated from contracts), shared by web and mobile.
+- `packages/api-client/` — typed client for the API (Hono RPC `hc` over the `AppType` declarations emitted by `apps/api`), shared by web and mobile.
 - `packages/design-tokens/` — colors, spacing, radii extracted from the legacy palette; consumed by Tailwind (web) and NativeWind (mobile).
 - `legacy/` — old `server/`, `front/`, `mobile/`. Read-only reference.
 
@@ -57,31 +58,35 @@ Formatting and linting are shared from the root: `.editorconfig` (tabs, width 2,
 
 ## Commands
 
-Available now (Phases 0-2). Commands marked "(Phase N)" do not exist yet.
+Available now (Phases 0-3). Commands marked "(Phase N)" do not exist yet.
 
 ```bash
 pnpm install                      # Node >= 22.13, pnpm 12 (packageManager pins the version)
 pnpm dev                          # turbo: api + web dev servers
-pnpm --filter api dev             # wrangler dev on http://localhost:8787 (GET /v1/health)
+cp apps/api/.dev.vars.example apps/api/.dev.vars   # once: local config; set BETTER_AUTH_SECRET (command in the file)
+pnpm --filter api dev             # wrangler dev on http://localhost:8787 (GET /v1/health, docs at /v1/docs)
 pnpm --filter api cf-typegen      # regenerate src/worker-configuration.d.ts after editing wrangler.jsonc
 pnpm --filter api db:generate     # drizzle-kit generate: SQL migration in apps/api/migrations from schema.ts
 pnpm --filter api db:migrate:local    # wrangler d1 migrations apply DB --local
 pnpm --filter api db:migrate:remote   # needs the real database_id in wrangler.jsonc (placeholder until Phase 8)
 pnpm --filter api db:seed:local   # deterministic dev data in local D1 (run migrate:local first); --today YYYY-MM-DD (default 2026-10-09)
+                                  # also creates the auth user DEV_USER_ID: sign in as dev@habits.local / habits-dev-password
+pnpm --filter api auth:generate   # regenerate src/db/auth-schema.ts with the Better Auth CLI after changing src/auth/options.ts, then db:generate
+pnpm --filter api build:types     # emit the AppType declarations (dist/types) used by @habits/api-client; turbo runs it before typecheck
 pnpm --filter web dev             # vite
 pnpm --filter web build
 pnpm --filter mobile start        # expo start (use a development build, not Expo Go, for push)
 pnpm --filter @habits/design-tokens generate   # rewrite src/generated/theme.css after editing tokens.ts
-pnpm --filter @habits/core test   # vitest for one package (also @habits/contracts, @habits/design-tokens)
-pnpm typecheck                    # turbo: tsc --noEmit in every package
+pnpm --filter @habits/core test   # vitest for one package (also @habits/contracts, @habits/design-tokens, @habits/api-client)
+pnpm typecheck                    # turbo: tsc --noEmit in every package (api build:types runs first for its dependents)
 pnpm lint                         # turbo: eslint (root flat config; web/mobile extend it)
-pnpm test                         # turbo: vitest in contracts, core, design-tokens, api (@cloudflare/vitest-plugin), web
+pnpm test                         # turbo: vitest in contracts, core, design-tokens, api (@cloudflare/vitest-plugin), api-client, web
 pnpm format                       # prettier --write . (format:check to verify)
 ```
 
 Notes:
 
-- Internal `packages/*` export TypeScript source directly (no build step); relative imports use explicit `.ts` extensions.
+- Internal `packages/*` export TypeScript source directly (no build step); relative imports use explicit `.ts` extensions. The one exception is the API's RPC type: `api/app` resolves to declarations emitted into `apps/api/dist/types` (gitignored), so clients never compile the Worker source and its Workers/Node globals (they clash with the DOM types). Run `pnpm typecheck` from the root (turbo builds them first), or `pnpm --filter api build:types` before typechecking a client alone.
 - Node-side scripts (`db:seed:local`, design-tokens `generate`) run `.ts` files with Node's built-in type stripping, which needs Node >= 22.18 (`.node-version` pins 24). Keep them to erasable syntax (no `enum`, no parameter properties).
 - Shared versions (TypeScript, Vitest, React, Zod) live in the `catalog:` of `pnpm-workspace.yaml`. Packages allowed to run install scripts are listed under `allowBuilds` there.
 - In `apps/mobile`, add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK. `apps/mobile/AGENTS.md` (from the Expo template) has Expo-specific guidance.
@@ -99,11 +104,11 @@ All tables carry `user_id`, `created_at`, `updated_at`; syncable tables also car
 - `completions`: `id`, `user_id`, `habit_id`, `date` (`YYYY-MM-DD`), `completed_at`, `deleted_at`. Unique on `(habit_id, date)`. A row means "done"; un-checking sets `deleted_at` so the change can sync.
 - `user_settings`: PK `user_id`, `timezone` (default `America/Sao_Paulo`), `reminder_time` (`HH:MM`, null = off). More notification preferences are added as columns when needed.
 - `push_subscriptions`: `kind` (`webpush` | `expo`), `endpoint`/`p256dh`/`auth` or Expo `token` (a CHECK enforces the fields per kind), `device_label`, `last_seen_at`. Not syncable: hard delete.
-- Auth tables are owned by Better Auth (Phase 3).
+- Auth tables (`user`, `session`, `account`, `verification`, `rate_limit`) are owned by Better Auth and generated by its CLI into `apps/api/src/db/auth-schema.ts`. User ids are UUIDs (`crypto.randomUUID()`).
 
 The database row of every table, minus `user_id`, is exactly the contract record (`Habit`, `Completion`, `UserSettings`; `PushSubscription` is stored flat): `apps/api/test/rows.test.ts` asserts this at type level. Writes go through `apps/api/src/db/records.ts`, which parses with the contract first (the DB CHECK on `schedule` only requires JSON with a string `type`, so new schedule types need no migration).
 
-`user_id` has no foreign key yet. Phase 3 must: configure Better Auth to generate UUID ids, add `user_id` FKs (`ON DELETE CASCADE`) through a table-rebuild migration with `PRAGMA defer_foreign_keys = on` (D1 always enforces FKs), and make the dev seed also create the auth user with the fixed `DEV_USER_ID`.
+Every `user_id` references `user.id` with `ON DELETE CASCADE` (added in `0002_user_fk.sql` by a table rebuild with `PRAGMA defer_foreign_keys = on`, since D1 always enforces FKs and ignores `PRAGMA foreign_keys`). Deleting a user deletes all their data. The dev seed creates the auth user with the fixed `DEV_USER_ID` and a password credential in the same batch as the data.
 
 Differences from the legacy model (intentional):
 
@@ -113,16 +118,22 @@ Differences from the legacy model (intentional):
 
 ### API (`apps/api`)
 
-- Routes are defined with `@hono/zod-openapi` using schemas from `packages/contracts`; OpenAPI docs are served at `/docs` (and JSON at `/docs/json`) in non-production. Do not duplicate Zod schemas inside handlers.
+- Routes are defined with `@hono/zod-openapi` using schemas from `packages/contracts`; OpenAPI docs are served at `/v1/docs` (and JSON at `/v1/docs/json`) only when `ENVIRONMENT=development`. Do not duplicate Zod schemas inside handlers. Errors use `ApiError` from contracts (validation failures are 422 `validation_error`); only `/v1/auth/*` (Better Auth) answers in Better Auth's own format.
+- Routes: `GET/POST /v1/habits`, `PATCH /v1/habits/{habit_id}` (rename, reschedule, archive/unarchive), `PUT /v1/habits/{habit_id}/completions/{date}` (`{ completed, id? }`, idempotent, undo writes a tombstone), `GET /v1/day?date=`, `GET /v1/summary?year=`, `GET/PATCH /v1/settings`, `POST /v1/push/subscriptions`, `DELETE /v1/push/subscriptions/{subscription_id}`. Push responses never include the endpoint, keys or token.
+- The current instant is injected (`createApp({ now })`; `src/index.ts` is the only place that reads `Date.now()`), and a user's day is always `todayIn(user_settings.timezone, now())`.
 - All routes are under `/v1`. Keep changes backward compatible (expand/contract): old mobile builds and queued offline mutations may hit a newer API.
 - Date writes: the client sends the local date explicitly. The server accepts dates in `[today - BACKFILL_DAYS, today + 1]` relative to the user's timezone. `BACKFILL_DAYS` is a constant in `packages/core` (default 7, to allow offline sync). Legacy behavior was "today only"; do not widen the editing UI without being asked.
 - D1 has no interactive transactions; use `db.batch([...])` for multi-statement atomicity.
-- Summary/heatmap data is computed from `completions` + `habits` (SQL aggregation by date), then enriched by `core` for "possible" counts.
+- Summary/heatmap data loads the year's live completions and the habits (one query each) and counts each day with `core` (`summarizeDay`), so "possible" and completed counts follow the same rules as the clients.
 - Cron Triggers (hourly) evaluate reminders per user timezone and send pushes.
 
 ### Auth
 
-Better Auth with the Drizzle adapter on D1. Email + password (passkey can be added later). Signup is closed after the first user (`ALLOW_SIGNUP=false` in production). Web uses cookie sessions; mobile uses bearer tokens stored with `expo-secure-store` (Better Auth Expo plugin). Every query must filter by the authenticated `user_id`; authorization checks live in a single middleware plus per-query scoping, never only in the client.
+Better Auth with the Drizzle adapter on D1, mounted at `/v1/auth/*` and built per request (`apps/api/src/auth/auth.ts`). Email + password (passkey can be added later), minimum 16 characters. Signup is open only while no user exists (optionally only for `OWNER_EMAIL`); `ALLOW_SIGNUP=true` reopens it in development. Web uses cookie sessions (`HttpOnly`, `SameSite=Lax`, `Secure` with the `__Secure-` prefix outside development); mobile uses the Expo plugin (`expo()`) and/or bearer tokens (`bearer()`, token from the `set-auth-token` header) stored with `expo-secure-store`. Sign-in and sign-up are rate limited in the database (`rate_limit` table, keyed by `cf-connecting-ip`). CORS and trusted origins come from `TRUSTED_ORIGINS` (empty in production) plus the `habits://` app scheme.
+
+Every query must filter by the authenticated `user_id`: `requireUser` guards every non-public route, and handlers only use `src/repos/*`, whose functions all take `userId` and scope every statement by it (the one cross-user statement moves a push device, proven by its endpoint/token, to the user who registers it). Never rely only on the client.
+
+How the owner account comes to exist: in production, the owner signs up once (`POST /v1/auth/sign-up/email`) right after the first deploy, with `OWNER_EMAIL` set so nobody else can take the slot; afterwards signup answers 403 `SIGNUP_DISABLED`. In development, `db:seed:local` creates it.
 
 ### Push notifications
 
@@ -166,6 +177,9 @@ Owner decisions taken before Phase 0. They override anything above that seems to
 - **TypeScript**: 6.0.x workspace-wide (typescript-eslint requires `typescript <6.1`). Do not move to TS 7 until typescript-eslint supports it.
 - **Vitest**: 4.x workspace-wide. Workers tests use `@cloudflare/vitest-plugin` (the renamed, maintained successor of the deprecated `@cloudflare/vitest-pool-workers`; peers `vitest ^4.1.0 || ^5.0.0`). If a future plugin version breaks that, pin the compatible Vitest only in `apps/api`.
 - **Mobile heatmap**: GitHub layout (columns = weeks), horizontal scroll, current week visible by default, same as web.
+- **Password hashing**: Password hashing is deliberately lightweight to fit the free plan's CPU limit; revisit if moving to Workers Paid (raise scrypt to the Better Auth default via the versioned rehash). Details: own scrypt hasher (`apps/api/src/auth/password.ts`, `node:crypto`) with N=2048, r=8, p=1 (~4 ms per hash in local workerd, against ~70 ms for Better Auth's default N=16384, r=16), versioned format `$scrypt$v=1$n=…,r=…,p=…$salt$key`, constant-time comparison, re-hash on a successful sign-in when the stored parameters are weaker than `CURRENT_PARAMS`. Compensated by a 16-character minimum password (`PASSWORD_MIN_LENGTH` in contracts), closed signup and rate limiting.
+- **Auth layout** (Phase 3): Better Auth 1.7 under `/v1/auth`, plugins `bearer()` and `expo()`. The auth tables keep Better Auth's `timestamp_ms` columns (read as `Date`), an intentional exception to the "instants are numbers" rule because Better Auth owns those rows. Config: wrangler vars `ENVIRONMENT` (anything but `development` behaves as production), `ALLOW_SIGNUP`, `TRUSTED_ORIGINS`; secrets `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `OWNER_EMAIL` (`.dev.vars` / `wrangler secret put`, documented in `apps/api/.dev.vars.example`).
+- **Habit start date**: `POST /v1/habits` accepts `start_date >= today - BACKFILL_DAYS` (no upper bound), so a new habit cannot rewrite old heatmap days. Editing a schedule still changes past "possible" counts (no schedule versioning yet).
 - **Versions pinned at scaffold** (verified 2026-10-09): pnpm 12.10.1, Turborepo 2.11, TypeScript 6.0.3, Vitest 4.x, Expo SDK 57 (React 19.2.3 in both web and mobile), NativeWind 4.2, Tailwind 4.3 (web), Zod 4, Hono 4.13, @hono/zod-openapi 1.6, Drizzle ORM 0.45 / drizzle-kit 0.31, Better Auth 1.7, Wrangler 4. Shared versions go through the pnpm catalog.
 
 ## Conventions

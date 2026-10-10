@@ -3,22 +3,34 @@
 	"version": "2.0.0",
 	"private": true,
 	"type": "module",
+	"exports": {
+		"./app": {
+			"types": "./dist/types/src/app-type.d.ts"
+		}
+	},
 	"scripts": {
 		"dev": "wrangler dev",
-		"cf-typegen": "wrangler types src/worker-configuration.d.ts",
+		"cf-typegen": "wrangler types --strict-vars=false src/worker-configuration.d.ts",
+		"auth:generate": "pnpm dlx auth@1.7.7 generate --config scripts/auth-cli.ts --output src/db/auth-schema.ts --adapter drizzle --dialect sqlite --yes && prettier --write src/db/auth-schema.ts",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply DB --local",
 		"db:migrate:remote": "wrangler d1 migrations apply DB --remote",
 		"db:seed:local": "node scripts/seed-local.ts",
 		"typecheck": "tsc --noEmit && tsc --noEmit -p test && tsc --noEmit -p tsconfig.node.json",
+		"build:types": "tsc -p tsconfig.types.json",
 		"lint": "eslint .",
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@better-auth/expo": "1.7.7",
 		"@habits/contracts": "workspace:*",
 		"@habits/core": "workspace:*",
+		"@hono/swagger-ui": "0.6.1",
+		"@hono/zod-openapi": "1.6.3",
+		"better-auth": "1.7.7",
 		"drizzle-orm": "^0.45.4",
-		"hono": "^4.13.13"
+		"hono": "^4.13.13",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-plugin": "^1.4.0",

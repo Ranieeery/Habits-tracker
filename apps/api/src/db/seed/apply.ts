@@ -1,8 +1,8 @@
-import { eq, getTableColumns } from "drizzle-orm";
+import { eq, getTableColumns, or } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import type { Db } from "../client.ts";
 import { toCompletionRow, toHabitRow, toUserSettingsRow } from "../records.ts";
-import { completions, habits, userSettings } from "../schema.ts";
+import { account, completions, habits, user, userSettings } from "../schema.ts";
 import type { Seed } from "./build.ts";
 
 const columnCount = (table: typeof habits | typeof completions) =>
@@ -21,20 +21,49 @@ function chunk<T>(rows: T[], columns: number): T[][] {
 }
 
 /**
- * Replaces all data of the seed user in one atomic batch: deletes their rows,
- * then inserts the seed. Running it again gives the same database state.
+ * Replaces the seed user and all their data in one atomic batch: deleting the
+ * Better Auth `user` (by id, or a previous user with the same email) cascades
+ * to sessions, accounts and every domain row; then the user, their email and
+ * password credential, settings, habits and completions are inserted. Running
+ * it again gives the same database state (apart from the password salt).
+ *
+ * `passwordHash` comes from `hashPassword` (random salt), so `buildSeed` stays
+ * pure and deterministic.
  */
-export async function applySeed(db: Db, seed: Seed): Promise<void> {
+export async function applySeed(
+	db: Db,
+	seed: Seed,
+	passwordHash: string
+): Promise<void> {
 	const { userId } = seed;
+	const createdAt = new Date(seed.user.created_at);
 	const habitRows = seed.habits.map((habit) => toHabitRow(userId, habit));
 	const completionRows = seed.completions.map((completion) =>
 		toCompletionRow(userId, completion)
 	);
 
 	const statements: [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] = [
-		db.delete(completions).where(eq(completions.user_id, userId)),
-		db.delete(habits).where(eq(habits.user_id, userId)),
-		db.delete(userSettings).where(eq(userSettings.user_id, userId)),
+		db
+			.delete(user)
+			.where(or(eq(user.id, userId), eq(user.email, seed.user.email))),
+		db.insert(user).values({
+			id: userId,
+			name: seed.user.name,
+			email: seed.user.email,
+			emailVerified: true,
+			createdAt,
+			updatedAt: createdAt,
+		}),
+		// Same shape Better Auth gives email/password accounts.
+		db.insert(account).values({
+			id: userId,
+			accountId: userId,
+			providerId: "credential",
+			userId,
+			password: passwordHash,
+			createdAt,
+			updatedAt: createdAt,
+		}),
 		db.insert(userSettings).values(toUserSettingsRow(userId, seed.settings)),
 	];
 	for (const rows of chunk(habitRows, columnCount(habits))) {

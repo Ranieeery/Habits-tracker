@@ -48,7 +48,7 @@ describe("seeded rows", () => {
 	it("parse as contract records", async () => {
 		const db = createDb(env.DB);
 		const seed = buildSeed();
-		await applySeed(db, seed);
+		await applySeed(db, seed, "$scrypt$unused");
 
 		const habits = (await db.query.habits.findMany()).map(fromHabitRow);
 		const completions = (await db.query.completions.findMany()).map(

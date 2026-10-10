@@ -1,0 +1,20 @@
+# Local configuration for `wrangler dev`. Copy to `.dev.vars` (gitignored) and
+# fill in the secrets. In production, set secrets with `wrangler secret put`.
+
+ENVIRONMENT=development
+
+# Secret used to sign sessions and cookies. Generate one with:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+BETTER_AUTH_SECRET=
+
+# Public URL of the API (Better Auth builds callback URLs from it).
+BETTER_AUTH_URL=http://localhost:8787
+
+# Browser origins allowed by CORS and Better Auth (comma-separated).
+TRUSTED_ORIGINS=http://localhost:5173
+
+# Signup is open only while no user exists. "true" reopens it (dev only).
+ALLOW_SIGNUP=false
+
+# Optional: only this email may create the first (owner) account.
+OWNER_EMAIL=

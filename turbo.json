@@ -5,7 +5,12 @@
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
-		"typecheck": {},
+		"build:types": {
+			"outputs": ["dist/types/**"]
+		},
+		"typecheck": {
+			"dependsOn": ["^build:types"]
+		},
 		"lint": {},
 		"test": {},
 		"dev": {

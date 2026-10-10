@@ -19,8 +19,12 @@ import {
 } from "@habits/core";
 import { saoPauloInstant, unitHash, uuidV7 } from "./deterministic.ts";
 
-/** Fixed id of the development user (Phase 3 creates the matching auth user). */
+/** Fixed id of the development user (also its Better Auth `user` row). */
 export const DEV_USER_ID = "0199c9a0-0000-7000-8000-000000000001";
+
+/** Local-only sign-in of the development user (printed by the seed script). */
+export const DEV_USER_EMAIL = "dev@habits.local";
+export const DEV_USER_PASSWORD = "habits-dev-password";
 
 /** Reference date used when the seed script gets no `--today`. */
 export const DEFAULT_SEED_TODAY: CalendarDate = "2026-10-09";
@@ -30,8 +34,15 @@ export const SEED_TIME_ZONE = DEFAULT_TIME_ZONE;
 /** Days of the current streak of the "water" habit, ending today. */
 export const LONG_STREAK_DAYS = 90;
 
+export interface SeedUser {
+	name: string;
+	email: string;
+	created_at: number;
+}
+
 export interface Seed {
 	userId: string;
+	user: SeedUser;
 	today: CalendarDate;
 	settings: UserSettings;
 	habits: Habit[];
@@ -283,6 +294,7 @@ export function buildSeed({
 	const settingsAt = saoPauloInstant(`${year - 1}-12-01`, 8);
 	return {
 		userId: DEV_USER_ID,
+		user: { name: "Dev", email: DEV_USER_EMAIL, created_at: settingsAt },
 		today,
 		settings: {
 			timezone: timeZone,

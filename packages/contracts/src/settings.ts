@@ -19,3 +19,16 @@ export const UserSettings = z.object({
 	updated_at: TimestampMs,
 });
 export type UserSettings = z.infer<typeof UserSettings>;
+
+export const UpdateUserSettingsRequest = z
+	.object({
+		timezone: TimeZone,
+		reminder_time: ReminderTime.nullable(),
+	})
+	.partial();
+export type UpdateUserSettingsRequest = z.infer<
+	typeof UpdateUserSettingsRequest
+>;
+
+export const UserSettingsResponse = z.object({ settings: UserSettings });
+export type UserSettingsResponse = z.infer<typeof UserSettingsResponse>;
