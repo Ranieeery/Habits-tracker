@@ -1,0 +1,28 @@
+{
+	"name": "habits-tracker",
+	"private": true,
+	"type": "module",
+	"packageManager": "pnpm@12.10.1",
+	"engines": {
+		"node": ">=22.13"
+	},
+	"scripts": {
+		"dev": "turbo run dev --filter=api --filter=web",
+		"build": "turbo run build",
+		"typecheck": "turbo run typecheck",
+		"lint": "turbo run lint",
+		"test": "turbo run test",
+		"format": "prettier --write .",
+		"format:check": "prettier --check ."
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"eslint": "^10.12.0",
+		"eslint-config-prettier": "^10.1.8",
+		"globals": "^17.13.0",
+		"prettier": "^3.9.9",
+		"turbo": "^2.11.7",
+		"typescript": "catalog:",
+		"typescript-eslint": "^8.71.1"
+	}
+}

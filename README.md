@@ -108,7 +108,6 @@ erDiagram
 
 ```
 
-
 ## Getting Started
 
 ### Prerequisites

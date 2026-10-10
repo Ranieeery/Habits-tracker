@@ -1,0 +1,22 @@
+{
+	"name": "@habits/design-tokens",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./tailwind-v3-preset": "./src/tailwind-v3-preset.ts",
+		"./theme.css": "./src/generated/theme.css"
+	},
+	"scripts": {
+		"generate": "node scripts/generate.ts",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint .",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@types/node": "^24.19.2",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

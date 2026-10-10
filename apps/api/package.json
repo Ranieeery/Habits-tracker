@@ -1,0 +1,22 @@
+{
+	"name": "api",
+	"version": "2.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev",
+		"cf-typegen": "wrangler types src/worker-configuration.d.ts",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p test",
+		"lint": "eslint .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"hono": "^4.13.13"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-plugin": "^1.4.0",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "^4.149.0"
+	}
+}

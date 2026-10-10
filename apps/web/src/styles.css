@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "@habits/design-tokens/theme.css";
+
+@layer base {
+	body {
+		@apply bg-background text-foreground font-sans antialiased;
+	}
+}

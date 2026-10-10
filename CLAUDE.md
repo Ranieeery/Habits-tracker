@@ -13,12 +13,14 @@ Version: this rewrite is **2.0.0** in all three apps: api, web and mobile (see "
 ### Product scope
 
 Existing features to preserve:
+
 - Create habits that recur on chosen weekdays (Sunday = 0 ... Saturday = 6).
 - Mark a habit as done/undone for a day; a day's completion ratio drives the heatmap intensity.
 - Year-to-date heatmap grid, and a per-day view listing possible/completed habits.
 - UI text in Portuguese (pt-BR), dayjs locale `pt-br`.
 
 New features:
+
 1. Authentication and authorization (single-owner; public signup disabled after the first account).
 2. Push notifications: Expo push on mobile, Web Push + service worker on the web.
 3. Offline-first on mobile with background sync (delivered last, but the data model must support it from day one).
@@ -28,9 +30,9 @@ The product must stay **extensible**: new habit types/frequencies, new stats, ne
 
 ### Roadmap status (keep this section updated)
 
-- [ ] Phase 0: monorepo scaffold, legacy moved to `legacy/`
+- [x] Phase 0: monorepo scaffold, legacy moved to `legacy/`
 - [ ] Phase 1: `packages/contracts` + `packages/core` (with tests)
-- [ ] Phase 2: D1 schema (Drizzle) + legacy data import script
+- [ ] Phase 2: D1 schema (Drizzle) + dev seed
 - [ ] Phase 3: API (Hono) + auth (Better Auth)
 - [ ] Phase 4: web client
 - [ ] Phase 5: mobile client
@@ -55,22 +57,33 @@ Formatting and linting are shared from the root: `.editorconfig` (tabs, width 2,
 
 ## Commands
 
-Update this section as soon as each app is scaffolded. Intended commands:
+Available now (Phase 0). Commands marked "(Phase N)" do not exist yet.
 
 ```bash
-pnpm install
-pnpm dev                          # turbo: runs api, web (and mobile metro when requested)
-pnpm --filter api dev             # wrangler dev (local D1)
-pnpm --filter api db:generate     # drizzle-kit generate migration from schema
-pnpm --filter api db:migrate:local
-pnpm --filter api db:migrate:remote
-pnpm --filter web dev
+pnpm install                      # Node >= 22.13, pnpm 12 (packageManager pins the version)
+pnpm dev                          # turbo: api + web dev servers
+pnpm --filter api dev             # wrangler dev on http://localhost:8787 (GET /v1/health)
+pnpm --filter api cf-typegen      # regenerate src/worker-configuration.d.ts after editing wrangler.jsonc
+pnpm --filter api db:generate     # (Phase 2) drizzle-kit generate migration from schema
+pnpm --filter api db:migrate:local    # (Phase 2)
+pnpm --filter api db:migrate:remote   # (Phase 2)
+pnpm --filter api db:seed:local   # (Phase 2) sample habits/completions in local D1 (dev only)
+pnpm --filter web dev             # vite
+pnpm --filter web build
 pnpm --filter mobile start        # expo start (use a development build, not Expo Go, for push)
+pnpm --filter @habits/design-tokens generate   # rewrite src/generated/theme.css after editing tokens.ts
 pnpm typecheck                    # turbo: tsc --noEmit in every package
-pnpm lint
-pnpm test                         # vitest in core, api (workers pool), web
-pnpm format
+pnpm lint                         # turbo: eslint (root flat config; web/mobile extend it)
+pnpm test                         # turbo: vitest in core, design-tokens, api (@cloudflare/vitest-plugin), web
+pnpm format                       # prettier --write . (format:check to verify)
 ```
+
+Notes:
+
+- Internal `packages/*` export TypeScript source directly (no build step); relative imports use explicit `.ts` extensions.
+- Shared versions (TypeScript, Vitest, React, Zod) live in the `catalog:` of `pnpm-workspace.yaml`. Packages allowed to run install scripts are listed under `allowBuilds` there.
+- In `apps/mobile`, add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK. `apps/mobile/AGENTS.md` (from the Expo template) has Expo-specific guidance.
+- NativeWind's Babel transform imports `react-native-css-interop`, so it is a direct dependency of `apps/mobile` (pnpm isolated installs). Keep its version equal to the one `nativewind` pins.
 
 Always run `pnpm typecheck && pnpm test` for the packages you touched before declaring a task done.
 
@@ -87,8 +100,9 @@ All tables carry `user_id`, `created_at`, `updated_at`; syncable tables also car
 - Auth tables are owned by Better Auth.
 
 Differences from the legacy model (intentional):
+
 - No `Day` / `DayHabit` tables; a single `completions` table replaces them.
-- Dates are **local calendar dates as `YYYY-MM-DD` text**, never epoch milliseconds. This removes the legacy `strftime` weekday workaround and timezone bugs. The weekday is derived in `packages/core`, not in SQL.
+- Calendar dates are **local calendar dates as `YYYY-MM-DD` text**, never epoch milliseconds (instants like `created_at` are UTC ms; see "Decisions"). This removes the legacy `strftime` weekday workaround and timezone bugs. The weekday is derived in `packages/core`, not in SQL.
 - "Possible on date D" = habit not archived-before-D, `start_date <= D`, and the schedule matches D. This logic lives only in `packages/core` and is reused by API and both clients.
 
 ### API (`apps/api`)
@@ -114,6 +128,7 @@ Better Auth with the Drizzle adapter on D1. Email + password (passkey can be add
 ### Offline sync (mobile, last phase)
 
 Local-first storage in `expo-sqlite`. The UI reads from the local DB; writes go to local DB plus an **outbox** of mutations (each with a client-generated `mutation_id`).
+
 - `POST /v1/sync/push`: batch of mutations, idempotent by `mutation_id`.
 - `GET /v1/sync/pull?cursor=`: changes since a server cursor, including tombstones.
 - Conflict policy: per-record last-write-wins using `updated_at`; completions are idempotent per `(habit_id, date)`.
@@ -131,7 +146,21 @@ Design the REST endpoints and `contracts` in Phases 1-3 so the sync protocol dro
 
 ## Design
 
-Clean, minimal, dark-first UI. Keep the legacy palette (dark neutral background, violet accent, violet shades for heatmap intensity). Extract the exact values from `legacy/front` Tailwind config and `legacy/mobile` styles into `packages/design-tokens` first, then use only tokens in app code. Light theme is optional and out of scope until requested. Mobile touch targets >= 44px; heatmap must remain legible on small screens (horizontal scroll by weeks, current week visible by default).
+Clean, minimal, dark-first UI. Keep the legacy palette (dark neutral background, violet accent, violet shades for heatmap intensity). Extract the values from `legacy/front` (Tailwind classes) and `legacy/mobile` styles into `packages/design-tokens` first, as canonical hex (see "Decisions"), then use only tokens in app code. Light theme is optional and out of scope until requested. Mobile touch targets >= 44px; heatmap must remain legible on small screens (horizontal scroll by weeks, current week visible by default).
+
+## Decisions
+
+Owner decisions taken before Phase 0. They override anything above that seems to contradict them.
+
+- **Legacy data**: `legacy/server/prisma/dev.db` is test data only. There is no legacy data import or migration: do not create an `import-legacy` script. Phase 2 delivers a **local D1 dev seed** instead (`pnpm --filter api db:seed:local`) with sample habits and completions spread over the year, covering all heatmap intensities, streaks and the year boundary (completions in late December of the previous year and early January).
+- **Timezone and dates**: the server never uses `new Date()` or `Date.now()` to decide a user's calendar day. The client sends the local date as `YYYY-MM-DD`. Any server-side "today" (date window validation, reminder cron) is computed from the user's IANA timezone in `user_settings.timezone` (default `America/Sao_Paulo`), passed explicitly as a parameter to every date function in `packages/core`. Workers run in UTC regardless of the Cloudflare account or region, and the D1 region only affects latency. The cron trigger runs hourly in UTC and converts per user. `created_at`, `updated_at` and `deleted_at` are integer UTC milliseconds.
+- **Timestamps vs calendar dates**: `created_at`, `updated_at`, `deleted_at` (and other instants such as `completed_at`, `archived_at`) are integer ms (Drizzle `integer({ mode: "timestamp_ms" })`). Calendar dates (`start_date`, `completions.date`) stay `YYYY-MM-DD` text.
+- **Design tokens**: canonical values are **hex**. Legacy front OKLCH values (Tailwind v4) are converted to hex where needed so web and mobile are identical. The heatmap has 6 levels with the mobile mapping (level 1 = violet-400 `#A78BFA`). Green stays the success color. `packages/design-tokens` generates both configs from one source: a Tailwind v4 `@theme` CSS file (web) and a Tailwind v3 preset (mobile/NativeWind).
+- **NativeWind**: v4 stable (Tailwind v3). Migrate to v5 when it leaves RC.
+- **TypeScript**: 6.0.x workspace-wide (typescript-eslint requires `typescript <6.1`). Do not move to TS 7 until typescript-eslint supports it.
+- **Vitest**: 4.x workspace-wide. Workers tests use `@cloudflare/vitest-plugin` (the renamed, maintained successor of the deprecated `@cloudflare/vitest-pool-workers`; peers `vitest ^4.1.0 || ^5.0.0`). If a future plugin version breaks that, pin the compatible Vitest only in `apps/api`.
+- **Mobile heatmap**: GitHub layout (columns = weeks), horizontal scroll, current week visible by default, same as web.
+- **Versions pinned at scaffold** (verified 2026-10-09): pnpm 12.10.1, Turborepo 2.11, TypeScript 6.0.3, Vitest 4.x, Expo SDK 57 (React 19.2.3 in both web and mobile), NativeWind 4.2, Tailwind 4.3 (web), Zod 4, Hono 4.13, @hono/zod-openapi 1.6, Drizzle ORM 0.45 / drizzle-kit 0.31, Better Auth 1.7, Wrangler 4. Shared versions go through the pnpm catalog.
 
 ## Conventions
 
@@ -155,6 +184,6 @@ Clean, minimal, dark-first UI. Keep the legacy palette (dark neutral background,
 
 - For any task touching more than one package or any schema/contract change: enter plan mode first and wait for approval.
 - Contracts first: change `packages/contracts` (and `core` tests), then API, then clients.
-- When behavior is unclear, check `legacy/` for how the old app behaved and say what you found; do not copy its bugs (hardcoded URLs and VAPID keys, epoch-ms dates, `/push/register` stub, duplicated Zod parsing).
+- When behavior is unclear, check `legacy/` for how the old app behaved and say what you found; do not copy its bugs (hardcoded URLs and VAPID keys, calendar days stored as epoch-ms in the server timezone, `/push/register` stub, duplicated Zod parsing).
 - Before finishing: run typecheck, lint and tests for touched packages; update the Roadmap status and the Commands section of this file if reality changed. Then propose semantic commit messages, without committing anything.
 - Prefer verifying current library APIs in their official docs over relying on memory; versions move fast (Expo SDK, Better Auth, Drizzle, Wrangler).

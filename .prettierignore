@@ -1,0 +1,7 @@
+legacy/
+pnpm-lock.yaml
+**/worker-configuration.d.ts
+**/.expo/
+**/.wrangler/
+**/dist/
+.claude/
