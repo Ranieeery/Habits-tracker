@@ -9,19 +9,33 @@
 		"ios": "expo start --ios",
 		"web": "expo start --web",
 		"lint": "eslint .",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
 	},
 	"dependencies": {
+		"@better-auth/expo": "1.7.7",
 		"@expo/ui": "~57.0.22",
+		"@expo/vector-icons": "^15.1.1",
+		"@habits/api-client": "workspace:*",
+		"@habits/contracts": "workspace:*",
+		"@habits/core": "workspace:*",
 		"@habits/design-tokens": "workspace:*",
+		"@tanstack/react-query": "^5.104.1",
+		"better-auth": "1.7.7",
+		"dayjs": "^1.11.23",
 		"expo": "~57.0.27",
 		"expo-constants": "~57.0.21",
+		"expo-dev-client": "~57.0.19",
 		"expo-device": "~57.0.2",
 		"expo-font": "~57.0.4",
 		"expo-glass-effect": "~57.0.4",
+		"expo-haptics": "~57.0.3",
 		"expo-image": "~57.0.5",
 		"expo-linking": "~57.0.12",
+		"expo-localization": "~57.0.2",
+		"expo-network": "~57.0.2",
 		"expo-router": "~57.0.25",
+		"expo-secure-store": "~57.0.4",
 		"expo-splash-screen": "~57.0.9",
 		"expo-status-bar": "~57.0.1",
 		"expo-symbols": "~57.0.3",
@@ -33,6 +47,7 @@
 		"react-native": "0.86.3",
 		"react-native-css-interop": "0.2.7",
 		"react-native-gesture-handler": "~2.32.0",
+		"react-native-keyboard-controller": "1.21.9",
 		"react-native-reanimated": "4.5.1",
 		"react-native-safe-area-context": "~5.7.0",
 		"react-native-screens": "~4.26.0",
@@ -44,6 +59,7 @@
 		"babel-preset-expo": "~57.0.14",
 		"eslint-plugin-react-hooks": "^7.1.1",
 		"tailwindcss": "^3.4.19",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }
