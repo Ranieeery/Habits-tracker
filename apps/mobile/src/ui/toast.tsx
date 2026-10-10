@@ -15,7 +15,25 @@ import { AccessibilityInfo, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type Tone = "error" | "success";
+type Tone = "error" | "success" | "info";
+
+const TONE = {
+	error: {
+		border: "border-danger",
+		icon: "alert-circle-outline",
+		color: colors.danger.DEFAULT,
+	},
+	success: {
+		border: "border-success",
+		icon: "check-circle-outline",
+		color: colors.success.hover,
+	},
+	info: {
+		border: "border-border",
+		icon: "bell-outline",
+		color: colors.violet[400],
+	},
+} as const;
 
 interface ToastMessage {
 	id: number;
@@ -68,20 +86,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 					}}
 				>
 					<View
-						className={`flex-row items-start gap-3 rounded-xl border bg-surface p-4 ${toast.tone === "error" ? "border-danger" : "border-success"}`}
+						className={`flex-row items-start gap-3 rounded-xl border bg-surface p-4 ${TONE[toast.tone].border}`}
 					>
 						<MaterialCommunityIcons
-							name={
-								toast.tone === "error"
-									? "alert-circle-outline"
-									: "check-circle-outline"
-							}
+							name={TONE[toast.tone].icon}
 							size={22}
-							color={
-								toast.tone === "error"
-									? colors.danger.DEFAULT
-									: colors.success.hover
-							}
+							color={TONE[toast.tone].color}
 						/>
 						<View className="flex-1 gap-1">
 							<Text className="font-semibold text-foreground">

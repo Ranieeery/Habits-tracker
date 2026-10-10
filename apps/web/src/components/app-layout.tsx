@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { TimezoneBanner } from "@/features/settings/timezone-banner.tsx";
+import { useRefreshPushSubscription } from "@/features/settings/use-reminders.ts";
 import { queryKeys } from "@/lib/queries.ts";
 import { useToday } from "@/lib/use-today.ts";
 import { cn } from "@/lib/utils.ts";
@@ -59,6 +60,7 @@ function NavLinks({ variant }: { variant: "top" | "bottom" }) {
 
 export function AppLayout() {
 	useRefreshOnNewDay();
+	useRefreshPushSubscription();
 
 	return (
 		<div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col">

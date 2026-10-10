@@ -20,7 +20,8 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p test && tsc --noEmit -p tsconfig.node.json",
 		"build:types": "tsc -p tsconfig.types.json",
 		"lint": "eslint .",
-		"test": "vitest run"
+		"test": "vitest run",
+		"vapid:generate": "node scripts/generate-vapid-keys.ts"
 	},
 	"dependencies": {
 		"@better-auth/expo": "1.7.7",

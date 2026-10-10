@@ -88,3 +88,31 @@ export type PushSubscriptionResponse = z.infer<typeof PushSubscriptionResponse>;
 
 export const PushSubscriptionParams = z.object({ subscription_id: Uuid });
 export type PushSubscriptionParams = z.infer<typeof PushSubscriptionParams>;
+
+/** Result of `POST /v1/push/test`: counts only, never device credentials. */
+export const PushTestResponse = z.object({
+	/** Devices the push service accepted the message for. */
+	sent: z.int().nonnegative(),
+	/** Devices that failed temporarily (kept for the next attempt). */
+	failed: z.int().nonnegative(),
+	/** Devices removed because the push service no longer knows them. */
+	removed: z.int().nonnegative(),
+});
+export type PushTestResponse = z.infer<typeof PushTestResponse>;
+
+/**
+ * What a Web Push message carries to the service worker (encrypted). `v` lets
+ * the service worker accept newer payloads it does not understand gracefully.
+ * Never includes habit names: it can show on the lock screen.
+ */
+export const PushNotificationPayload = z.object({
+	v: z.literal(1),
+	kind: z.enum(["reminder", "test"]),
+	title: z.string().min(1).max(120),
+	body: z.string().min(1).max(240),
+	/** Same-app path to open on click, e.g. `/today` (never `//host`). */
+	url: z.string().regex(/^\/(?![/\\])/, { message: "Expected an app path" }),
+	/** Replaces an earlier notification with the same tag. */
+	tag: z.string().min(1).max(64),
+});
+export type PushNotificationPayload = z.infer<typeof PushNotificationPayload>;

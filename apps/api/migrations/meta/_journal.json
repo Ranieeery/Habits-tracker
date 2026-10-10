@@ -22,6 +22,13 @@
       "when": 1791629876905,
       "tag": "0002_user_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791644994797,
+      "tag": "0003_push_reminders",
+      "breakpoints": true
     }
   ]
 }

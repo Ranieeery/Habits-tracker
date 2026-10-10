@@ -3,6 +3,7 @@
 import type { ApiClient } from "@habits/api-client";
 import { createContext, use } from "react";
 import type { AuthService } from "./auth.ts";
+import type { PushService } from "./push.ts";
 
 /** Current instant in UTC ms. */
 export type Clock = () => number;
@@ -10,6 +11,8 @@ export type Clock = () => number;
 export interface Services {
 	api: ApiClient;
 	auth: AuthService;
+	/** Notification permission and this browser's push subscription. */
+	push: PushService;
 	/** The only source of "now" in the app (see `systemClock`). */
 	now: Clock;
 	/** IANA time zone the device is set to. */

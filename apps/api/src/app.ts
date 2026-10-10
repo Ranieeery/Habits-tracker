@@ -18,6 +18,8 @@ import { statsRoutes } from "./routes/stats.ts";
 export interface AppOptions {
 	/** Current instant; tests pass a fixed clock. */
 	now: Clock;
+	/** Outgoing requests to push services; tests pass a fake. */
+	fetch?: typeof fetch;
 }
 
 /**
@@ -25,13 +27,17 @@ export interface AppOptions {
  * docs) are registered before `requireUser`, which guards everything after
  * it, including unknown paths.
  */
-export function createApp({ now }: AppOptions) {
+export function createApp({
+	now,
+	fetch: fetcher = (input, init) => fetch(input, init),
+}: AppOptions) {
 	const app = router().basePath("/v1");
 
 	app.use("*", async (c, next) => {
 		c.set("config", readConfig(c.env));
 		c.set("db", createDb(c.env.DB));
 		c.set("now", now);
+		c.set("fetch", fetcher);
 		await next();
 	});
 

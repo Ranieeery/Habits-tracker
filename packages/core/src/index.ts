@@ -5,6 +5,7 @@
 export * from "./dates.ts";
 export * from "./grid.ts";
 export * from "./progress.ts";
+export * from "./reminders.ts";
 export * from "./schedule.ts";
 export * from "./streaks.ts";
 export * from "./window.ts";

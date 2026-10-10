@@ -13,6 +13,7 @@ import {
 } from "@tanstack/react-query";
 import type { SessionState } from "./auth.ts";
 import { type CompletionChange, withCompletion } from "./optimistic.ts";
+import { unregisterThisDevice } from "./push-registration.ts";
 import type { DayData } from "./repository.ts";
 import { useServices } from "./services.ts";
 
@@ -81,10 +82,14 @@ export function useSignIn() {
 }
 
 export function useSignOut() {
-	const { auth } = useServices();
+	const services = useServices();
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: () => auth.signOut(),
+		mutationFn: async () => {
+			// While the session exists: this device stops receiving reminders.
+			await unregisterThisDevice(services);
+			await services.auth.signOut();
+		},
 		networkMode: "always",
 		onSettled: () => resetToSignedOut(queryClient),
 	});

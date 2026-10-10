@@ -4,6 +4,7 @@
 // reject with `DataError` (see `errors.ts`), never with transport errors.
 import type {
 	CalendarDate,
+	PushTestResponse,
 	CreateHabitRequest,
 	DayResponse,
 	Habit,
@@ -35,4 +36,16 @@ export interface HabitsRepository {
 		date: CalendarDate,
 		completed: boolean
 	): Promise<void>;
+}
+
+/**
+ * This device's push registration with the server. Stays remote in Phase 7
+ * (push needs the server anyway).
+ */
+export interface NotificationsRepository {
+	/** Registers or refreshes an Expo push token; returns the device id. */
+	registerDevice(token: string, label: string | null): Promise<string>;
+	unregisterDevice(deviceId: string): Promise<void>;
+	/** Rate limited (one per minute): `DataError` kind `rate_limited`. */
+	sendTest(): Promise<PushTestResponse>;
 }

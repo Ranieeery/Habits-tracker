@@ -12,6 +12,16 @@ A development build is required (not Expo Go): secure storage, haptics and, late
    - **Local:** `pnpm --filter mobile exec expo run:android`. Needs JDK 17 (`JAVA_HOME`), Android Studio with SDK Platform 36, `ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk`, `platform-tools` on `Path`, and Windows long paths enabled. `android/` is generated (CNG) and gitignored: never edit it.
 3. `pnpm --filter mobile start` and open the app on the phone.
 
+### Push notifications (Android)
+
+Push tokens need Firebase, and both steps below change the native app (new development build):
+
+1. Firebase console: create a project, add an Android app with package `com.rxniery.habits`, download `google-services.json` to `apps/mobile/` (public identifiers, commit it; `app.config.js` only references it when the file exists).
+2. Firebase > Project settings > Service accounts > Generate new private key; upload it with `eas credentials` (Android > Google Service Account > FCM V1). That JSON is a secret: never commit it.
+3. Rebuild the development build (`eas build --profile development --platform android`).
+
+Permission is asked only when reminders are turned on in Ajustes. Without Firebase, enabling reminders reports this device as unavailable; Web Push devices and the rest of the app keep working.
+
 ### Pointing at an API
 
 - **Local, USB (recommended):** `pnpm --filter api dev`, phone on USB with debugging on, `adb reverse tcp:8787 tcp:8787` and `adb reverse tcp:8081 tcp:8081` (Metro), `EXPO_PUBLIC_API_URL=http://localhost:8787`. Sign in as `dev@habits.local` / `habits-dev-password` after `db:seed:local`.
@@ -23,7 +33,8 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 ## Layout
 
 - `src/app/`: routes only (thin files re-exporting screens). `_layout.tsx` creates the services and the QueryClient, keeps the splash up while the session is restored, and switches between `login` and `(app)` with `Stack.Protected`. `(app)/_layout.tsx` loads the user's settings (`SettingsGate`) before any authenticated screen. Tabs: `(app)/(tabs)/index` (heatmap), `habits`, `settings`. Stack screens: `day/[date]` (`YYYY-MM-DD` or `hoje`, which follows the day turning), `habit/new`, `habit/[id]` (modals).
-- `src/data/`: the only layer that knows where data comes from. `repository.ts` (domain interface), `remote-repository.ts` (HTTP via `@habits/api-client`, the only import of it), `errors.ts` (`DataError` kinds and pt-BR messages), `auth.ts` (Better Auth + `expoClient`), `hooks.ts` (TanStack Query hooks the screens use), `today.ts` (`useToday`, settings context), `services.ts` (the only `Date.now()` and device time zone), `query-client.ts`. Phase 7 replaces `remote-repository.ts` with a local SQLite repository + outbox behind the same interface.
+- `src/data/`: the only layer that knows where data comes from. `repository.ts` (domain interface), `remote-repository.ts` (HTTP via `@habits/api-client`, the only import of it), `errors.ts` (`DataError` kinds and pt-BR messages), `auth.ts` (Better Auth + `expoClient`), `hooks.ts` (TanStack Query hooks the screens use), `today.ts` (`useToday`, settings context), `services.ts` (the only `Date.now()` and device time zone), `query-client.ts`, push: `push.ts` (channel `reminders`, permission, Expo token via `extra.eas.projectId`, device id in SecureStore), `push-logic.ts` (pure), `push-registration.ts` (register/unregister this device), `push-hooks.ts` (reminders, test push, token sync), and `NotificationsRepository` in `repository.ts` (stays remote in Phase 7). Phase 7 replaces `remote-repository.ts` with a local SQLite repository + outbox behind the same interface.
+- `src/features/notifications/notification-responder.tsx` (in the authenticated layout): registers the token, handles taps (also from a cold start) by opening `/day/hoje`, and shows foreground notifications as a toast (the handler hides the banner and sound).
 - `src/features/<screen>/`: screens and their components. `src/ui/`: shared primitives (Button, TextField, states, Toast, Screen, splash). `src/lib/`: pure helpers (dayjs pt-BR formatting, time zone banner rule).
 
 ## Rules

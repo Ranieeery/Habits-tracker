@@ -146,3 +146,51 @@ export type HabitRow = typeof habits.$inferSelect;
 export type CompletionRow = typeof completions.$inferSelect;
 export type UserSettingsRow = typeof userSettings.$inferSelect;
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+
+/**
+ * Server-only reminder bookkeeping (not a contract record, not synced). Kept
+ * out of `user_settings` so its row stays exactly the `UserSettings` record.
+ */
+export const reminderState = sqliteTable(
+	"reminder_state",
+	{
+		user_id: text()
+			.primaryKey()
+			.references(() => user.id, { onDelete: "cascade" }),
+		/**
+		 * Local date (user's time zone) of the last reminder claimed by the cron.
+		 * Set with a conditional update BEFORE sending: at most one per day.
+		 */
+		last_reminder_date: text(),
+		/** Last `POST /v1/push/test` (rate limit). */
+		last_test_push_at: timestampMs(),
+		updated_at: timestampMs().notNull(),
+	},
+	(t) => [
+		check(
+			"reminder_state_last_reminder_date_check",
+			sql`${t.last_reminder_date} IS NULL OR date(${t.last_reminder_date}) IS ${t.last_reminder_date}`
+		),
+	]
+);
+
+/**
+ * Expo push tickets waiting for their receipt (checked by the next cron runs,
+ * dropped after 24 h). Removing the device removes its tickets.
+ */
+export const pushTickets = sqliteTable(
+	"push_tickets",
+	{
+		/** Expo receipt id. */
+		id: text().primaryKey(),
+		user_id: userId(),
+		subscription_id: text()
+			.notNull()
+			.references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+		created_at: timestampMs().notNull(),
+	},
+	(t) => [index("push_tickets_created_idx").on(t.created_at)]
+);
+
+export type ReminderStateRow = typeof reminderState.$inferSelect;
+export type PushTicketRow = typeof pushTickets.$inferSelect;

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { UpdatePrompt } from "./components/update-prompt.tsx";
 import { createAuthService } from "./lib/auth.ts";
+import { createBrowserPushService } from "./lib/push.ts";
 import { systemClock, systemTimeZone } from "./lib/services.ts";
 import { createAppRouter } from "./router.tsx";
 import "./styles.css";
@@ -25,6 +26,7 @@ const apiBaseUrl = new URL(
 const router = createAppRouter({
 	api: createApiClient({ baseUrl: apiBaseUrl }),
 	auth: createAuthService(apiBaseUrl),
+	push: createBrowserPushService(import.meta.env.VITE_VAPID_PUBLIC_KEY),
 	now: systemClock,
 	deviceTimeZone: systemTimeZone,
 });

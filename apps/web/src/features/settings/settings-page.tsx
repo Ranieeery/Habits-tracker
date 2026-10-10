@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label.tsx";
 import { queryKeys, sessionQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
 import { useUserTimeZone } from "@/lib/use-today.ts";
+import { RemindersSection } from "./reminders-section.tsx";
+import { unregisterThisBrowser } from "./use-reminders.ts";
 import { useUpdateTimeZone } from "./use-update-time-zone.ts";
 
 function supportedTimeZones(): string[] {
@@ -22,7 +24,8 @@ function supportedTimeZones(): string[] {
 }
 
 export function SettingsPage() {
-	const { auth, deviceTimeZone } = useServices();
+	const services = useServices();
+	const { auth, deviceTimeZone } = services;
 	const session = useQuery(sessionQuery(auth));
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
@@ -31,6 +34,8 @@ export function SettingsPage() {
 
 	const signOut = async () => {
 		setSigningOut(true);
+		// While the session still exists: this browser stops receiving pushes.
+		await unregisterThisBrowser(services);
 		try {
 			await auth.signOut();
 		} catch {
@@ -57,6 +62,8 @@ export function SettingsPage() {
 				deviceTimeZone={deviceTimeZone()}
 			/>
 
+			<RemindersSection />
+
 			<div className="flex flex-col gap-3 border-t border-border pt-6">
 				<h2 className="text-lg font-bold">Conta</h2>
 				{session.data && (
@@ -75,10 +82,6 @@ export function SettingsPage() {
 					{signingOut ? "Saindo…" : "Sair"}
 				</Button>
 			</div>
-
-			<p className="text-sm text-muted">
-				Lembretes por notificação chegam em uma próxima versão.
-			</p>
 		</section>
 	);
 }

@@ -6,8 +6,10 @@ import {
 	Habit,
 	Mutation,
 	PASSWORD_MIN_LENGTH,
+	PushNotificationPayload,
 	PushSubscription,
 	PushSubscriptionView,
+	PushTestResponse,
 	RegisterPushSubscriptionRequest,
 	Schedule,
 	SignInRequest,
@@ -333,6 +335,46 @@ describe("UpdateUserSettingsRequest", () => {
 		).toBe(true);
 		expect(
 			UpdateUserSettingsRequest.safeParse({ timezone: "Mars/Olympus" }).success
+		).toBe(false);
+	});
+});
+
+describe("PushTestResponse", () => {
+	it("has counts only", () => {
+		expect(
+			PushTestResponse.parse({ sent: 2, failed: 0, removed: 1, token: "x" })
+		).toEqual({ sent: 2, failed: 0, removed: 1 });
+	});
+});
+
+describe("PushNotificationPayload", () => {
+	const payload = {
+		v: 1,
+		kind: "reminder",
+		title: "Habits",
+		body: "Você tem 2 hábitos pendentes hoje.",
+		url: "/today",
+		tag: "reminder-2026-10-10",
+	};
+
+	it("accepts a reminder", () => {
+		expect(PushNotificationPayload.safeParse(payload).success).toBe(true);
+	});
+
+	it("rejects external URLs and unknown versions", () => {
+		expect(
+			PushNotificationPayload.safeParse({
+				...payload,
+				url: "https://evil.example",
+			}).success
+		).toBe(false);
+		for (const url of ["//evil.example", "/\\evil.example"]) {
+			expect(
+				PushNotificationPayload.safeParse({ ...payload, url }).success
+			).toBe(false);
+		}
+		expect(
+			PushNotificationPayload.safeParse({ ...payload, v: 2 }).success
 		).toBe(false);
 	});
 });

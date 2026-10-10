@@ -12,6 +12,8 @@ export interface AppEnv {
 		config: AppConfig;
 		db: Db;
 		now: Clock;
+		/** Outgoing requests (push services); injected like the clock. */
+		fetch: typeof fetch;
 		/** Created on first use by `authOf`. */
 		auth: Auth | undefined;
 		/** Set by `requireUser`; every query of a route is scoped by it. */

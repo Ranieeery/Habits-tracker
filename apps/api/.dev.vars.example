@@ -20,3 +20,16 @@ ALLOW_SIGNUP=false
 
 # Optional: only this email may create the first (owner) account.
 OWNER_EMAIL=
+
+# Web Push (VAPID). Generate a pair with `pnpm --filter api vapid:generate`
+# and put the same public key in apps/web/.env (VITE_VAPID_PUBLIC_KEY).
+# Without them, web devices are skipped (Expo still works).
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+# Contact for push services about this sender (required by VAPID): the app's
+# https URL, or a mailto: address. Nothing is ever emailed.
+VAPID_SUBJECT=https://habits.rxniery.workers.dev
+
+# Optional: only if "enhanced security" (push access token) is enabled in the
+# Expo project settings.
+EXPO_ACCESS_TOKEN=

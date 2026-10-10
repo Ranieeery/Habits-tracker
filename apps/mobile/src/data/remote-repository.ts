@@ -2,7 +2,10 @@
 // `@habits/api-client`.
 import { type ApiClient, createApiClient, unwrap } from "@habits/api-client";
 import { toDataError } from "./errors.ts";
-import type { HabitsRepository } from "./repository.ts";
+import type {
+	HabitsRepository,
+	NotificationsRepository,
+} from "./repository.ts";
 
 /** Runs a request and turns any failure into a `DataError`. */
 async function call<T>(request: () => Promise<T>): Promise<T> {
@@ -58,6 +61,37 @@ export function createRemoteRepository(api: ApiClient): HabitsRepository {
 					})
 				);
 			}),
+	};
+}
+
+export function createRemoteNotifications(
+	api: ApiClient
+): NotificationsRepository {
+	return {
+		registerDevice: (token, label) =>
+			call(
+				async () =>
+					(
+						await unwrap(
+							api.v1.push.subscriptions.$post({
+								json: {
+									kind: "expo",
+									token,
+									...(label ? { device_label: label } : {}),
+								},
+							})
+						)
+					).subscription.id
+			),
+		unregisterDevice: (deviceId) =>
+			call(async () => {
+				await unwrap(
+					api.v1.push.subscriptions[":subscription_id"].$delete({
+						param: { subscription_id: deviceId },
+					})
+				);
+			}),
+		sendTest: () => call(() => unwrap(api.v1.push.test.$post())),
 	};
 }
 

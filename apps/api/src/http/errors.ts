@@ -63,6 +63,9 @@ export const notFoundError = { 404: errorResponse("Not found") };
 export const conflictError = {
 	409: errorResponse("The id is already used by another record"),
 };
+export const rateLimitedError = {
+	429: errorResponse("Too many requests (`rate_limited`); see `Retry-After`"),
+};
 export const dateErrors = {
 	422: errorResponse(
 		"Invalid request (`validation_error`) or date outside the write window (`date_out_of_range`)"

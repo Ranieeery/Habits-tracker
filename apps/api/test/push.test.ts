@@ -10,6 +10,12 @@ import {
 	type TestApi,
 	type TestUser,
 } from "./helpers.ts";
+import {
+	type FakePushOptions,
+	fakePushFetch,
+	newVapidKeys,
+	newWebPushKeys,
+} from "./push-fakes.ts";
 
 beforeEach(resetDb);
 
@@ -168,5 +174,103 @@ describe("DELETE /v1/push/subscriptions/{subscription_id}", () => {
 		expect(await response.text()).toBe("");
 		expect(await db.$count(pushSubscriptions)).toBe(0);
 		expect((await remove()).status).toBe(404);
+	});
+});
+
+describe("POST /v1/push/test", () => {
+	async function setupTest(fakeOptions: FakePushOptions = {}) {
+		const vapid = await newVapidKeys();
+		const fake = fakePushFetch(fakeOptions);
+		const api = makeApi(
+			"2026-10-10T15:00:00Z",
+			{
+				VAPID_PUBLIC_KEY: vapid.publicKey,
+				VAPID_PRIVATE_KEY: vapid.privateKey,
+				VAPID_SUBJECT: vapid.subject,
+			},
+			{ fetch: fake.fetch }
+		);
+		const owner = await createUser(api, "owner@example.com");
+		const sendTest = () =>
+			api.request("/v1/push/test", {
+				method: "POST",
+				headers: owner.auth(),
+			});
+		return { api, owner, fake, sendTest };
+	}
+
+	const realWeb = async () => ({
+		...WEB,
+		keys: await newWebPushKeys(),
+	});
+
+	it("sends to every device and answers counts only", async () => {
+		const { api, owner, fake, sendTest } = await setupTest({
+			web: { [WEB.endpoint]: 410 },
+		});
+		const web = await realWeb();
+		await register(api, owner, web);
+		await register(api, owner, EXPO);
+
+		const response = await sendTest();
+
+		expect(response.status).toBe(200);
+		const body = (await expectNoSecrets(response)) as Record<string, number>;
+		expect(body).toEqual({ sent: 1, failed: 0, removed: 1 });
+		expect(fake.web()).toHaveLength(1);
+		expect(fake.expoSends()[0]).toEqual([
+			expect.objectContaining({
+				to: EXPO.token,
+				data: { url: "/day/hoje", kind: "test" },
+			}),
+		]);
+		// The web payload is encrypted: no plaintext on the wire.
+		const [request] = fake.web();
+		expect(request!.headers.get("content-encoding")).toBe("aes128gcm");
+		expect(new TextDecoder().decode(request!.body as Uint8Array)).not.toContain(
+			"Habits"
+		);
+	});
+
+	it("answers zero counts without devices", async () => {
+		const { sendTest, fake } = await setupTest();
+
+		const response = await sendTest();
+
+		expect(await response.json()).toEqual({ sent: 0, failed: 0, removed: 0 });
+		expect(fake.requests).toHaveLength(0);
+	});
+
+	it("allows one test per minute", async () => {
+		const { api, sendTest } = await setupTest();
+
+		expect((await sendTest()).status).toBe(200);
+		const limited = await sendTest();
+		expect(limited.status).toBe(429);
+		expect(limited.headers.get("retry-after")).toBe("60");
+		expect(await limited.json()).toMatchObject({
+			error: { code: "rate_limited" },
+		});
+
+		api.setNow("2026-10-10T15:00:59Z");
+		expect((await sendTest()).status).toBe(429);
+		api.setNow("2026-10-10T15:01:00Z");
+		expect((await sendTest()).status).toBe(200);
+	});
+
+	it("lets only one of two simultaneous tests through", async () => {
+		const { sendTest } = await setupTest();
+
+		const statuses = (await Promise.all([sendTest(), sendTest()])).map(
+			(response) => response.status
+		);
+
+		expect(statuses.sort()).toEqual([200, 429]);
+	});
+
+	it("needs a session", async () => {
+		const api = makeApi();
+		const response = await api.request("/v1/push/test", { method: "POST" });
+		expect(response.status).toBe(401);
 	});
 });

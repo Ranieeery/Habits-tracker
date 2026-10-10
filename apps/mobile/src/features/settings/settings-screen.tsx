@@ -11,6 +11,7 @@ import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { TextField } from "@/ui/text-field.tsx";
 import { useToast } from "@/ui/toast.tsx";
+import { RemindersSection } from "./reminders-section.tsx";
 import { TimezoneBanner } from "./timezone-banner.tsx";
 
 export function SettingsScreen() {
@@ -32,6 +33,7 @@ export function SettingsScreen() {
 			<TimezoneBanner />
 			{/* Remounts with the saved value when the banner changes it. */}
 			<TimeZoneSection key={timezone} />
+			<RemindersSection />
 
 			<View className="gap-3 border-t border-border pt-6">
 				<Text

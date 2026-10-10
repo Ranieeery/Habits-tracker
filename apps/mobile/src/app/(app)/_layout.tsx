@@ -1,11 +1,13 @@
 import { colors } from "@habits/design-tokens";
 import { Stack } from "expo-router";
+import { NotificationResponder } from "@/features/notifications/notification-responder.tsx";
 import { SettingsGate } from "@/features/settings/settings-gate.tsx";
 
 /** Authenticated area: needs the user's settings (time zone) to know "today". */
 export default function AppLayout() {
 	return (
 		<SettingsGate>
+			<NotificationResponder />
 			<Stack
 				screenOptions={{
 					headerStyle: { backgroundColor: colors.background },

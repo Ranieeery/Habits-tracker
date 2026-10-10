@@ -3,13 +3,13 @@ import {
 	PushSubscriptionView,
 	type RegisterPushSubscriptionRequest,
 } from "@habits/contracts";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import {
 	fromPushSubscriptionRow,
 	toPushSubscriptionRow,
 } from "../db/records.ts";
-import { pushSubscriptions } from "../db/schema.ts";
+import { pushSubscriptions, pushTickets } from "../db/schema.ts";
 
 /** Drops the endpoint, keys and token: they never leave the server. */
 export function toView(subscription: PushSubscription): PushSubscriptionView {
@@ -111,4 +111,59 @@ export async function deletePushSubscription(
 		)
 		.returning({ id: pushSubscriptions.id });
 	return deleted.length > 0;
+}
+
+/**
+ * The user's devices with their credentials, for sending only. Never return
+ * these records to a client (use `toView`).
+ */
+export async function listPushTargets(
+	db: Db,
+	userId: string
+): Promise<PushSubscription[]> {
+	const rows = await db
+		.select()
+		.from(pushSubscriptions)
+		.where(eq(pushSubscriptions.user_id, userId))
+		.orderBy(asc(pushSubscriptions.created_at), asc(pushSubscriptions.id));
+	return rows.map(fromPushSubscriptionRow);
+}
+
+/** Hard deletes devices the push service no longer knows (404/410, expo). */
+export async function deletePushSubscriptions(
+	db: Db,
+	userId: string,
+	subscriptionIds: string[]
+): Promise<number> {
+	if (subscriptionIds.length === 0) return 0;
+	const deleted = await db
+		.delete(pushSubscriptions)
+		.where(
+			and(
+				eq(pushSubscriptions.user_id, userId),
+				inArray(pushSubscriptions.id, subscriptionIds)
+			)
+		)
+		.returning({ id: pushSubscriptions.id });
+	return deleted.length;
+}
+
+/** Remembers Expo tickets so a later cron run can read their receipts. */
+export async function insertPushTickets(
+	db: Db,
+	userId: string,
+	tickets: { id: string; subscription_id: string }[],
+	now: number
+): Promise<void> {
+	// 4 parameters per row; D1 allows 100 per statement.
+	for (let i = 0; i < tickets.length; i += 25) {
+		await db
+			.insert(pushTickets)
+			.values(
+				tickets
+					.slice(i, i + 25)
+					.map((ticket) => ({ ...ticket, user_id: userId, created_at: now }))
+			)
+			.onConflictDoNothing();
+	}
 }

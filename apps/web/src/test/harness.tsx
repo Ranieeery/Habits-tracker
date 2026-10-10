@@ -21,6 +21,7 @@ import { vi } from "vitest";
 import { App } from "@/App.tsx";
 import type { AuthService, SessionUser } from "@/lib/auth.ts";
 import { queryKeys } from "@/lib/queries.ts";
+import type { PushService } from "@/lib/push.ts";
 import { type Services, ServicesContext } from "@/lib/services.ts";
 import { createAppRouter } from "@/router.tsx";
 
@@ -110,12 +111,30 @@ export function fakeAuth(user: SessionUser | null = USER): AuthService {
 	};
 }
 
+/** A browser without push support unless a test says otherwise. */
+export function fakePush(overrides: Partial<PushService> = {}): PushService {
+	let id: string | null = null;
+	return {
+		support: () => "unsupported",
+		enable: vi.fn(async () => ({ status: "unsupported" as const })),
+		current: vi.fn(async () => null),
+		disable: vi.fn(async () => {}),
+		deviceLabel: () => "Chrome no Windows",
+		storedId: () => id,
+		storeId: (value) => {
+			id = value;
+		},
+		...overrides,
+	};
+}
+
 export interface ServicesOptions {
 	routes?: Record<string, Handler>;
 	user?: SessionUser | null;
 	auth?: AuthService;
 	deviceTimeZone?: string;
 	now?: number;
+	push?: PushService;
 }
 
 export function fakeServices({
@@ -124,11 +143,13 @@ export function fakeServices({
 	auth = fakeAuth(user),
 	deviceTimeZone = TIME_ZONE,
 	now = NOW,
+	push = fakePush(),
 }: ServicesOptions = {}) {
 	const api = fakeApi(routes);
 	const services: Services = {
 		api: createApiClient({ baseUrl: "http://app.test/api", fetch: api.fetch }),
 		auth,
+		push,
 		now: () => now,
 		deviceTimeZone: () => deviceTimeZone,
 	};

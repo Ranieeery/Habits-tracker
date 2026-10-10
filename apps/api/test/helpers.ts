@@ -3,7 +3,12 @@
 import { env } from "cloudflare:workers";
 import { createApp } from "../src/app.ts";
 import { createDb } from "../src/db/client.ts";
-import { rateLimit, user, verification } from "../src/db/schema.ts";
+import {
+	pushTickets,
+	rateLimit,
+	user,
+	verification,
+} from "../src/db/schema.ts";
 
 export const db = createDb(env.DB);
 
@@ -13,6 +18,7 @@ export const PASSWORD = "correct-horse-battery-staple";
 /** Deletes every user (cascading to all their data) and rate-limit counters. */
 export async function resetDb(): Promise<void> {
 	await db.batch([
+		db.delete(pushTickets),
 		db.delete(user),
 		db.delete(rateLimit),
 		db.delete(verification),
@@ -45,10 +51,11 @@ export interface TestApi {
  */
 export function makeApi(
 	now = "2026-10-09T15:00:00Z",
-	overrides: EnvOverrides = {}
+	overrides: EnvOverrides = {},
+	options: { fetch?: typeof fetch } = {}
 ): TestApi {
 	let nowMs = Date.parse(now);
-	const app = createApp({ now: () => nowMs });
+	const app = createApp({ now: () => nowMs, fetch: options.fetch });
 	return {
 		request: async (path, init) =>
 			app.request(`http://localhost${path}`, init, { ...env, ...overrides }),

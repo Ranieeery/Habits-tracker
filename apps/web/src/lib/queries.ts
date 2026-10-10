@@ -10,6 +10,7 @@ import type {
 } from "@habits/contracts";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import type { AuthService } from "./auth.ts";
+import type { BrowserSubscription } from "./push.ts";
 
 export const queryKeys = {
 	session: ["session"] as const,
@@ -107,4 +108,35 @@ export function invalidateHabitData(queryClient: QueryClient) {
 		queryClient.invalidateQueries({ queryKey: queryKeys.days }),
 		queryClient.invalidateQueries({ queryKey: queryKeys.summaries }),
 	]);
+}
+
+/** Registers (or refreshes) this browser; returns the API's id for it. */
+export async function registerWebPush(
+	api: ApiClient,
+	subscription: BrowserSubscription,
+	deviceLabel: string | null
+) {
+	const { subscription: stored } = await unwrap(
+		api.v1.push.subscriptions.$post({
+			json: {
+				kind: "webpush",
+				endpoint: subscription.endpoint,
+				keys: subscription.keys,
+				...(deviceLabel ? { device_label: deviceLabel } : {}),
+			},
+		})
+	);
+	return stored.id;
+}
+
+export function deletePushSubscription(api: ApiClient, subscriptionId: string) {
+	return unwrap(
+		api.v1.push.subscriptions[":subscription_id"].$delete({
+			param: { subscription_id: subscriptionId },
+		})
+	);
+}
+
+export function sendTestPush(api: ApiClient) {
+	return unwrap(api.v1.push.test.$post());
 }

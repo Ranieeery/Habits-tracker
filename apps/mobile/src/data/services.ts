@@ -2,17 +2,25 @@
 import { getCalendars } from "expo-localization";
 import { createContext, use } from "react";
 import { type AuthService, createAuthService } from "./auth.ts";
+import { createPushDevice, type PushDevice } from "./push.ts";
 import {
 	createAuthenticatedApiClient,
+	createRemoteNotifications,
 	createRemoteRepository,
 } from "./remote-repository.ts";
-import type { HabitsRepository } from "./repository.ts";
+import type {
+	HabitsRepository,
+	NotificationsRepository,
+} from "./repository.ts";
 
 /** Current instant in UTC ms. */
 export type Clock = () => number;
 
 export interface Services {
 	repository: HabitsRepository;
+	notifications: NotificationsRepository;
+	/** Permission, channel and push token of this device. */
+	pushDevice: PushDevice;
 	auth: AuthService;
 	/** The only source of "now" in the app (see `systemClock`). */
 	now: Clock;
@@ -44,6 +52,8 @@ export function createServices(): Services {
 	const api = createAuthenticatedApiClient(baseUrl, () => auth.getCookie());
 	return {
 		repository: createRemoteRepository(api),
+		notifications: createRemoteNotifications(api),
+		pushDevice: createPushDevice(),
 		auth,
 		now: systemClock,
 		deviceTimeZone: systemTimeZone,

@@ -10,8 +10,9 @@
 	"workers_dev": false,
 	"preview_urls": false,
 	// Non-secret configuration. Production values here; local overrides and the
-	// secrets (BETTER_AUTH_SECRET, BETTER_AUTH_URL, OWNER_EMAIL) go in .dev.vars
-	// (see .dev.vars.example) or `wrangler secret put`.
+	// secrets (BETTER_AUTH_SECRET, BETTER_AUTH_URL, OWNER_EMAIL, VAPID_*,
+	// EXPO_ACCESS_TOKEN) go in .dev.vars (see .dev.vars.example) or
+	// `wrangler secret put`.
 	"vars": {
 		"ENVIRONMENT": "production",
 		// "true" reopens signup after the owner exists (development only).
@@ -19,6 +20,12 @@
 		// Comma-separated browser origins allowed by CORS and Better Auth.
 		// Empty in production: web and API share one domain.
 		"TRUSTED_ORIGINS": "",
+	},
+	// Reminders: every 15 minutes (UTC); each user's reminder_time is checked
+	// in their own time zone, so a reminder arrives up to 15 minutes late.
+	// Uses 1 of the 5 Cron Triggers of a Free account (96 runs a day).
+	"triggers": {
+		"crons": ["*/15 * * * *"],
 	},
 	"observability": {
 		"enabled": true,

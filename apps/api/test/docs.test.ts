@@ -20,6 +20,7 @@ describe("OpenAPI docs", () => {
 			"/v1/habits/{habit_id}/completions/{date}",
 			"/v1/push/subscriptions",
 			"/v1/push/subscriptions/{subscription_id}",
+			"/v1/push/test",
 			"/v1/settings",
 			"/v1/summary",
 		]);
