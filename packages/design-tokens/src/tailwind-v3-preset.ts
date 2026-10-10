@@ -1,4 +1,4 @@
-import { colors, fontFamily, radius } from "./tokens.ts";
+import { colors, fontFamily, radius, spacing } from "./tokens.ts";
 
 /** Tailwind v3 preset for NativeWind v4 (mobile). */
 export const tailwindV3Preset = {
@@ -6,6 +6,7 @@ export const tailwindV3Preset = {
 		extend: {
 			colors,
 			borderRadius: radius,
+			spacing,
 			fontFamily,
 		},
 	},

@@ -1,5 +1,10 @@
 // Pure domain logic: dates, schedules, completion ratios, streaks and the
-// heatmap grid (Phase 1). No I/O and no framework imports.
+// heatmap grid. No I/O and no framework imports. Nothing here reads the clock:
+// "today" and the user's time zone are always parameters.
 
-/** How many days back a client may write completions (allows offline sync). */
-export const BACKFILL_DAYS = 7;
+export * from "./dates.ts";
+export * from "./grid.ts";
+export * from "./progress.ts";
+export * from "./schedule.ts";
+export * from "./streaks.ts";
+export * from "./window.ts";

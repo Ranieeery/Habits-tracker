@@ -1,4 +1,4 @@
-import { colors, fontFamily, radius } from "./tokens.ts";
+import { colors, fontFamily, radius, spacing } from "./tokens.ts";
 
 type ColorTree = { readonly [key: string]: string | ColorTree };
 
@@ -19,6 +19,9 @@ export function renderThemeCss(): string {
 		),
 		...Object.entries(radius).map(
 			([name, value]) => `--radius-${name}: ${value};`
+		),
+		...Object.entries(spacing).map(
+			([name, value]) => `--spacing-${name}: ${value};`
 		),
 		`--font-sans: ${fontFamily.sans
 			.map((font) => (font.includes("-") ? font : `"${font}"`))

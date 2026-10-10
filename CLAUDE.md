@@ -31,7 +31,7 @@ The product must stay **extensible**: new habit types/frequencies, new stats, ne
 ### Roadmap status (keep this section updated)
 
 - [x] Phase 0: monorepo scaffold, legacy moved to `legacy/`
-- [ ] Phase 1: `packages/contracts` + `packages/core` (with tests)
+- [x] Phase 1: `packages/contracts` + `packages/core` (with tests)
 - [ ] Phase 2: D1 schema (Drizzle) + dev seed
 - [ ] Phase 3: API (Hono) + auth (Better Auth)
 - [ ] Phase 4: web client
@@ -57,7 +57,7 @@ Formatting and linting are shared from the root: `.editorconfig` (tabs, width 2,
 
 ## Commands
 
-Available now (Phase 0). Commands marked "(Phase N)" do not exist yet.
+Available now (Phases 0-1). Commands marked "(Phase N)" do not exist yet.
 
 ```bash
 pnpm install                      # Node >= 22.13, pnpm 12 (packageManager pins the version)
@@ -72,9 +72,10 @@ pnpm --filter web dev             # vite
 pnpm --filter web build
 pnpm --filter mobile start        # expo start (use a development build, not Expo Go, for push)
 pnpm --filter @habits/design-tokens generate   # rewrite src/generated/theme.css after editing tokens.ts
+pnpm --filter @habits/core test   # vitest for one package (also @habits/contracts, @habits/design-tokens)
 pnpm typecheck                    # turbo: tsc --noEmit in every package
 pnpm lint                         # turbo: eslint (root flat config; web/mobile extend it)
-pnpm test                         # turbo: vitest in core, design-tokens, api (@cloudflare/vitest-plugin), web
+pnpm test                         # turbo: vitest in contracts, core, design-tokens, api (@cloudflare/vitest-plugin), web
 pnpm format                       # prettier --write . (format:check to verify)
 ```
 
@@ -103,7 +104,7 @@ Differences from the legacy model (intentional):
 
 - No `Day` / `DayHabit` tables; a single `completions` table replaces them.
 - Calendar dates are **local calendar dates as `YYYY-MM-DD` text**, never epoch milliseconds (instants like `created_at` are UTC ms; see "Decisions"). This removes the legacy `strftime` weekday workaround and timezone bugs. The weekday is derived in `packages/core`, not in SQL.
-- "Possible on date D" = habit not archived-before-D, `start_date <= D`, and the schedule matches D. This logic lives only in `packages/core` and is reused by API and both clients.
+- "Possible on date D" = habit not archived-before-D, `start_date <= D`, and the schedule matches D. This logic lives only in `packages/core` (`isHabitPossibleOn(habit, date, { timeZone })`; the time zone turns the `archived_at` instant into a local date, and a habit archived during D still counts on D) and is reused by API and both clients. `core` never reads the clock: callers get today with `todayIn(timeZone, nowMs)`.
 
 ### API (`apps/api`)
 

@@ -60,3 +60,8 @@ export const fontFamily = {
 
 /** Minimum touch target on mobile, in density-independent pixels. */
 export const TOUCH_TARGET_MIN = 44;
+
+// Only named sizes; the Tailwind default scale covers the rest of the layout.
+export const spacing = {
+	touch: `${TOUCH_TARGET_MIN}px`, // e.g. min-h-touch, min-w-touch
+} as const;
