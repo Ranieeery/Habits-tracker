@@ -24,6 +24,12 @@ function subscribe(onChange: () => void) {
 /** The signed-in user's settings, loaded before any authenticated screen. */
 export const SettingsContext = createContext<UserSettings | null>(null);
 
+/**
+ * The saved time zone on its own: a string, so changing another setting (the
+ * reminder time) does not re-render every screen that only needs "today".
+ */
+export const TimeZoneContext = createContext<string | null>(null);
+
 export function useLoadedSettings(): UserSettings {
 	const settings = use(SettingsContext);
 	if (!settings) throw new Error("useLoadedSettings outside <SettingsGate>");
@@ -32,7 +38,9 @@ export function useLoadedSettings(): UserSettings {
 
 /** The user's time zone, from their saved settings (never the device's). */
 export function useUserTimeZone(): string {
-	return useLoadedSettings().timezone;
+	const timeZone = use(TimeZoneContext);
+	if (!timeZone) throw new Error("useUserTimeZone outside <SettingsGate>");
+	return timeZone;
 }
 
 /** The user's local date in their saved time zone; follows the day turning. */

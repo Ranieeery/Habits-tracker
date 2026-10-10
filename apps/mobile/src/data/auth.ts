@@ -77,6 +77,24 @@ export function createAuthService(apiBaseUrl: string): AuthService {
 		],
 	});
 
+	// Every API request needs the cookie. Reading it from SecureStore each
+	// time is slow on Android (Keystore) and the plugin serializes those reads,
+	// so concurrent requests queued behind each other. Keep it in memory and
+	// re-read only when the plugin reports a session cookie change (sign-in,
+	// renewal, sign-out) or after our own auth calls.
+	let cookie: Promise<string> | null = null;
+	const readCookie = () => {
+		cookie ??= client.getCookie().catch((error: unknown) => {
+			cookie = null;
+			throw error;
+		});
+		return cookie;
+	};
+	const forgetCookie = () => {
+		cookie = null;
+	};
+	client.$store.listen("$sessionSignal", forgetCookie);
+
 	const pick = ({ id, email, name }: SessionUser): SessionUser => ({
 		id,
 		email,
@@ -85,10 +103,12 @@ export function createAuthService(apiBaseUrl: string): AuthService {
 
 	return {
 		async restoreSession() {
-			const stored = await client.getCookie();
+			const stored = await readCookie();
 			if (!stored) return { status: "signed_out" };
 			try {
 				const { data, error } = await client.getSession();
+				// get-session may have renewed the cookie.
+				forgetCookie();
 				if (!error) {
 					return data
 						? { status: "signed_in", user: pick(data.user) }
@@ -106,6 +126,8 @@ export function createAuthService(apiBaseUrl: string): AuthService {
 				result = await client.signIn.email({ email, password });
 			} catch {
 				throw new AuthError("network", "Network error");
+			} finally {
+				forgetCookie();
 			}
 			if (result.error) throw toAuthError(result.error);
 			return pick(result.data.user);
@@ -116,8 +138,10 @@ export function createAuthService(apiBaseUrl: string): AuthService {
 			} catch {
 				// Offline: the plugin already cleared the stored session before
 				// sending the request; the server session expires on its own.
+			} finally {
+				forgetCookie();
 			}
 		},
-		getCookie: () => client.getCookie(),
+		getCookie: readCookie,
 	};
 }

@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ReminderTime } from "@habits/contracts";
 import { colors } from "@habits/design-tokens";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Linking, Pressable, Switch, Text, View } from "react-native";
 import { errorMessage, isUnauthorized, toDataError } from "@/data/errors.ts";
 import {
@@ -41,6 +41,7 @@ export function RemindersSection() {
 	const [outcome, setOutcome] = useState<EnableOutcome | null>(null);
 	const [time, setTime] = useState(reminderTime ?? DEFAULT_REMINDER_TIME);
 	const [timeError, setTimeError] = useState<string>();
+	const lastRequested = useRef<string | null>(null);
 
 	const state = outcome ?? permission.data ?? null;
 	const status = state ? DEVICE_STATUS[state] : null;
@@ -69,10 +70,18 @@ export function RemindersSection() {
 			return;
 		}
 		setTimeError(undefined);
-		if (parsed.data === reminderTime) return;
+		// "Done" on the keyboard and the blur that follows both land here:
+		// save each value once.
+		if (parsed.data === reminderTime || parsed.data === lastRequested.current) {
+			return;
+		}
+		lastRequested.current = parsed.data;
 		save.mutate(parsed.data, {
 			onSuccess: () => toast("success", "Horário salvo", parsed.data),
-			onError: onError("Não foi possível salvar o horário"),
+			onError: (error) => {
+				lastRequested.current = null;
+				onError("Não foi possível salvar o horário")(error);
+			},
 		});
 	};
 

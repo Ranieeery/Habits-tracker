@@ -3,16 +3,24 @@
 import type {
 	CalendarDate,
 	CreateHabitRequest,
+	SummaryDay,
 	UpdateHabitRequest,
 } from "@habits/contracts";
+import { parseCalendarDate } from "@habits/core";
 import {
 	type QueryClient,
 	useMutation,
+	usePrefetchQuery,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { useState } from "react";
 import type { SessionState } from "./auth.ts";
-import { type CompletionChange, withCompletion } from "./optimistic.ts";
+import {
+	type CompletionChange,
+	withCompletion,
+	withSummaryDay,
+} from "./optimistic.ts";
 import { unregisterThisDevice } from "./push-registration.ts";
 import type { DayData } from "./repository.ts";
 import { useServices } from "./services.ts";
@@ -34,6 +42,32 @@ export function invalidateHabitData(queryClient: QueryClient) {
 		queryClient.invalidateQueries({ queryKey: queryKeys.days }),
 		queryClient.invalidateQueries({ queryKey: queryKeys.summaries }),
 	]);
+}
+
+/**
+ * Pull-to-refresh on the home screen: the year, the habits and every cached
+ * day, including the ones no screen shows right now (e.g. today, prefetched
+ * for the "Hoje" button), so opening a day afterwards shows fresh data.
+ */
+export function useRefreshAll() {
+	const queryClient = useQueryClient();
+	const [refreshing, setRefreshing] = useState(false);
+	const refresh = async () => {
+		setRefreshing(true);
+		try {
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: queryKeys.summaries }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.habits }),
+				queryClient.invalidateQueries({
+					queryKey: queryKeys.days,
+					refetchType: "all",
+				}),
+			]);
+		} finally {
+			setRefreshing(false);
+		}
+	};
+	return { refresh, refreshing };
 }
 
 /** Whether a query has an answer to show (data, error, or paused offline). */
@@ -161,6 +195,15 @@ export function useDay(date: CalendarDate) {
 	});
 }
 
+/** Loads a day in the background (e.g. today, while the heatmap is open). */
+export function usePrefetchDay(date: CalendarDate) {
+	const { repository } = useServices();
+	usePrefetchQuery({
+		queryKey: queryKeys.day(date),
+		queryFn: () => repository.getDay(date),
+	});
+}
+
 export function useYearSummary(year: number) {
 	const { repository } = useServices();
 	return useQuery({
@@ -180,28 +223,49 @@ export function useToggleCompletion(
 ) {
 	const { repository } = useServices();
 	const key = queryKeys.day(date);
+	const summaryKey = queryKeys.summary(parseCalendarDate(date).year);
+	const mutationKey = ["completion", date];
 
 	return useMutation({
-		mutationKey: ["completion", date],
+		mutationKey,
 		mutationFn: ({ habitId, completed }: CompletionChange) =>
 			repository.setCompletion(habitId, date, completed),
 		onMutate: async (change, { client }) => {
-			// A refetch in flight would overwrite the optimistic value.
-			await client.cancelQueries({ queryKey: key });
+			// A refetch in flight would overwrite the optimistic values.
+			await Promise.all([
+				client.cancelQueries({ queryKey: key }),
+				client.cancelQueries({ queryKey: summaryKey }),
+			]);
 			const previous = client.getQueryData<DayData>(key);
+			const previousSummary = client.getQueryData<SummaryDay[]>(summaryKey);
 			if (previous) {
-				client.setQueryData<DayData>(key, withCompletion(previous, change));
+				const next = withCompletion(previous, change);
+				client.setQueryData<DayData>(key, next);
+				// The heatmap cell follows at once, not after a refetch.
+				if (previousSummary) {
+					client.setQueryData(
+						summaryKey,
+						withSummaryDay(previousSummary, next)
+					);
+				}
 			}
-			return { previous };
+			return { previous, previousSummary };
 		},
 		onError: (error, _change, result, { client }) => {
 			if (result?.previous) client.setQueryData(key, result.previous);
+			if (result?.previousSummary) {
+				client.setQueryData(summaryKey, result.previousSummary);
+			}
 			onError?.(error);
 		},
-		onSettled: (_data, _error, _change, _result, { client }) =>
-			Promise.all([
+		onSettled: (_data, _error, _change, _result, { client }) => {
+			// With several quick toggles, refetch only after the last one:
+			// an earlier refetch would briefly undo the pending ones.
+			if (client.isMutating({ mutationKey }) > 1) return;
+			return Promise.all([
 				client.invalidateQueries({ queryKey: key }),
 				client.invalidateQueries({ queryKey: queryKeys.summaries }),
-			]),
+			]);
+		},
 	});
 }

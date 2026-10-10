@@ -2,18 +2,34 @@
 // and sign-out.
 import type { Services } from "./services.ts";
 
-/** Registers (or refreshes) this device's token; returns false without one. */
-export async function registerThisDevice({
-	pushDevice,
-	notifications,
-}: Pick<Services, "pushDevice" | "notifications">): Promise<boolean> {
+type Deps = Pick<Services, "pushDevice" | "notifications">;
+
+/** Expo token already sent this app run (the server keeps it until removed). */
+let registeredToken: string | null = null;
+/** One registration at a time: callers share the one in flight. */
+let inFlight: Promise<boolean> | null = null;
+
+/**
+ * Registers this device's token unless this run already sent the same one;
+ * returns false without a token (no permission or no push support).
+ */
+export function registerThisDevice(deps: Deps): Promise<boolean> {
+	inFlight ??= register(deps).finally(() => {
+		inFlight = null;
+	});
+	return inFlight;
+}
+
+async function register({ pushDevice, notifications }: Deps) {
 	const registration = await pushDevice.registration();
 	if (!registration) return false;
+	if (registration.token === registeredToken) return true;
 	const id = await notifications.registerDevice(
 		registration.token,
 		registration.label
 	);
 	await pushDevice.storeId(id);
+	registeredToken = registration.token;
 	return true;
 }
 
@@ -21,7 +37,8 @@ export async function registerThisDevice({
 export async function unregisterThisDevice({
 	pushDevice,
 	notifications,
-}: Pick<Services, "pushDevice" | "notifications">): Promise<void> {
+}: Deps): Promise<void> {
+	registeredToken = null;
 	try {
 		const id = await pushDevice.storedId();
 		if (id) await notifications.unregisterDevice(id);

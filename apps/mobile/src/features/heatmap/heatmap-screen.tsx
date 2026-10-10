@@ -2,7 +2,13 @@ import { buildYearGrid, parseCalendarDate } from "@habits/core";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Text, View } from "react-native";
-import { isSettled, useHabits, useYearSummary } from "@/data/hooks.ts";
+import {
+	isSettled,
+	useHabits,
+	usePrefetchDay,
+	useRefreshAll,
+	useYearSummary,
+} from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import { TimezoneBanner } from "@/features/settings/timezone-banner.tsx";
 import { formatLongDate } from "@/lib/format.ts";
@@ -19,6 +25,9 @@ export function HeatmapScreen() {
 	const year = parseCalendarDate(today).year;
 	const summary = useYearSummary(year);
 	const habits = useHabits();
+	const { refresh, refreshing } = useRefreshAll();
+	// "Hoje" is the most used screen: have it ready before the tap.
+	usePrefetchDay(today);
 	useHideSplashWhen(isSettled(summary));
 
 	const grid = useMemo(
@@ -27,13 +36,7 @@ export function HeatmapScreen() {
 	);
 
 	return (
-		<Screen
-			onRefresh={() => {
-				void summary.refetch();
-				void habits.refetch();
-			}}
-			refreshing={summary.isRefetching}
-		>
+		<Screen onRefresh={() => void refresh()} refreshing={refreshing}>
 			<View className="flex-row items-end justify-between gap-4">
 				<View className="flex-1 gap-1">
 					<Text

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isSettled, useSettings } from "@/data/hooks.ts";
-import { SettingsContext } from "@/data/today.ts";
+import { SettingsContext, TimeZoneContext } from "@/data/today.ts";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { QueryState } from "@/ui/states.tsx";
 
@@ -18,7 +18,11 @@ export function SettingsGate({ children }: { children: ReactNode }) {
 	useHideSplashWhen(isSettled(settings) && settings.data === undefined);
 
 	if (settings.data) {
-		return <SettingsContext value={settings.data}>{children}</SettingsContext>;
+		return (
+			<TimeZoneContext value={settings.data.timezone}>
+				<SettingsContext value={settings.data}>{children}</SettingsContext>
+			</TimeZoneContext>
+		);
 	}
 	if (settings.isPending && settings.fetchStatus !== "paused") return null;
 	return (
