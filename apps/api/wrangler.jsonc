@@ -4,6 +4,11 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2026-09-01",
 	"compatibility_flags": ["nodejs_compat"],
+	// Private: no public URL. The public Worker of apps/web ("habits") forwards
+	// /api/* here through a service binding, so web and mobile use
+	// https://habits.<subdomain>.workers.dev/api.
+	"workers_dev": false,
+	"preview_urls": false,
 	// Non-secret configuration. Production values here; local overrides and the
 	// secrets (BETTER_AUTH_SECRET, BETTER_AUTH_URL, OWNER_EMAIL) go in .dev.vars
 	// (see .dev.vars.example) or `wrangler secret put`.
@@ -22,9 +27,8 @@
 		{
 			"binding": "DB",
 			"database_name": "habits",
-			// Placeholder: replace with the id printed by `wrangler d1 create habits`
-			// before the first remote migration (Phase 8). Local D1 ignores it.
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			// Production database (region ENAM), not a secret. Local D1 ignores it.
+			"database_id": "4bb3da5c-ba72-44ed-b151-7c747be0447e",
 			"migrations_dir": "migrations",
 		},
 	],

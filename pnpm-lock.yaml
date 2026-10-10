@@ -484,6 +484,9 @@ importers:
       workbox-window:
         specifier: ^7.4.1
         version: 7.4.1
+      wrangler:
+        specifier: ^4.149.0
+        version: 4.149.0(@types/node@24.19.2)
 
   packages/api-client:
     dependencies:

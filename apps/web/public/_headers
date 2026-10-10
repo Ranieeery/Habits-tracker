@@ -1,0 +1,5 @@
+# Applied by Workers Static Assets to asset responses. Hashed build files never
+# change; everything else (index.html, sw.js, manifest) keeps the default
+# "max-age=0, must-revalidate", so a new deploy is picked up at once.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

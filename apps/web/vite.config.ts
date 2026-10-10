@@ -13,9 +13,11 @@ export const baseConfig = {
 	},
 };
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
 	const env = loadEnv(mode, import.meta.dirname, "");
-	const proxy = apiProxy(env.VITE_API_URL, env.API_PROXY_TARGET);
+	// Only the dev and preview servers ("serve") proxy; a build needs no target.
+	const proxy =
+		command === "serve" ? apiProxy(env.VITE_API_URL, env.API_PROXY_TARGET) : {};
 
 	return {
 		...baseConfig,

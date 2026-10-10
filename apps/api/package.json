@@ -10,6 +10,7 @@
 	},
 	"scripts": {
 		"dev": "wrangler dev",
+		"deploy": "wrangler deploy",
 		"cf-typegen": "wrangler types --strict-vars=false src/worker-configuration.d.ts",
 		"auth:generate": "pnpm dlx auth@1.7.7 generate --config scripts/auth-cli.ts --output src/db/auth-schema.ts --adapter drizzle --dialect sqlite --yes && prettier --write src/db/auth-schema.ts",
 		"db:generate": "drizzle-kit generate",

@@ -6,6 +6,7 @@ Vite + React 19 PWA (secondary client). See the root `CLAUDE.md` for architectur
 
 - `cp .env.example .env`: `VITE_API_URL=/api` (the browser's API base, same origin) and `API_PROXY_TARGET` (dev/preview only: where Vite proxies `/api/*`, with the prefix stripped). Never hardcode an API URL.
 - Run the API (`pnpm --filter api dev`) and `pnpm --filter web dev`. The service worker is off in dev: use `pnpm --filter web build && pnpm --filter web preview` to test the PWA.
+- Production builds read `.env.production` (committed, no secrets: `VITE_API_URL=/api`); the build itself needs no `API_PROXY_TARGET`.
 
 ## Layout
 
@@ -30,7 +31,13 @@ Vite + React 19 PWA (secondary client). See the root `CLAUDE.md` for architectur
 
 ## Tooling
 
-- TypeScript projects: `tsconfig.json` (app, DOM, excludes `src/sw`), `tsconfig.sw.json` (WebWorker), `tsconfig.node.json` (`vite.config.ts`, `vitest.config.ts`). `typecheck` runs all three; `build` runs `typecheck` then `vite build`.
+- TypeScript projects: `tsconfig.json` (app, DOM, excludes `src/sw`), `tsconfig.sw.json` (WebWorker), `tsconfig.node.json` (`vite.config.ts`, `vitest.config.ts`), `tsconfig.worker.json` (`worker/`, Workers types). `typecheck` runs all four; `build` runs `typecheck` then `vite build`.
 - `vite.config.ts` reads the theme color from `@habits/design-tokens` for the manifest and the `theme-color` meta, and exports `baseConfig` reused by `vitest.config.ts`.
-- Tests: Vitest + Testing Library in jsdom (`src/test/setup.ts` stubs `scrollTo`, `ResizeObserver`, `matchMedia` and clears sonner toasts). `src/test/harness.tsx`: `renderApp(path, options)` renders the real router with a fake API (`"METHOD /v1/path"` handlers), fake auth, a fixed clock (`NOW` = 2026-10-09 in São Paulo) and a device time zone; `renderInRouter(ui)` renders one component inside a minimal router.
+- Tests: two Vitest projects in `vitest.config.ts`: `app` (Testing Library in jsdom) and `worker` (node, `worker/**/*.test.ts`). For app tests, `src/test/setup.ts` stubs `scrollTo`, `ResizeObserver` and `matchMedia` and clears sonner toasts. `src/test/harness.tsx`: `renderApp(path, options)` renders the real router with a fake API (`"METHOD /v1/path"` handlers), fake auth, a fixed clock (`NOW` = 2026-10-09 in São Paulo) and a device time zone; `renderInRouter(ui)` renders one component inside a minimal router.
 - ESLint extends the root config plus `react-hooks` and `react-refresh` (`eslint.config.js`): keep non-component exports out of `.tsx` component files.
+
+## Deploy (public Worker `habits`)
+
+- `wrangler.jsonc`: Workers Static Assets from `./dist` with the SPA fallback; `run_worker_first: ["/api", "/api/*"]`, so only API calls run `worker/index.ts`. `worker/gateway.ts` (`toApiRequest`) strips `/api` and forwards the request as is through the `API` service binding to `habits-api`. After editing `wrangler.jsonc`, run `pnpm --filter web cf-typegen` (`worker/worker-configuration.d.ts`, generated, not linted or formatted).
+- `public/_headers` makes `/assets/*` immutable; everything else keeps the default `max-age=0, must-revalidate`, so `index.html` and `sw.js` are revalidated on every load.
+- `pnpm --filter web run deploy` = build + `wrangler deploy`. Deploy the API first when both change (the binding target must exist, and the new web may call new API routes).
