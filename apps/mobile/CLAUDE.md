@@ -22,6 +22,14 @@ Push tokens need Firebase, and both steps below change the native app (new devel
 
 Permission is asked only when reminders are turned on in Ajustes. Without Firebase, enabling reminders reports this device as unavailable; Web Push devices and the rest of the app keep working.
 
+### Production builds and OTA updates (Phase 8)
+
+- `expo-updates` with `runtimeVersion: { policy: "fingerprint" }` and `updates.url` in `app.json`; the app checks on launch and applies a downloaded update on the next launch.
+- `eas.json` profiles: `development` (dev client), `preview` and `production` (internal APKs, channels `preview` and `production`, EAS environments of the same names, `EXPO_PUBLIC_API_URL` from the EAS environment; `production` auto-increments `versionCode`, `appVersionSource: remote`). All share the package `com.rxniery.habits`, so installing one replaces the other.
+- **New build vs OTA**: native dependencies, config plugins, native `app.json` fields (permissions, icons, splash, package, plugins), `google-services.json` or the Expo SDK change the fingerprint and need `eas build`; JS/TS and assets go out as `eas update`. The `deploy` workflow publishes the update on channel `production` after the API is deployed, only when `apps/mobile`, a package it uses or the lockfile changed. Every update must work with the production API and with older outboxes (additive contracts only).
+- Credentials: Android keystore and FCM V1 key live in EAS (`eas credentials`); the owner keeps a keystore copy outside the repo. Never commit `credentials.json`, keystores or the service account JSON (`.gitignore` covers them).
+- First production build, install, updates and rollback (`eas update:rollback`): `README.md`, "Mobile: builds e updates (EAS)".
+
 ### Pointing at an API
 
 - **Local, USB (recommended):** `pnpm --filter api dev`, phone on USB with debugging on, `adb reverse tcp:8787 tcp:8787` and `adb reverse tcp:8081 tcp:8081` (Metro), `EXPO_PUBLIC_API_URL=http://localhost:8787`. Sign in as `dev@habits.local` / `habits-dev-password` after `db:seed:local`.

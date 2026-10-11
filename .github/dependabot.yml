@@ -1,0 +1,14 @@
+# GitHub Actions only: Dependabot supports pnpm up to v10, and this repo uses
+# pnpm 12. npm dependencies: `pnpm audit` in CI (informative) and manual
+# `pnpm update` (README.md, "Atualizações de dependências").
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]

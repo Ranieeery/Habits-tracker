@@ -15,7 +15,10 @@
 		"run_worker_first": ["/api", "/api/*"],
 	},
 	"services": [{ "binding": "API", "service": "habits-api" }],
+	// Workers Logs: only /api/* invokes this Worker (assets are served
+	// without it), so these are gateway invocations.
 	"observability": {
 		"enabled": true,
+		"head_sampling_rate": 1,
 	},
 }
