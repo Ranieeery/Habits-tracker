@@ -216,7 +216,7 @@ importers:
     dependencies:
       '@better-auth/expo':
         specifier: 1.7.7
-        version: 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))))(expo-constants@57.0.21)(expo-linking@57.0.12)(expo-network@57.0.2(expo@57.0.27)(react@19.2.3))(expo-secure-store@57.0.4(expo@57.0.27))(expo-web-browser@57.0.3(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)))
+        version: 1.7.7(e65f46a75cef84f68fbf0bfd035073b7)
       '@habits/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -231,10 +231,10 @@ importers:
         version: 1.6.3(hono@4.13.13)(zod@4.6.5)
       better-auth:
         specifier: 1.7.7
-        version: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
+        version: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(kysely@0.29.6)
+        version: 0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6)
       hono:
         specifier: ^4.13.13
         version: 4.13.13
@@ -265,7 +265,7 @@ importers:
     dependencies:
       '@better-auth/expo':
         specifier: 1.7.7
-        version: 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))))(expo-constants@57.0.21)(expo-linking@57.0.12)(expo-network@57.0.2(expo@57.0.27)(react@19.2.3))(expo-secure-store@57.0.4(expo@57.0.27))(expo-web-browser@57.0.3(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)))
+        version: 1.7.7(ad4354845dc5932a32c2172dd82c14c4)
       '@expo/ui':
         specifier: ~57.0.22
         version: 57.0.22(@babel/core@7.29.7(supports-color@10.2.2))(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(expo@57.0.27)(react-dom@19.2.3(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)
@@ -289,16 +289,22 @@ importers:
         version: 5.104.1(react@19.2.3)
       better-auth:
         specifier: 1.7.7
-        version: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
+        version: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
       dayjs:
         specifier: ^1.11.23
         version: 1.11.23
       expo:
         specifier: ~57.0.27
         version: 57.0.27(@babel/core@7.29.7(supports-color@10.2.2))(@expo/metro-runtime@57.0.16)(expo-router@57.0.25)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2)(typescript@6.0.3)
+      expo-background-task:
+        specifier: ~57.0.21
+        version: 57.0.21(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))
       expo-constants:
         specifier: ~57.0.21
         version: 57.0.21(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(supports-color@10.2.2)
+      expo-crypto:
+        specifier: ~57.0.3
+        version: 57.0.3(expo@57.0.27)
       expo-dev-client:
         specifier: ~57.0.19
         version: 57.0.19(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))
@@ -338,6 +344,9 @@ importers:
       expo-splash-screen:
         specifier: ~57.0.9
         version: 57.0.9(expo@57.0.27)(supports-color@10.2.2)(typescript@6.0.3)
+      expo-sqlite:
+        specifier: ~57.0.4
+        version: 57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)
       expo-status-bar:
         specifier: ~57.0.1
         version: 57.0.1(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)
@@ -347,6 +356,9 @@ importers:
       expo-system-ui:
         specifier: ~57.0.4
         version: 57.0.4(expo@57.0.27)(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(supports-color@10.2.2)
+      expo-task-manager:
+        specifier: ~57.0.21
+        version: 57.0.21(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))
       expo-web-browser:
         specifier: ~57.0.3
         version: 57.0.3(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))
@@ -431,7 +443,7 @@ importers:
         version: 1.170.41(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       better-auth:
         specifier: 1.7.7
-        version: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
+        version: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -4026,6 +4038,9 @@ packages:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
 
+  await-lock@2.2.2:
+    resolution: {integrity: sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw==}
+
   babel-plugin-polyfill-corejs2@0.4.17:
     resolution: {integrity: sha512-aTyf30K/rqAsNwN76zYrdtx8obu0E4KoUME29B1xj+B3WxgvWkp943vYQ+z8Mv3lw9xHXMHpvSPOBxzAkIa94w==}
     peerDependencies:
@@ -4809,11 +4824,21 @@ packages:
       react: '*'
       react-native: '*'
 
+  expo-background-task@57.0.21:
+    resolution: {integrity: sha512-2wDZvuE/Lu6+uCSHo4A7aEzkV7UXuVXdeL+NJjTu8KaefvGirCKBaDvFOtHWHxtvpcmR9yANGo1tk4HHi5/ckA==}
+    peerDependencies:
+      expo: '*'
+
   expo-constants@57.0.21:
     resolution: {integrity: sha512-D5fV2GELYGbNkoiEVZZp5zrUXZDaAx6ZzErDzGirm3jCjOhaE8iU/GyJiB0ZQE+K4Bg8gY82nIQ/RZR8CJLVjA==}
     peerDependencies:
       expo: '*'
       react-native: '*'
+
+  expo-crypto@57.0.3:
+    resolution: {integrity: sha512-SAWqEfF37nc8ot7bXsVmu9AFYwQdC2kGvH/eNAHiR3bmlcf1Vv8wu9AnGKT+a90r3T8YfwMpZP4QAYlo4vCn9w==}
+    peerDependencies:
+      expo: '*'
 
   expo-dev-client@57.0.19:
     resolution: {integrity: sha512-7giMK6BLL685GECHem2UAQvS473ImZLi5l+Q5tq+XSyv6I9UNVPs0p07mKwgBzq8z7DR3d4nTl702ziFxTjO3Q==}
@@ -4982,6 +5007,13 @@ packages:
     peerDependencies:
       expo: '*'
 
+  expo-sqlite@57.0.4:
+    resolution: {integrity: sha512-3N/bnDx4+kWEC9GABxKPLe/6RHTZJR/7DNT5tz/cYi8f7emign3ooavXnJn0+JPBA0JhHmsdDPrmC+CtT86Jzg==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
+
   expo-status-bar@57.0.1:
     resolution: {integrity: sha512-Xwaq1gAoVRWx5dPG5VhT5RSbnI9OilhZnO5qoPBnUaBAa5VzRzfdS8q0/bsPt0jR2DKLtGuP0bQ6efMJ4RIMDg==}
     peerDependencies:
@@ -5006,6 +5038,12 @@ packages:
     peerDependenciesMeta:
       react-native-web:
         optional: true
+
+  expo-task-manager@57.0.21:
+    resolution: {integrity: sha512-uZ6pHgwCOTZCUlcfIoRGa/SdQJDNm5Hwly7NFuWNscZT8/NgF1geJfXOyuC7V8j9T/mlzfB5h5ZpRP/Hl6X14g==}
+    peerDependencies:
+      expo: '*'
+      react-native: '*'
 
   expo-updates-interface@57.0.2:
     resolution: {integrity: sha512-x3SA5toiHZEkW+5oeNdUM1Rvt6M3ExegQsSwS3Z1+S9gn9utGYTGBkb8MBQivhjIZiRlQYDIhauxA8kySQEWtQ==}
@@ -7230,6 +7268,9 @@ packages:
     resolution: {integrity: sha512-hpbDzxUY9BFwX+UeBnxv3Sh1q7HFxj48DTmXchNgRa46lO8uj3/1iEn3MiNUYTg1g9ctIqXCCERn8gYZhHC5lQ==}
     engines: {node: '>=4'}
 
+  unimodules-app-loader@57.0.2:
+    resolution: {integrity: sha512-1Ja+r1VR556m1cTn4BBwAe0AQpX8mDobvN+6Kx12h0jqf0euHfvkPHg83ijuC7pWHff9vTOUc7qr5t8vnmnljg==}
+
   unique-string@2.0.0:
     resolution: {integrity: sha512-uNaeirEPvpZWSgzwsPGtU2zVSTrn/8L5q/IexZmH0eH6SA73CmAA5U4GwORTxQAZs95TAXLNqeLoPPNO5gZfWg==}
     engines: {node: '>=8'}
@@ -8474,18 +8515,18 @@ snapshots:
       nanostores: 1.5.5
       zod: 4.6.5
 
-  '@better-auth/drizzle-adapter@1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.4(kysely@0.29.6))':
+  '@better-auth/drizzle-adapter@1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))':
     dependencies:
       '@better-auth/core': 1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
       '@better-auth/utils': 0.4.2
     optionalDependencies:
-      drizzle-orm: 0.45.4(kysely@0.29.6)
+      drizzle-orm: 0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6)
 
-  '@better-auth/expo@1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))))(expo-constants@57.0.21)(expo-linking@57.0.12)(expo-network@57.0.2(expo@57.0.27)(react@19.2.3))(expo-secure-store@57.0.4(expo@57.0.27))(expo-web-browser@57.0.3(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)))':
+  '@better-auth/expo@1.7.7(ad4354845dc5932a32c2172dd82c14c4)':
     dependencies:
       '@better-auth/core': 1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
       '@better-fetch/fetch': 1.3.2
-      better-auth: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
+      better-auth: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
       better-call: 1.4.0(zod@4.6.5)
       zod: 4.6.5
     optionalDependencies:
@@ -8495,11 +8536,11 @@ snapshots:
       expo-secure-store: 57.0.4(expo@57.0.27)
       expo-web-browser: 57.0.3(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))
 
-  '@better-auth/expo@1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))))(expo-constants@57.0.21)(expo-linking@57.0.12)(expo-network@57.0.2(expo@57.0.27)(react@19.2.3))(expo-secure-store@57.0.4(expo@57.0.27))(expo-web-browser@57.0.3(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)))':
+  '@better-auth/expo@1.7.7(e65f46a75cef84f68fbf0bfd035073b7)':
     dependencies:
       '@better-auth/core': 1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
       '@better-fetch/fetch': 1.3.2
-      better-auth: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
+      better-auth: 1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
       better-call: 1.4.0(zod@4.6.5)
       zod: 4.6.5
     optionalDependencies:
@@ -11118,6 +11159,8 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
+  await-lock@2.2.2: {}
+
   babel-plugin-polyfill-corejs2@0.4.17(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2):
     dependencies:
       '@babel/compat-data': 7.29.7
@@ -11232,10 +11275,10 @@ snapshots:
 
   baseline-browser-mapping@2.11.28: {}
 
-  better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))):
+  better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))):
     dependencies:
       '@better-auth/core': 1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
-      '@better-auth/drizzle-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.4(kysely@0.29.6))
+      '@better-auth/drizzle-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))
       '@better-auth/kysely-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(kysely@0.29.6)
       '@better-auth/memory-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)
       '@better-auth/mongo-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)
@@ -11253,17 +11296,17 @@ snapshots:
       zod: 4.6.5
     optionalDependencies:
       drizzle-kit: 0.31.11
-      drizzle-orm: 0.45.4(kysely@0.29.6)
+      drizzle-orm: 0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       vitest: 4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))):
+  better-auth@1.7.7(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))):
     dependencies:
       '@better-auth/core': 1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
-      '@better-auth/drizzle-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.4(kysely@0.29.6))
+      '@better-auth/drizzle-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6))
       '@better-auth/kysely-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(kysely@0.29.6)
       '@better-auth/memory-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)
       '@better-auth/mongo-adapter': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)
@@ -11281,7 +11324,7 @@ snapshots:
       zod: 4.6.5
     optionalDependencies:
       drizzle-kit: 0.31.11
-      drizzle-orm: 0.45.4(kysely@0.29.6)
+      drizzle-orm: 0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       vitest: 4.1.11(@types/node@24.19.2)(jsdom@30.1.2(@noble/hashes@2.4.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
@@ -11654,8 +11697,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(kysely@0.29.6):
+  drizzle-orm@0.45.4(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3))(kysely@0.29.6):
     optionalDependencies:
+      expo-sqlite: 57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)
       kysely: 0.29.6
 
   dunder-proto@1.0.1:
@@ -12036,6 +12080,13 @@ snapshots:
       - supports-color
       - typescript
 
+  expo-background-task@57.0.21(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)):
+    dependencies:
+      expo: 57.0.27(@babel/core@7.29.7(supports-color@10.2.2))(@expo/metro-runtime@57.0.16)(expo-router@57.0.25)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2)(typescript@6.0.3)
+      expo-task-manager: 57.0.21(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))
+    transitivePeerDependencies:
+      - react-native
+
   expo-constants@57.0.21(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(supports-color@10.2.2):
     dependencies:
       '@expo/env': 2.4.3(supports-color@10.2.2)
@@ -12043,6 +12094,10 @@ snapshots:
       react-native: 0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
+
+  expo-crypto@57.0.3(expo@57.0.27):
+    dependencies:
+      expo: 57.0.27(@babel/core@7.29.7(supports-color@10.2.2))(@expo/metro-runtime@57.0.16)(expo-router@57.0.25)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2)(typescript@6.0.3)
 
   expo-dev-client@57.0.19(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)):
     dependencies:
@@ -12244,6 +12299,13 @@ snapshots:
       - supports-color
       - typescript
 
+  expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3):
+    dependencies:
+      await-lock: 2.2.2
+      expo: 57.0.27(@babel/core@7.29.7(supports-color@10.2.2))(@expo/metro-runtime@57.0.16)(expo-router@57.0.25)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2)(typescript@6.0.3)
+      react: 19.2.3
+      react-native: 0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)
+
   expo-status-bar@57.0.1(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3):
     dependencies:
       expo: 57.0.27(@babel/core@7.29.7(supports-color@10.2.2))(@expo/metro-runtime@57.0.16)(expo-router@57.0.25)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2)(typescript@6.0.3)
@@ -12269,6 +12331,12 @@ snapshots:
       react-native-web: 0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     transitivePeerDependencies:
       - supports-color
+
+  expo-task-manager@57.0.21(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)):
+    dependencies:
+      expo: 57.0.27(@babel/core@7.29.7(supports-color@10.2.2))(@expo/metro-runtime@57.0.16)(expo-router@57.0.25)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2))(react-native@0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2))(react@19.2.3)(supports-color@10.2.2)(typescript@6.0.3)
+      react-native: 0.86.3(@babel/core@7.29.7(supports-color@10.2.2))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.2.3)(supports-color@10.2.2)
+      unimodules-app-loader: 57.0.2
 
   expo-updates-interface@57.0.2(expo@57.0.27):
     dependencies:
@@ -14921,6 +14989,8 @@ snapshots:
   unicode-match-property-value-ecmascript@2.2.1: {}
 
   unicode-property-aliases-ecmascript@2.2.0: {}
+
+  unimodules-app-loader@57.0.2: {}
 
   unique-string@2.0.0:
     dependencies:

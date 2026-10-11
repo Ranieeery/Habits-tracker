@@ -11,6 +11,7 @@ import {
 } from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import { TimezoneBanner } from "@/features/settings/timezone-banner.tsx";
+import { SyncIndicator } from "@/features/sync/sync-indicator.tsx";
 import { formatLongDate } from "@/lib/format.ts";
 import { Button } from "@/ui/button.tsx";
 import { Screen } from "@/ui/screen.tsx";
@@ -48,6 +49,7 @@ export function HeatmapScreen() {
 					<Text className="text-sm text-muted capitalize">
 						{formatLongDate(today)}
 					</Text>
+					<SyncIndicator />
 				</View>
 				<Button
 					label="Hoje"

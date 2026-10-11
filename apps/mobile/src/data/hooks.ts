@@ -1,5 +1,6 @@
-// The data hooks the screens use. They only know the repository interface, so
-// Phase 7 can move the source to the local database without touching screens.
+// The data hooks the screens use. They only know the repository interface
+// (local-first since Phase 7: the device database plus sync), so screens never
+// know where data comes from or whether it is synced yet.
 import type {
 	CalendarDate,
 	CreateHabitRequest,
@@ -23,7 +24,18 @@ import {
 } from "./optimistic.ts";
 import { unregisterThisDevice } from "./push-registration.ts";
 import type { DayData } from "./repository.ts";
-import { useServices } from "./services.ts";
+import { prepareLocalData, useServices } from "./services.ts";
+import { unregisterBackgroundSync } from "./sync/background.ts";
+
+export {
+	useDiscardFailures,
+	useRetryFailures,
+	useRunBackgroundSync,
+	useSyncAndCountUnsynced,
+	useSyncFailures,
+	useSyncNow,
+	useSyncStatus,
+} from "./sync/hooks.ts";
 
 export const queryKeys = {
 	session: ["session"] as const,
@@ -50,11 +62,14 @@ export function invalidateHabitData(queryClient: QueryClient) {
  * for the "Hoje" button), so opening a day afterwards shows fresh data.
  */
 export function useRefreshAll() {
+	const { sync } = useServices();
 	const queryClient = useQueryClient();
 	const [refreshing, setRefreshing] = useState(false);
 	const refresh = async () => {
 		setRefreshing(true);
 		try {
+			// Bring the device database up to date first (no-op offline).
+			await sync.sync("manual");
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: queryKeys.summaries }),
 				queryClient.invalidateQueries({ queryKey: queryKeys.habits }),
@@ -81,10 +96,23 @@ export function isSettled(query: {
 // Session
 
 export function useSession() {
-	const { auth } = useServices();
+	const services = useServices();
 	return useQuery({
 		queryKey: queryKeys.session,
-		queryFn: () => auth.restoreSession(),
+		queryFn: async () => {
+			const session = await services.auth.restoreSession();
+			if (session.status === "signed_in") {
+				if (session.user) {
+					await prepareLocalData(services, session.user.id);
+				} else if (await services.local.getMeta("user_id")) {
+					// Offline with a stored session: the data on the device is
+					// that session's user's (sign-in checked it).
+					await services.sync.refresh();
+					services.sync.start();
+				}
+			}
+			return session;
+		},
 		// Checked once per launch; any 401 afterwards signs out.
 		staleTime: Infinity,
 		gcTime: Infinity,
@@ -103,10 +131,17 @@ export function resetToSignedOut(queryClient: QueryClient) {
 }
 
 export function useSignIn() {
-	const { auth } = useServices();
+	const services = useServices();
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: auth.signIn,
+		mutationFn: async (
+			credentials: Parameters<typeof services.auth.signIn>[0]
+		) => {
+			const user = await services.auth.signIn(credentials);
+			// Another user's data on this device is wiped before anything shows.
+			await prepareLocalData(services, user.id);
+			return user;
+		},
 		networkMode: "always",
 		onSuccess: (user) => {
 			const session: SessionState = { status: "signed_in", user };
@@ -120,9 +155,13 @@ export function useSignOut() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async () => {
+			await services.sync.stop();
+			await unregisterBackgroundSync();
 			// While the session exists: this device stops receiving reminders.
 			await unregisterThisDevice(services);
 			await services.auth.signOut();
+			// Pending changes are lost here: the settings screen warns first.
+			await services.local.wipe();
 		},
 		networkMode: "always",
 		onSettled: () => resetToSignedOut(queryClient),

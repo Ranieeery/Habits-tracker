@@ -1,4 +1,5 @@
 import type { CalendarDate, Completion } from "@habits/contracts";
+import { applyCompletionSet } from "@habits/core";
 import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { fromCompletionRow, toCompletionRow } from "../db/records.ts";
@@ -29,11 +30,12 @@ export interface SetCompletionInput {
 }
 
 /**
- * Marks the habit done or undone on the date. Idempotent: setting the current
- * state changes nothing. Undoing writes a tombstone (`deleted_at`) instead of
- * deleting, creating one if no row exists, so the change can sync. The caller
- * must have checked that the habit belongs to the user. Returns null when the
- * new id is already taken by another record.
+ * Marks the habit done or undone on the date (rules in `applyCompletionSet`,
+ * shared with sync). Idempotent: setting the current state changes nothing.
+ * Undoing writes a tombstone (`deleted_at`) instead of deleting, creating one
+ * if no row exists, so the change can sync. The caller must have checked that
+ * the habit belongs to the user. Returns null when the new id is already
+ * taken by another record.
  */
 export async function setCompletion(
 	db: Db,
@@ -41,21 +43,13 @@ export async function setCompletion(
 	{ habitId, date, completed, id }: SetCompletionInput,
 	now: number
 ): Promise<Completion | null> {
+	const input = { id, habit_id: habitId, date, completed };
 	let current = await findCompletion(db, userId, habitId, date);
 	if (!current) {
+		const { completion } = applyCompletionSet(null, input, now);
 		const [inserted] = await db
 			.insert(completions)
-			.values(
-				toCompletionRow(userId, {
-					id,
-					habit_id: habitId,
-					date,
-					completed_at: now,
-					created_at: now,
-					updated_at: now,
-					deleted_at: completed ? null : now,
-				})
-			)
+			.values(toCompletionRow(userId, completion))
 			.onConflictDoNothing()
 			.returning();
 		if (inserted) return fromCompletionRow(inserted);
@@ -64,18 +58,11 @@ export async function setCompletion(
 		if (!current) return null;
 	}
 
-	const isDone = current.deleted_at === null;
-	if (isDone === completed) return current;
-
-	const next = toCompletionRow(userId, {
-		...current,
-		completed_at: completed ? now : current.completed_at,
-		updated_at: now,
-		deleted_at: completed ? null : now,
-	});
+	const result = applyCompletionSet(current, input, now);
+	if (!result.changed) return current;
 	const [row] = await db
 		.update(completions)
-		.set(next)
+		.set(toCompletionRow(userId, result.completion))
 		.where(and(eq(completions.user_id, userId), eq(completions.id, current.id)))
 		.returning();
 	return fromCompletionRow(row!);

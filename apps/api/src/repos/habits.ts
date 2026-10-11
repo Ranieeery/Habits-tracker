@@ -1,4 +1,5 @@
 import type { Habit, UpdateHabitRequest } from "@habits/contracts";
+import { applyHabitChanges } from "@habits/core";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { fromHabitRow, toHabitRow } from "../db/records.ts";
@@ -48,7 +49,11 @@ export async function insertHabit(
 	return existing ? { habit: existing, created: false } : null;
 }
 
-/** Applies the changes; null if the habit is not the user's. */
+/**
+ * Applies the changes (rules in `applyHabitChanges`, shared with sync); null
+ * if the habit is not the user's. Only the fields the request carries are
+ * written, so a concurrent change of another field is kept.
+ */
 export async function updateHabit(
 	db: Db,
 	userId: string,
@@ -58,20 +63,27 @@ export async function updateHabit(
 ): Promise<Habit | null> {
 	const current = await getHabit(db, userId, habitId);
 	if (!current) return null;
-	const { archived, ...fields } = changes;
-	let archived_at = current.archived_at;
-	if (archived === true) archived_at ??= now;
-	if (archived === false) archived_at = null;
-	const next = toHabitRow(userId, {
-		...current,
-		...fields,
-		archived_at,
-		updated_at: now,
-	});
+	const result = applyHabitChanges(current, changes, now);
+	if (!result.changed) return current;
 	const [row] = await db
 		.update(habits)
-		.set(next)
+		.set(changedHabitFields(userId, result.habit, changes))
 		.where(and(ownedBy(userId), eq(habits.id, habitId)))
 		.returning();
 	return row ? fromHabitRow(row) : null;
+}
+
+/** The columns an update writes: `updated_at` and the fields it carries. */
+export function changedHabitFields(
+	userId: string,
+	next: Habit,
+	changes: UpdateHabitRequest
+): Partial<typeof habits.$inferInsert> {
+	const row = toHabitRow(userId, next);
+	return {
+		updated_at: row.updated_at,
+		...(changes.name !== undefined && { name: row.name }),
+		...(changes.schedule !== undefined && { schedule: row.schedule }),
+		...(changes.archived !== undefined && { archived_at: row.archived_at }),
+	};
 }

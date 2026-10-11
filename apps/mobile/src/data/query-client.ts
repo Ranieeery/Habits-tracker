@@ -21,7 +21,12 @@ export function createQueryClient(onUnauthorized: () => void): QueryClient {
 		queryCache: new QueryCache({ onError: handle }),
 		mutationCache: new MutationCache({ onError: handle }),
 		defaultOptions: {
+			// Habits and completions come from the device database, which works
+			// offline: never pause. Requests that need the server (settings
+			// changes, push) fail fast with `DataError` kind `offline` instead.
+			mutations: { networkMode: "always" },
 			queries: {
+				networkMode: "always",
 				staleTime: 30_000,
 				// Retry only what may succeed later (network, server errors).
 				retry: (failureCount, error) =>
@@ -34,8 +39,8 @@ export function createQueryClient(onUnauthorized: () => void): QueryClient {
 }
 
 /**
- * Refetches stale queries when the app returns to the foreground, and pauses
- * them while offline (TanStack Query's React Native setup). Call once.
+ * Refetches stale queries when the app returns to the foreground or the
+ * network comes back (TanStack Query's React Native setup). Call once.
  */
 export function connectQueryManagers(): () => void {
 	const appState = AppState.addEventListener("change", (status) => {

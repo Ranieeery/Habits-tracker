@@ -23,6 +23,8 @@ describe("OpenAPI docs", () => {
 			"/v1/push/test",
 			"/v1/settings",
 			"/v1/summary",
+			"/v1/sync/pull",
+			"/v1/sync/push",
 		]);
 
 		const ui = await api.request("/v1/docs");

@@ -15,6 +15,7 @@ import {
 	check,
 	index,
 	integer,
+	primaryKey,
 	sqliteTable,
 	text,
 	uniqueIndex,
@@ -40,6 +41,14 @@ const timestamps = {
 	updated_at: timestampMs().notNull(),
 };
 
+/**
+ * Position of the row's last write in the user's change feed (the sync
+ * cursor). Never written by the app: SQLite triggers (migration `0004_sync`)
+ * set it from `sync_state.seq` after every insert or update, so every write
+ * path gets a unique, increasing value. Not part of the contract records.
+ */
+const serverSeq = () => integer().notNull().default(0);
+
 /** Valid `YYYY-MM-DD` dates are the ones SQLite's `date()` returns unchanged. */
 const isCalendarDate = (column: AnySQLiteColumn): SQL =>
 	sql`date(${column}) IS ${column}`;
@@ -60,9 +69,11 @@ export const habits = sqliteTable(
 		archived_at: timestampMs(),
 		...timestamps,
 		deleted_at: timestampMs(),
+		server_seq: serverSeq(),
 	},
 	(t) => [
 		index("habits_user_updated_idx").on(t.user_id, t.updated_at),
+		index("habits_user_seq_idx").on(t.user_id, t.server_seq),
 		check("habits_start_date_check", isCalendarDate(t.start_date)),
 		check(
 			"habits_schedule_check",
@@ -84,11 +95,13 @@ export const completions = sqliteTable(
 		completed_at: timestampMs().notNull(),
 		...timestamps,
 		deleted_at: timestampMs(),
+		server_seq: serverSeq(),
 	},
 	(t) => [
 		uniqueIndex("completions_habit_date_unique").on(t.habit_id, t.date),
 		index("completions_user_date_idx").on(t.user_id, t.date),
 		index("completions_user_updated_idx").on(t.user_id, t.updated_at),
+		index("completions_user_seq_idx").on(t.user_id, t.server_seq),
 		check("completions_date_check", isCalendarDate(t.date)),
 	]
 );
@@ -194,3 +207,42 @@ export const pushTickets = sqliteTable(
 
 export type ReminderStateRow = typeof reminderState.$inferSelect;
 export type PushTicketRow = typeof pushTickets.$inferSelect;
+
+/**
+ * Server-only sync bookkeeping, one row per user (created by the triggers on
+ * the user's first write).
+ */
+export const syncState = sqliteTable("sync_state", {
+	user_id: text()
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
+	/** Last `server_seq` given to one of the user's rows. */
+	seq: integer().notNull().default(0),
+	/**
+	 * Highest `server_seq` among purged tombstones: a pull cursor below it may
+	 * have missed a deletion, so it must start over (`reset`).
+	 */
+	purged_seq: integer().notNull().default(0),
+});
+
+/**
+ * Applied sync mutations, for idempotency by `mutation_id` (kept for
+ * `PROCESSED_MUTATION_RETENTION_DAYS`). Rejected mutations are not recorded,
+ * so a retry is evaluated again.
+ */
+export const processedMutations = sqliteTable(
+	"processed_mutations",
+	{
+		user_id: userId(),
+		mutation_id: text().notNull(),
+		/** Id of the record the mutation touched, as stored. */
+		canonical_id: text().notNull(),
+		processed_at: timestampMs().notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.user_id, t.mutation_id] }),
+		index("processed_mutations_processed_idx").on(t.processed_at),
+	]
+);
+
+export type SyncStateRow = typeof syncState.$inferSelect;

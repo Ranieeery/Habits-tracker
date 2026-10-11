@@ -1,12 +1,11 @@
 import {
 	CreateHabitRequest,
-	type Habit,
 	HabitListResponse,
 	HabitParams,
 	HabitResponse,
 	UpdateHabitRequest,
 } from "@habits/contracts";
-import { addDays, BACKFILL_DAYS } from "@habits/core";
+import { addDays, BACKFILL_DAYS, newHabit } from "@habits/core";
 import { createRoute } from "@hono/zod-openapi";
 import { router } from "../http/context.ts";
 import {
@@ -81,16 +80,7 @@ export const habitRoutes = router()
 				422
 			);
 		}
-		const habit: Habit = {
-			id: body.id ?? uuidV7(now),
-			name: body.name,
-			schedule: body.schedule,
-			start_date: body.start_date,
-			archived_at: null,
-			created_at: now,
-			updated_at: now,
-			deleted_at: null,
-		};
+		const habit = newHabit({ ...body, id: body.id ?? uuidV7(now) }, now);
 		const result = await insertHabit(c.var.db, c.var.userId, habit);
 		if (!result) {
 			return c.json(errorBody("conflict", "Habit id already in use"), 409);

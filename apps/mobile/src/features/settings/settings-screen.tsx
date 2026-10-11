@@ -2,7 +2,14 @@ import { TimeZone } from "@habits/contracts";
 import { useState } from "react";
 import { Alert, Text, View } from "react-native";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
-import { useSession, useSignOut, useUpdateTimeZone } from "@/data/hooks.ts";
+import { useRouter } from "expo-router";
+import {
+	useSession,
+	useSignOut,
+	useSyncAndCountUnsynced,
+	useSyncStatus,
+	useUpdateTimeZone,
+} from "@/data/hooks.ts";
 import { useServices } from "@/data/services.ts";
 import { useLoadedSettings, useToday } from "@/data/today.ts";
 import { formatLongDate } from "@/lib/format.ts";
@@ -11,15 +18,63 @@ import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { TextField } from "@/ui/text-field.tsx";
 import { useToast } from "@/ui/toast.tsx";
+import { SyncIndicator } from "@/features/sync/sync-indicator.tsx";
 import { RemindersSection } from "./reminders-section.tsx";
 import { TimezoneBanner } from "./timezone-banner.tsx";
 
 export function SettingsScreen() {
 	useHideSplashWhen(true);
+	const router = useRouter();
 	const session = useSession();
 	const signOut = useSignOut();
+	const syncForSignOut = useSyncAndCountUnsynced();
+	const status = useSyncStatus();
 	const { timezone } = useLoadedSettings();
 	const user = session.data?.status === "signed_in" ? session.data.user : null;
+
+	const warnUnsynced = (count: number, canSync: boolean) =>
+		Alert.alert(
+			"Alterações não sincronizadas",
+			`${count === 1 ? "Há 1 alteração que ainda não chegou" : `Há ${count} alterações que ainda não chegaram`} ao servidor. Sair apaga deste aparelho.`,
+			[
+				{ text: "Cancelar", style: "cancel" },
+				...(canSync
+					? [
+							{
+								text: "Sincronizar e sair",
+								onPress: () =>
+									syncForSignOut.mutate(undefined, {
+										// Sign out only if everything went through;
+										// otherwise warn again with what is left.
+										onSuccess: (left) =>
+											left === 0 ? signOut.mutate() : warnUnsynced(left, false),
+									}),
+							},
+						]
+					: []),
+				{
+					text: "Sair mesmo assim",
+					style: "destructive" as const,
+					onPress: () => signOut.mutate(),
+				},
+			]
+		);
+
+	const confirmSignOut = () => {
+		const unsynced = status.pending + status.failed;
+		if (unsynced > 0) {
+			warnUnsynced(unsynced, true);
+			return;
+		}
+		Alert.alert("Sair da conta?", "Você vai precisar entrar de novo.", [
+			{ text: "Cancelar", style: "cancel" },
+			{
+				text: "Sair",
+				style: "destructive",
+				onPress: () => signOut.mutate(),
+			},
+		]);
+	};
 
 	return (
 		<Screen>
@@ -40,6 +95,25 @@ export function SettingsScreen() {
 					accessibilityRole="header"
 					className="text-lg font-bold text-foreground"
 				>
+					Sincronização
+				</Text>
+				<Text className="text-sm text-muted">
+					Seus hábitos ficam salvos neste aparelho e funcionam sem internet.
+				</Text>
+				<SyncIndicator />
+				<Button
+					variant="secondary"
+					icon="cloud-sync-outline"
+					label="Detalhes e falhas"
+					onPress={() => router.push("/sync")}
+				/>
+			</View>
+
+			<View className="gap-3 border-t border-border pt-6">
+				<Text
+					accessibilityRole="header"
+					className="text-lg font-bold text-foreground"
+				>
 					Conta
 				</Text>
 				{user ? (
@@ -52,17 +126,8 @@ export function SettingsScreen() {
 					variant="danger"
 					icon="logout"
 					label="Sair"
-					pending={signOut.isPending}
-					onPress={() =>
-						Alert.alert("Sair da conta?", "Você vai precisar entrar de novo.", [
-							{ text: "Cancelar", style: "cancel" },
-							{
-								text: "Sair",
-								style: "destructive",
-								onPress: () => signOut.mutate(),
-							},
-						])
-					}
+					pending={signOut.isPending || syncForSignOut.isPending}
+					onPress={confirmSignOut}
 				/>
 			</View>
 		</Screen>

@@ -1,5 +1,7 @@
-// `HabitsRepository` over the HTTP API. The only module that talks to
-// `@habits/api-client`.
+// `HabitsRepository` over the HTTP API, the authenticated `fetch`, and push
+// device registration. Since Phase 7 the app reads and writes habits through
+// the local repository; this one only serves settings (and push). With
+// `sync/transport.ts`, the only modules that talk to `@habits/api-client`.
 import { type ApiClient, createApiClient, unwrap } from "@habits/api-client";
 import { toDataError } from "./errors.ts";
 import type {
@@ -96,19 +98,24 @@ export function createRemoteNotifications(
 }
 
 /**
- * API client that authenticates with the Better Auth session cookie kept in
+ * `fetch` that authenticates with the Better Auth session cookie kept in
  * SecureStore. `credentials: "omit"` keeps the native cookie jar out of it,
  * as the Better Auth Expo docs recommend.
  */
-export function createAuthenticatedApiClient(
-	baseUrl: string,
+export function authenticatedFetch(
 	getCookie: () => Promise<string>
-): ApiClient {
-	const authenticatedFetch: typeof fetch = async (input, init) => {
+): typeof fetch {
+	return async (input, init) => {
 		const headers = new Headers(init?.headers);
 		const cookie = await getCookie();
 		if (cookie) headers.set("cookie", cookie);
 		return fetch(input, { ...init, headers, credentials: "omit" });
 	};
-	return createApiClient({ baseUrl, fetch: authenticatedFetch });
+}
+
+export function createAuthenticatedApiClient(
+	baseUrl: string,
+	fetcher: typeof fetch
+): ApiClient {
+	return createApiClient({ baseUrl, fetch: fetcher });
 }

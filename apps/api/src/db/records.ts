@@ -1,6 +1,8 @@
 // Boundary between D1 rows and contract records. Writes parse the record with
 // its `@habits/contracts` schema first, so nothing invalid (e.g. an unknown
-// schedule type) reaches the database; reads parse the row back.
+// schedule type) reaches the database; reads parse the row back. `server_seq`
+// (the sync cursor, set by triggers) is server bookkeeping: never written here
+// and dropped on read.
 import {
 	Completion,
 	Habit,
@@ -31,12 +33,19 @@ function withoutUserId<T extends { user_id: string }>({
 	return record;
 }
 
+/** Drops `user_id` and the sync `server_seq`. */
+function withoutServerFields<
+	T extends { user_id: string; server_seq: number },
+>({ server_seq: _, ...row }: T): Omit<Omit<T, "server_seq">, "user_id"> {
+	return withoutUserId(row);
+}
+
 export function toHabitRow(userId: string, habit: Habit): HabitInsert {
 	return { ...Habit.parse(habit), user_id: userId };
 }
 
 export function fromHabitRow(row: HabitRow): Habit {
-	return Habit.parse(withoutUserId(row));
+	return Habit.parse(withoutServerFields(row));
 }
 
 export function toCompletionRow(
@@ -47,7 +56,7 @@ export function toCompletionRow(
 }
 
 export function fromCompletionRow(row: CompletionRow): Completion {
-	return Completion.parse(withoutUserId(row));
+	return Completion.parse(withoutServerFields(row));
 }
 
 export function toUserSettingsRow(

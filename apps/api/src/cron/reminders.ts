@@ -34,7 +34,7 @@ import {
 
 /**
  * External fetches per run, under the Free plan's 50 subrequests per
- * invocation (D1 queries count against a separate, larger limit).
+ * invocation (D1 queries have their own limit, also 50 on Free).
  */
 export const MAX_FETCHES_PER_RUN = 40;
 /** Expo asks to read receipts about 15 minutes after sending. */

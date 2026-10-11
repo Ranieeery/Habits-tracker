@@ -14,7 +14,9 @@ import {
 	Schedule,
 	SignInRequest,
 	SignUpRequest,
+	SYNC_PUSH_MAX_MUTATIONS,
 	SyncPullResponse,
+	SyncPushEnvelope,
 	TimeZone,
 	UpdateUserSettingsRequest,
 	UserSettings,
@@ -124,23 +126,52 @@ describe("Mutation", () => {
 		});
 		expect(mutation.type).toBe("completion.set");
 
-		const upsert = Mutation.parse({
+		const create = Mutation.parse({
 			mutation_id: id,
 			created_at: 1_767_800_000_000,
-			type: "habit.upsert",
-			record: habit,
+			type: "habit.create",
+			id: habitId,
+			name: "Beber água",
+			schedule: { type: "weekdays", days: [1, 3, 5] },
+			start_date: "2026-01-07",
 		});
-		expect(upsert.type === "habit.upsert" && upsert.record.name).toBe(
-			"Beber água"
-		);
+		expect(create.type === "habit.create" && create.name).toBe("Beber água");
+
+		const update = Mutation.parse({
+			mutation_id: id,
+			created_at: 1_767_800_000_000,
+			type: "habit.update",
+			habit_id: habitId,
+			changes: { archived: true },
+		});
+		expect(update.type === "habit.update" && update.changes).toEqual({
+			archived: true,
+		});
+	});
+
+	it("does not require the client's updated_at on completion.set", () => {
+		expect(
+			Mutation.safeParse({
+				mutation_id: id,
+				created_at: 1,
+				type: "completion.set",
+				id,
+				habit_id: habitId,
+				date: "2026-01-07",
+				completed: true,
+			}).success
+		).toBe(true);
 	});
 
 	it("rejects a mutation without mutation_id or with an unknown type", () => {
 		expect(
 			Mutation.safeParse({
 				created_at: 1,
-				type: "habit.upsert",
-				record: habit,
+				type: "habit.create",
+				id: habitId,
+				name: "Beber água",
+				schedule: { type: "weekdays", days: [1] },
+				start_date: "2026-01-07",
 			}).success
 		).toBe(false);
 		expect(
@@ -153,6 +184,32 @@ describe("Mutation", () => {
 	});
 });
 
+describe("SyncPushEnvelope", () => {
+	it("only checks mutation ids, so each mutation is parsed on its own", () => {
+		const envelope = SyncPushEnvelope.parse({
+			protocol: 1,
+			mutations: [{ mutation_id: id, type: "habit.explode", extra: 1 }],
+		});
+		expect(envelope.mutations[0]).toMatchObject({ type: "habit.explode" });
+		expect(
+			SyncPushEnvelope.safeParse({
+				protocol: 1,
+				mutations: [{ type: "completion.set" }],
+			}).success
+		).toBe(false);
+	});
+
+	it("caps the batch size", () => {
+		const mutations = Array.from(
+			{ length: SYNC_PUSH_MAX_MUTATIONS + 1 },
+			() => ({ mutation_id: id })
+		);
+		expect(SyncPushEnvelope.safeParse({ protocol: 1, mutations }).success).toBe(
+			false
+		);
+	});
+});
+
 describe("SyncPullResponse", () => {
 	it("carries tombstones", () => {
 		const response = SyncPullResponse.parse({
@@ -161,6 +218,7 @@ describe("SyncPullResponse", () => {
 			changes: { habits: [{ ...habit, deleted_at: 5 }], completions: [] },
 		});
 		expect(response.changes.habits[0]?.deleted_at).toBe(5);
+		expect(response.reset).toBeUndefined();
 	});
 });
 

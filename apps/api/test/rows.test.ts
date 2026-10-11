@@ -26,9 +26,13 @@ import { buildSeed } from "../src/db/seed/build.ts";
 type DistributiveKeyOf<T> = T extends unknown ? keyof T : never;
 
 describe("row types", () => {
-	it("are the contract records plus user_id", () => {
-		expectTypeOf<Omit<HabitRow, "user_id">>().toEqualTypeOf<Habit>();
-		expectTypeOf<Omit<CompletionRow, "user_id">>().toEqualTypeOf<Completion>();
+	it("are the contract records plus user_id (and the sync server_seq)", () => {
+		expectTypeOf<
+			Omit<HabitRow, "user_id" | "server_seq">
+		>().toEqualTypeOf<Habit>();
+		expectTypeOf<
+			Omit<CompletionRow, "user_id" | "server_seq">
+		>().toEqualTypeOf<Completion>();
 		expectTypeOf<
 			Omit<UserSettingsRow, "user_id">
 		>().toEqualTypeOf<UserSettings>();

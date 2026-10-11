@@ -14,6 +14,7 @@ import { habitRoutes } from "./routes/habits.ts";
 import { pushRoutes } from "./routes/push.ts";
 import { settingsRoutes } from "./routes/settings.ts";
 import { statsRoutes } from "./routes/stats.ts";
+import { syncRoutes } from "./routes/sync.ts";
 
 export interface AppOptions {
 	/** Current instant; tests pass a fixed clock. */
@@ -103,7 +104,8 @@ export function createApp({
 		.route("/", completionRoutes)
 		.route("/", statsRoutes)
 		.route("/", settingsRoutes)
-		.route("/", pushRoutes);
+		.route("/", pushRoutes)
+		.route("/", syncRoutes);
 }
 
 export type AppType = ReturnType<typeof createApp>;

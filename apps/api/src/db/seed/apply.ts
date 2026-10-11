@@ -1,24 +1,10 @@
-import { eq, getTableColumns, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
+import { chunk, columnCount } from "../chunk.ts";
 import type { Db } from "../client.ts";
 import { toCompletionRow, toHabitRow, toUserSettingsRow } from "../records.ts";
 import { account, completions, habits, user, userSettings } from "../schema.ts";
 import type { Seed } from "./build.ts";
-
-const columnCount = (table: typeof habits | typeof completions) =>
-	Object.keys(getTableColumns(table)).length;
-
-/** D1 accepts at most 100 bound parameters per statement. */
-const MAX_PARAMS = 100;
-
-function chunk<T>(rows: T[], columns: number): T[][] {
-	const size = Math.floor(MAX_PARAMS / columns);
-	const chunks: T[][] = [];
-	for (let i = 0; i < rows.length; i += size) {
-		chunks.push(rows.slice(i, i + size));
-	}
-	return chunks;
-}
 
 /**
  * Replaces the seed user and all their data in one atomic batch: deleting the
