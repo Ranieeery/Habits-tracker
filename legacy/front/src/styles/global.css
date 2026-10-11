@@ -1,9 +1,0 @@
-@import "tailwindcss";
-@tailwind utilities;
-
-@theme {
-    --color-background: #09090a;
-}
-:root {
-    --grid-rows: repeat(7, minmax(0, 1fr));
-}

@@ -1,6 +1,6 @@
 # Habits
 
-Rastreador de hábitos com heatmap no estilo das contribuições do GitHub. Versão 2.0.0, uma reescrita completa do app antigo, que fica em `legacy/` só como referência.
+Rastreador de hábitos com heatmap no estilo das contribuições do GitHub. Versão 2.0.0, uma reescrita completa do app antigo (1.x), removido da árvore e preservado no histórico: a tag `v2.0.0` ainda contém a pasta `legacy/` (`git show v2.0.0:legacy/<caminho>`).
 
 - **Mobile (principal):** Expo + Expo Router, Android, offline-first (SQLite no aparelho e sync com o servidor).
 - **Web:** PWA em Vite + React, online, com Web Push.
@@ -48,7 +48,6 @@ Monorepo pnpm + Turborepo.
 | `packages/core`          | Lógica de domínio pura (datas, agenda, heatmap, regras de sync).       |
 | `packages/api-client`    | Cliente tipado da API, usado pelo web e pelo mobile.                   |
 | `packages/design-tokens` | Cores e espaçamentos (Tailwind no web, NativeWind no mobile).          |
-| `legacy/`                | App antigo (1.x), somente leitura.                                     |
 | `.github/`               | Workflows de CI/CD e Dependabot.                                       |
 
 ## Desenvolvimento
@@ -151,8 +150,8 @@ Se um passo do CI falhar com `Authentication error [code: 10000]`, falta uma per
    `.gitignore` já cobre `.dev.vars*`, `.env*`, `backups/`, `tail*.json`, `credentials.json`, `*.jks`, `*.keystore` e `*service-account*.json`.
 
 2. **O repositório é público.**
-   - `legacy/server/src/notification-routes.ts` tem um par de chaves VAPID hardcoded, e ele está no histórico: trate-o como comprometido e **nunca o reutilize**. As chaves de produção da v2 já são outras (`VITE_VAPID_PUBLIC_KEY` é diferente da chave pública do legado).
-   - `legacy/server/prisma/dev.db` também está versionado e público. Pelas Decisions, ele só tem dados de teste.
+   - O app antigo foi removido da árvore, mas continua no histórico público (a tag `v2.0.0` ainda contém a pasta `legacy/`). `legacy/server/src/notification-routes.ts` tinha um par de chaves VAPID hardcoded: trate-o como comprometido e **nunca o reutilize**. As chaves de produção da v2 já são outras (`VITE_VAPID_PUBLIC_KEY` é diferente da chave pública do legado).
+   - `legacy/server/prisma/dev.db` também segue público no histórico. Pelas Decisions, ele só tem dados de teste.
    - Se algum dia houver algo sensível no histórico, só um `git filter-repo` mais force push remove (decisão sua; reescreve o histórico).
 3. Exportações do D1 têm dados reais. Elas ficam em `backups/` (ignorado) ou no R2 privado, nunca como artefato do GitHub nem em issue.
 
