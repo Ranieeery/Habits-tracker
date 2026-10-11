@@ -60,7 +60,7 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 - Tests: Vitest for modules without React Native imports (`src/**/*.test.ts`, node environment); no component tests. The local store and the sync engine run their real SQL on Node's `node:sqlite` in memory (`data/local/testing/`), against a fake server built on core's sync rules. `pnpm --filter mobile test`.
 
 - Add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK; check with `pnpm dlx expo-doctor`.
-- Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins.
+- Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins. `@babel/plugin-transform-react-jsx` is a devDependency only because the NativeWind/css-interop preset loads it by name without declaring it (a clean install cannot resolve it otherwise); keep it.
 - Version is `2.0.0` in both `package.json` and `expo.version` in `app.json`; keep them in sync.
 - `*.config.js` files are CommonJS (ESLint override in `eslint.config.mjs`); the Vitest config is `vitest.config.mts` because the package is CommonJS.
 
