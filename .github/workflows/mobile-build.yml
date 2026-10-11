@@ -1,0 +1,56 @@
+# Starts an EAS Build (Android) by hand. Runs on Linux on purpose: EAS
+# compares the runtime version (fingerprint) computed where the build is
+# started with the one computed on its Linux build server, and pnpm names its
+# node_modules/.pnpm folders differently on Windows, so a build started from
+# Windows fails with "Runtime version mismatch". Starting it here also keeps
+# builds on the same fingerprint as the OTA updates that deploy.yml publishes.
+#
+# The build itself runs on EAS; this job only uploads the project and exits
+# (--no-wait). Follow it on expo.dev, which also emails the result.
+# Secret (environment "production"): EXPO_TOKEN.
+name: mobile-build
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile
+        type: choice
+        options: [production, preview, development]
+        default: production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: eas build (${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+
+      - name: eas build
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          pnpm dlx eas-cli@24.8.0 build \
+            --profile "$PROFILE" --platform android \
+            --non-interactive --no-wait \
+            --message "${GITHUB_SHA::7} via GitHub Actions"
