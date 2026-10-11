@@ -6,7 +6,12 @@ import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
-import { isSettled, useDay, useToggleCompletion } from "@/data/hooks.ts";
+import {
+	isSettled,
+	useDay,
+	useHabits,
+	useToggleCompletion,
+} from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import {
 	formatFullDate,
@@ -21,6 +26,7 @@ import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { useToast } from "@/ui/toast.tsx";
+import { NewHabitSheet } from "./new-habit-sheet.tsx";
 
 /** Route param: a `YYYY-MM-DD` date, or "hoje" (follows the day turning). */
 export const TODAY_PARAM = "hoje";
@@ -45,7 +51,9 @@ export function DayScreen() {
 
 /**
  * The habits possible on `date` and their completion. Only today can be
- * edited, like the legacy app; other days are read-only.
+ * edited, like the legacy app; other days are read-only. Today also has
+ * "Novo hábito" in a fixed footer: one-handed reach, and since the list
+ * scrolls above it, it never covers the last habit or its checkbox.
  */
 function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 	const router = useRouter();
@@ -66,6 +74,7 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 			edges={[]}
 			onRefresh={() => void day.refetch()}
 			refreshing={day.isRefetching}
+			footer={editable ? <NewHabitSheet today={today} /> : undefined}
 		>
 			<Stack.Screen
 				options={{ title: editable ? "Hoje" : formatShortDate(date) }}
@@ -85,7 +94,9 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 
 			<QueryState query={day} loadingLabel="Carregando o dia…">
 				{(data) =>
-					data.possible_habits.length === 0 ? (
+					data.possible_habits.length === 0 && editable ? (
+						<TodayEmptyState />
+					) : data.possible_habits.length === 0 ? (
 						<EmptyState
 							title="Nenhum hábito para este dia"
 							description="Hábitos aparecem nos dias da semana escolhidos para eles."
@@ -111,6 +122,32 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 				}
 			</QueryState>
 		</Screen>
+	);
+}
+
+/** Today without habits: points at the footer's "Novo hábito" button. */
+function TodayEmptyState() {
+	const router = useRouter();
+	const habits = useHabits();
+	const hasActive = habits.data?.some((habit) => habit.archived_at === null);
+
+	return hasActive ? (
+		<EmptyState
+			title="Nenhum hábito para hoje"
+			description="Hábitos aparecem nos dias da semana escolhidos para eles. Toque em Novo hábito, aqui embaixo, para criar outro."
+			action={
+				<Button
+					variant="ghost"
+					label="Gerenciar hábitos"
+					onPress={() => router.navigate("/habits")}
+				/>
+			}
+		/>
+	) : (
+		<EmptyState
+			title="Nenhum hábito ainda"
+			description="Toque em Novo hábito, aqui embaixo, para criar o primeiro. Ele começa a contar hoje."
+		/>
 	);
 }
 

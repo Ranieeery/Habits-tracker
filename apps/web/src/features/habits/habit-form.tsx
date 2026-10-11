@@ -74,11 +74,17 @@ export function HabitForm({
 	initial,
 	submitLabel,
 	pending = false,
+	autoFocusName = false,
+	error,
 	onSubmit,
 }: {
 	initial?: HabitFormValues;
 	submitLabel: string;
 	pending?: boolean;
+	/** Focus the name when the form appears (dialogs opened for creating). */
+	autoFocusName?: boolean;
+	/** A failure to save, shown above the button; the typed values stay. */
+	error?: string;
 	onSubmit: (values: HabitFormValues) => void;
 }) {
 	const ids = {
@@ -122,6 +128,7 @@ export function HabitForm({
 					maxLength={120}
 					placeholder="Ex.: exercícios, dormir bem, beber água…"
 					autoComplete="off"
+					autoFocus={autoFocusName}
 					aria-invalid={errors.name ? true : undefined}
 					aria-describedby={errors.name ? ids.nameError : undefined}
 					onChange={(event) => setName(event.target.value)}
@@ -141,6 +148,8 @@ export function HabitForm({
 				/>
 				<FieldError id={ids.daysError}>{errors.days}</FieldError>
 			</div>
+
+			<FieldError>{error}</FieldError>
 
 			<Button type="submit" variant="success" disabled={pending}>
 				{pending ? "Salvando…" : submitLabel}

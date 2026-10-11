@@ -115,10 +115,13 @@ describe("day view toggle", () => {
 		expect(screen.getByText(/Somente leitura/)).toBeInTheDocument();
 	});
 
-	it("shows an empty state when nothing is scheduled", async () => {
-		renderApp("/today");
+	it("shows an empty state when nothing is scheduled on a past day", async () => {
+		renderApp("/day/2026-10-01");
 		expect(
 			await screen.findByText("Nenhum hábito para este dia")
 		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "Novo hábito" })
+		).not.toBeInTheDocument();
 	});
 });

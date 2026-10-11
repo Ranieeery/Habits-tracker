@@ -9,7 +9,7 @@ Rastreador de hábitos pessoal com heatmap no estilo das contribuições do GitH
 - **API:** Hono em Cloudflare Workers, banco D1 (SQLite) via Drizzle, autenticação com Better Auth e um cron que manda lembretes ("Você tem N hábitos pendentes hoje").
 - **Infra:** cabe nos planos gratuitos da Cloudflare, do Expo (EAS) e do GitHub Actions. O único produto que pede cartão é o R2, usado para backups, e o uso fica dentro do gratuito.
 
-Versão 2.0.0, uma reescrita completa do app antigo (1.x), que continua no histórico do git: a tag `v2.0.0` ainda contém a pasta `legacy/`.
+Versão 2.1.0. A 2.0.0 foi uma reescrita completa do app antigo (1.x), que continua no histórico do git: a tag `v2.0.0` ainda contém a pasta `legacy/`. API, web e mobile sempre têm a mesma versão; a política e o histórico estão em [`CLAUDE.md`](CLAUDE.md) ("Git and versioning").
 
 As regras de arquitetura, o modelo de dados, as decisões e todos os comandos de desenvolvimento estão em [`CLAUDE.md`](CLAUDE.md) e nos `CLAUDE.md` de cada app (em inglês). Este README explica como rodar localmente e como publicar a sua própria instância.
 
@@ -297,7 +297,7 @@ Instale pelo link ou QR que o EAS mostra. Ele usa o mesmo package do development
 **Build novo ou OTA?** A política do `runtimeVersion` é `fingerprint`: um hash de tudo que é nativo.
 
 - **Precisa de build novo:** dependência nativa nova ou atualizada, config plugin, campos nativos do `app.json` (permissões, ícone, splash, package, plugins), `google-services.json`, SDK do Expo. O OTA publicado depois disso só chega aos builds com o mesmo fingerprint, nunca a um binário incompatível.
-- **Vai por OTA:** só JS, TS ou assets.
+- **Vai por OTA:** só JS, TS ou assets. Subir a versão (`expo.version`) também: `apps/mobile/fingerprint.config.js` tira `version` e `versionCode` do hash. O `versionCode` fica no EAS (`appVersionSource: remote`) e sobe sozinho a cada build de produção.
 - Todo OTA roda contra a API publicada, que o mesmo workflow atualiza antes. A API continua aceitando o que apps antigos mandam: contratos só aditivos, protocolo de sync `1`, outbox antigo processado mutation por mutation.
 - Builds e OTAs saem do Linux (workflows `mobile-build` e `deploy`), então os dois calculam o mesmo fingerprint. Um `eas update` ou `eas build` local no Windows calcula outro. `apps/mobile/.fingerprintignore` tira as pastas `android/` e `ios/` geradas do cálculo.
 
@@ -497,7 +497,7 @@ Depois do primeiro deploy pelo CI (e de mudanças grandes). Os comandos são par
 
 ```bash
 U=<ORIGEM>
-curl -s $U/api/v1/health; echo                                     # {"status":"ok","version":"2.0.0"}
+curl -s $U/api/v1/health; echo                                     # {"status":"ok","version":"2.1.0"}
 curl -s -o /dev/null -w "docs: %{http_code}\n" $U/api/v1/docs       # 404
 curl -sI $U/ | grep -iE "content-security|x-content|referrer|x-frame|permissions|cache-control"
 curl -sI $U/sw.js | grep -i cache-control                           # no-cache

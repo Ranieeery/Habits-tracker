@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors } from "@habits/design-tokens";
-import type { ComponentProps } from "react";
+import type { ComponentProps, Ref } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger";
@@ -40,6 +40,7 @@ export function Button({
 	disabled = false,
 	accessibilityHint,
 	className = "",
+	ref,
 }: {
 	label: string;
 	onPress: () => void;
@@ -49,10 +50,13 @@ export function Button({
 	disabled?: boolean;
 	accessibilityHint?: string;
 	className?: string;
+	/** For giving the accessibility focus back (e.g. after a sheet closes). */
+	ref?: Ref<View>;
 }) {
 	const inactive = disabled || pending;
 	return (
 		<Pressable
+			ref={ref}
 			accessibilityRole="button"
 			accessibilityLabel={label}
 			accessibilityHint={accessibilityHint}

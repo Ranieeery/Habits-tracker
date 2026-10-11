@@ -35,11 +35,6 @@ export function weekdayName(weekday: number): string {
 	return fmt(addDays(SUNDAY, weekday), "dddd");
 }
 
-/** "dom" ... "sáb" (Sunday = 0). */
-export function weekdayShortName(weekday: number): string {
-	return fmt(addDays(SUNDAY, weekday), "ddd");
-}
-
 /** "D", "S", "T", "Q", "Q", "S", "S" (Sunday = 0). */
 export function weekdayInitial(weekday: number): string {
 	return weekdayName(weekday).charAt(0).toUpperCase();
@@ -58,13 +53,4 @@ export function formatPercent(ratio: number): string {
 /** "1 hábito", "3 hábitos" */
 export function pluralHabits(count: number): string {
 	return `${count} ${count === 1 ? "hábito" : "hábitos"}`;
-}
-
-/** "Todos os dias", "Dias úteis", or "seg, qua, sex" (Sunday = 0). */
-export function formatWeekdays(days: readonly number[]): string {
-	const sorted = [...new Set(days)].sort((a, b) => a - b);
-	if (sorted.length === 7) return "Todos os dias";
-	if (sorted.join() === "1,2,3,4,5") return "Dias úteis";
-	if (sorted.join() === "0,6") return "Fins de semana";
-	return sorted.map(weekdayShortName).join(", ");
 }

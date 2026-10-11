@@ -1,10 +1,10 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { Habit } from "@habits/contracts";
+import { formatWeekdays } from "@habits/core";
 import { colors } from "@habits/design-tokens";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { isSettled, useHabits } from "@/data/hooks.ts";
-import { formatWeekdays } from "@/lib/format.ts";
 import { Button } from "@/ui/button.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";

@@ -1,6 +1,7 @@
 // Everything the UI needs from the outside world, injected so tests can swap
 // the network, the clock and the device time zone.
 import type { ApiClient } from "@habits/api-client";
+import { uuidV7 } from "@habits/core";
 import { createContext, use } from "react";
 import type { AuthService } from "./auth.ts";
 import type { PushService } from "./push.ts";
@@ -17,10 +18,17 @@ export interface Services {
 	now: Clock;
 	/** IANA time zone the device is set to. */
 	deviceTimeZone: () => string;
+	/** A new UUID v7 for records the app creates (see `systemNewId`). */
+	newId: () => string;
 }
 
 /** The single place in the web app that reads the system clock. */
 export const systemClock: Clock = () => Date.now();
+
+/** UUID v7 from the system clock and Web Crypto randomness. */
+export function systemNewId(): string {
+	return uuidV7(systemClock(), crypto.getRandomValues(new Uint8Array(16)));
+}
 
 export function systemTimeZone(): string {
 	return Intl.DateTimeFormat().resolvedOptions().timeZone;

@@ -46,7 +46,7 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 - `src/data/sync/`: `engine.ts` (push → pull → settings, lock + lease, backoff with jitter, status for the UI), `transport.ts` (requests with a 20 s timeout, error classification, `Date`/`Retry-After` headers), `triggers.ts` (`useSyncTriggers`: launch, foreground, network via `expo-network`, every 5 min, background registration after the first sync), `background.ts` (`habits-sync` task, expo-background-task), `failures.ts` (pt-BR descriptions of refused changes), `hooks.ts`.
 - `src/features/sync/`: `initial-sync-gate.tsx`, `sync-indicator.tsx` (heatmap header and Ajustes), `sync-screen.tsx` (status, "Sincronizar agora", clock warning, failures with "Tentar de novo"/"Descartar").
 - `src/features/notifications/notification-responder.tsx` (in the authenticated layout): registers the token, handles taps (also from a cold start) by opening `/day/hoje`, and shows foreground notifications as a toast (the handler hides the banner and sound).
-- `src/features/<screen>/`: screens and their components. `src/ui/`: shared primitives (Button, TextField, states, Toast, Screen, splash). `src/lib/`: pure helpers (dayjs pt-BR formatting, time zone banner rule).
+- `src/features/<screen>/`: screens and their components. `features/day/new-habit-sheet.tsx`: today's "Novo hábito" (the day screen's fixed footer, full width: one-handed reach, never over the list) opening a bottom sheet (React Native `Modal` + keyboard-controller's `KeyboardAvoidingView`, no sheet library) with the same `HabitForm` as the habits tab; one id per opening (`useNewId`), written to the outbox like any habit (works offline); when the habit does not count today, a toast with core's `newHabitNotice`. `src/ui/`: shared primitives (Button, TextField, states, Toast, Screen with an optional fixed `footer`, splash). `src/lib/`: pure helpers (dayjs pt-BR formatting, time zone banner rule).
 
 ## Rules
 
@@ -61,7 +61,7 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 
 - Add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK; check with `pnpm dlx expo-doctor`.
 - Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins. `@babel/plugin-transform-react-jsx` is a devDependency only because the NativeWind/css-interop preset loads it by name without declaring it (a clean install cannot resolve it otherwise); keep it.
-- Version is `2.0.0` in both `package.json` and `expo.version` in `app.json`; keep them in sync.
+- Version (`2.1.0`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
 - `*.config.js` files are CommonJS (ESLint override in `eslint.config.mjs`); the Vitest config is `vitest.config.mts` because the package is CommonJS.
 
 ## Manual checks on the device (Phase 7)
@@ -77,3 +77,18 @@ Pending, on a new development build with the API migrated (`db:migrate:local` or
 7. Sign out with pending changes: the warning lists them; "Sincronizar e sair" sends them first; "Sair mesmo assim" wipes them. Signing in as another user never shows the previous user's data.
 8. Background: with the app closed, change something on the web and wait (at least 15 minutes, OS-scheduled); reopening shows it without a visible sync. In a development build, Sincronização > "Rodar a tarefa em segundo plano (debug)" runs the task at once (`triggerTaskWorkerForTestingAsync`).
 9. Failures: create a habit offline, keep the phone offline for more than 7 days (or move the clock): the creation and its completions appear grouped in "Falhas"; "Descartar" removes them all.
+
+## Manual checks on the device (2.1.0: new habit from today)
+
+Pending, on the 2.1.0 production build (the fingerprint changed once, see the root `CLAUDE.md`):
+
+1. Today shows "Novo hábito" fixed at the bottom; the list scrolls above it and the last habit and its checkbox stay tappable. Reachable with one thumb.
+2. Tap it: the sheet slides up, the name field has the focus and the keyboard pushes the sheet up (the "Criar hábito" button stays visible). All seven days start selected.
+3. Type a name and press Enter on the keyboard: the habit is created and appears unchecked in today's list; the sheet closes.
+4. Create a habit without today's weekday: the sheet closes, a toast says "Hábito criado. Aparece em: …", and today's list does not change. It appears on its weekdays from today on, never on past days.
+5. Empty name, only spaces, or no day: inline errors, nothing created. Close with "Fechar", by tapping outside and with Android back.
+6. Double tap "Criar hábito" quickly: only one habit appears (also on the web after syncing).
+7. TalkBack: focus stays inside the sheet while it is open, and returns to "Novo hábito" when it closes.
+8. Open a past day from the heatmap: no "Novo hábito".
+9. Airplane mode: create a habit, see it in the list and mark it; the indicator shows pending changes. Turn the network back on: it syncs, and the web shows the habit and the completion.
+10. No habits at all (new account): today's empty state says "Nenhum hábito ainda" and points at the footer button.

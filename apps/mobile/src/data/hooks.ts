@@ -200,6 +200,14 @@ export function useHabits() {
 	});
 }
 
+/**
+ * The id generator (UUID v7) for records a screen creates: a form takes one
+ * id per opening, so submitting twice never creates two records.
+ */
+export function useNewId(): () => string {
+	return useServices().newId;
+}
+
 export function useCreateHabit() {
 	const { repository } = useServices();
 	const queryClient = useQueryClient();

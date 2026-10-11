@@ -1,6 +1,6 @@
 import { HabitName, type Schedule, WeekdaysSchedule } from "@habits/contracts";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { type Ref, useState } from "react";
+import { Pressable, Text, type TextInput, View } from "react-native";
 import { weekdayInitial, weekdayName } from "@/lib/format.ts";
 import { Button } from "@/ui/button.tsx";
 import { FieldError, TextField } from "@/ui/text-field.tsx";
@@ -61,11 +61,17 @@ export function HabitForm({
 	initial,
 	submitLabel,
 	pending = false,
+	error,
+	nameRef,
 	onSubmit,
 }: {
 	initial?: HabitFormValues;
 	submitLabel: string;
 	pending?: boolean;
+	/** A failure to save, shown above the button; the typed values stay. */
+	error?: string;
+	/** The name input, for focusing it when a sheet opens. */
+	nameRef?: Ref<TextInput>;
 	onSubmit: (values: HabitFormValues) => void;
 }) {
 	const [name, setName] = useState(initial?.name ?? "");
@@ -75,6 +81,8 @@ export function HabitForm({
 	const [errors, setErrors] = useState<Errors>({});
 
 	const submit = () => {
+		// Enter on the keyboard can submit while the button is disabled.
+		if (pending) return;
 		const parsedName = HabitName.safeParse(name);
 		const parsedSchedule = WeekdaysSchedule.safeParse({
 			type: "weekdays",
@@ -94,6 +102,7 @@ export function HabitForm({
 	return (
 		<View className="gap-6">
 			<TextField
+				ref={nameRef}
 				label="Qual é o hábito?"
 				value={name}
 				onChangeText={setName}
@@ -101,6 +110,8 @@ export function HabitForm({
 				placeholder="Ex.: exercícios, dormir bem, beber água…"
 				autoCapitalize="sentences"
 				returnKeyType="done"
+				// The keyboard's Enter key submits the form.
+				onSubmitEditing={submit}
 				error={errors.name}
 			/>
 
@@ -111,6 +122,8 @@ export function HabitForm({
 				<WeekdayPicker value={days} onChange={setDays} />
 				<FieldError>{errors.days}</FieldError>
 			</View>
+
+			<FieldError>{error}</FieldError>
 
 			<Button label={submitLabel} pending={pending} onPress={submit} />
 		</View>

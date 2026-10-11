@@ -5,7 +5,7 @@ import { App } from "./App.tsx";
 import { UpdatePrompt } from "./components/update-prompt.tsx";
 import { createAuthService } from "./lib/auth.ts";
 import { createBrowserPushService } from "./lib/push.ts";
-import { systemClock, systemTimeZone } from "./lib/services.ts";
+import { systemClock, systemNewId, systemTimeZone } from "./lib/services.ts";
 import { createAppRouter } from "./router.tsx";
 import "./styles.css";
 
@@ -29,6 +29,7 @@ const router = createAppRouter({
 	push: createBrowserPushService(import.meta.env.VITE_VAPID_PUBLIC_KEY),
 	now: systemClock,
 	deviceTimeZone: systemTimeZone,
+	newId: systemNewId,
 });
 
 createRoot(root).render(

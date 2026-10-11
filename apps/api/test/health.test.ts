@@ -1,5 +1,6 @@
 import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import { version } from "../package.json";
 
 describe("GET /v1/health", () => {
 	it("returns ok with the app version", async () => {
@@ -8,6 +9,7 @@ describe("GET /v1/health", () => {
 		);
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ status: "ok", version: "2.0.0" });
+		expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+		expect(await response.json()).toEqual({ status: "ok", version });
 	});
 });
