@@ -33,20 +33,21 @@ export const colors = {
 		DEFAULT: "#f87171",
 		surface: "#450a0a",
 	},
-	// Heatmap levels 0 (nothing done) to 5 (>= 80%), legacy mobile mapping.
+	// Heatmap levels 0 (nothing done) to 5 (>= 80%). Like GitHub's dark theme,
+	// more done is brighter: violet-900 up to violet-400 on the dark surface.
 	heatmap: {
 		0: "#18181b",
 		"0-border": "#27272a",
-		1: "#a78bfa",
-		"1-border": "#8b5cf6",
-		2: "#7c3aed",
-		"2-border": "#8b5cf6",
+		1: "#4c1d95",
+		"1-border": "#5b21b6",
+		2: "#5b21b6",
+		"2-border": "#6d28d9",
 		3: "#6d28d9",
 		"3-border": "#7c3aed",
-		4: "#5b21b6",
-		"4-border": "#6d28d9",
-		5: "#4c1d95",
-		"5-border": "#5b21b6",
+		4: "#7c3aed",
+		"4-border": "#8b5cf6",
+		5: "#a78bfa",
+		"5-border": "#c4b5fd",
 	},
 } as const;
 

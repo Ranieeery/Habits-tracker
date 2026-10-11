@@ -15,7 +15,8 @@ describe("renderThemeCss", () => {
 		const css = renderThemeCss();
 		expect(css).toContain("--color-accent: #8e51ff;");
 		expect(css).toContain("--color-accent-hover: #c4b5fd;");
-		expect(css).toContain("--color-heatmap-1: #a78bfa;");
-		expect(css).toContain("--color-heatmap-1-border: #8b5cf6;");
+		expect(css).toContain("--color-heatmap-1: #4c1d95;");
+		expect(css).toContain("--color-heatmap-5: #a78bfa;");
+		expect(css).toContain("--color-heatmap-5-border: #c4b5fd;");
 	});
 });
