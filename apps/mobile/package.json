@@ -61,6 +61,7 @@
 		"react-native-worklets": "0.10.1"
 	},
 	"devDependencies": {
+		"@babel/plugin-transform-react-jsx": "^7.29.7",
 		"@types/react": "catalog:",
 		"babel-preset-expo": "~57.0.14",
 		"eslint-plugin-react-hooks": "^7.1.1",

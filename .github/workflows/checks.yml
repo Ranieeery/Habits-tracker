@@ -44,6 +44,14 @@ jobs:
       # Migrations must stay additive (README.md, "Mudança destrutiva").
       - run: pnpm --filter api migrations:check
       - run: pnpm --filter web build
+      # The same Metro export `eas update` runs: catches bundling errors (such
+      # as a Babel plugin that only resolves through local hoisting) before a
+      # deploy reaches the OTA step.
+      - name: Bundle the mobile app (expo export)
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_API_URL: https://habits.rxniery.workers.dev/api
+        run: pnpm exec expo export --platform android --output-dir "$RUNNER_TEMP/mobile-bundle"
 
       # Bundles both Workers exactly as a deploy would, without uploading.
       - name: wrangler deploy --dry-run (api)
