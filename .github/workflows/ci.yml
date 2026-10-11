@@ -1,15 +1,14 @@
-# Pull requests, pushes to branches other than main (main runs deploy.yml,
-# which repeats these checks before deploying) and a weekly run on main that
-# catches new advisories and toolchain drift. `pull_request`, never
-# `pull_request_target`: pull requests from forks get no secrets.
+# Pull requests (once each: no separate branch-push trigger) and a weekly run
+# on main that catches new advisories and toolchain drift. Pushes to main run
+# deploy.yml, which repeats these checks before deploying. `pull_request`,
+# never `pull_request_target`: pull requests from forks get no secrets.
 name: ci
 
 on:
   pull_request:
-  push:
-    branches-ignore: [main]
   schedule:
     - cron: "0 8 * * 1" # Mondays 08:00 UTC
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,12 +21,13 @@ jobs:
   checks:
     uses: ./.github/workflows/checks.yml
 
-  # Informative only: dependency advisories never block a change.
+  # Informative only: dependency advisories never block a change and never
+  # turn the check red. Findings show as a warning annotation on the run,
+  # with the full report in the step log.
   audit:
     name: pnpm audit (informative)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -36,4 +36,10 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-      - run: pnpm audit --prod
+      - name: pnpm audit --prod
+        id: audit
+        continue-on-error: true
+        run: pnpm audit --prod
+      - name: Report advisories
+        if: steps.audit.outcome == 'failure'
+        run: echo "::warning title=pnpm audit::Advisories found in production dependencies (informative). See the 'pnpm audit --prod' step log."
