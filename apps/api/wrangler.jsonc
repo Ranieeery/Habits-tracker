@@ -27,14 +27,19 @@
 	"triggers": {
 		"crons": ["*/15 * * * *"],
 	},
+	// Workers Logs (Free: 200k events a day, kept 3 days). Every invocation is
+	// logged; the app logs JSON objects ({ event, ... }) without personal data.
 	"observability": {
 		"enabled": true,
+		"head_sampling_rate": 1,
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "habits",
 			// Production database (region ENAM), not a secret. Local D1 ignores it.
+			// Recreating it from scratch: `wrangler d1 create habits`, paste the
+			// new id here, apply the migrations (README.md, "Primeiro deploy").
 			"database_id": "4bb3da5c-ba72-44ed-b151-7c747be0447e",
 			"migrations_dir": "migrations",
 		},

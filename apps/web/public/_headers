@@ -1,5 +1,30 @@
-# Applied by Workers Static Assets to asset responses. Hashed build files never
-# change; everything else (index.html, sw.js, manifest) keeps the default
-# "max-age=0, must-revalidate", so a new deploy is picked up at once.
+# Applied by Workers Static Assets to asset responses only (the /api/* answers
+# come from the API Worker, which sets its own Cache-Control: no-store). A
+# request gets the headers of every matching rule.
+#
+# CSP: the build has no inline scripts (vite + vite-plugin-pwa with
+# injectRegister: false). Inline <style> is allowed because sonner and Radix
+# inject style elements. The API, the service worker, the manifest and the
+# fonts are all same-origin; push subscriptions are made by the browser and
+# need no connect-src.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+
+# Revalidated on every load, so a new deploy (and its update prompt) is seen
+# at once and a service worker never gets stuck on an old version.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# Hashed build files never change.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

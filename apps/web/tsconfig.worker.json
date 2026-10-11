@@ -3,5 +3,7 @@
 	"compilerOptions": {
 		"lib": ["ES2024"]
 	},
-	"include": ["worker"]
+	"include": ["worker"],
+	// Reads public/_headers with node:fs: checked by tsconfig.node.json.
+	"exclude": ["worker/headers.test.ts"]
 }

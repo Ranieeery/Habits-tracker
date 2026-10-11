@@ -16,12 +16,17 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply DB --local",
 		"db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+		"db:backup:remote": "node scripts/backup.ts --remote",
+		"db:backup:local": "node scripts/backup.ts --local",
+		"db:restore:prepare": "node scripts/restore-prepare.ts",
+		"migrations:check": "node scripts/check-migrations.ts",
 		"db:seed:local": "node scripts/seed-local.ts",
 		"typecheck": "tsc --noEmit && tsc --noEmit -p test && tsc --noEmit -p tsconfig.node.json",
 		"build:types": "tsc -p tsconfig.types.json",
 		"lint": "eslint .",
 		"test": "vitest run",
-		"vapid:generate": "node scripts/generate-vapid-keys.ts"
+		"vapid:generate": "node scripts/generate-vapid-keys.ts",
+		"cpu-report": "node scripts/cpu-report.ts"
 	},
 	"dependencies": {
 		"@better-auth/expo": "1.7.7",

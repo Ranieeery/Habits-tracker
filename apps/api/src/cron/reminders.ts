@@ -21,6 +21,7 @@ import {
 	getExpoReceipts,
 	isDeviceNotRegistered,
 } from "../push/expo.ts";
+import { errorName, log } from "../lib/log.ts";
 import { listLiveCompletions } from "../repos/completions.ts";
 import { listHabits } from "../repos/habits.ts";
 import { deletePushSubscriptions, listPushTargets } from "../repos/push.ts";
@@ -175,10 +176,7 @@ async function processReceipts(
 		);
 	} catch (error) {
 		// Temporary: keep every ticket for the next run.
-		console.warn(
-			"expo receipts: request failed",
-			error instanceof Error ? error.name : "unknown"
-		);
+		log.warn("expo_receipts_failed", { error: errorName(error) });
 		return;
 	}
 
@@ -195,7 +193,9 @@ async function processReceipts(
 		answered.push(ticket.id);
 		if (isDeviceNotRegistered(receipt)) addGone(goneByUser, ticket);
 		else if (receipt.status === "error") {
-			console.warn(`expo receipt: error ${receipt.details?.error}`);
+			log.warn("expo_receipt_error", {
+				code: receipt.details?.error ?? null,
+			});
 		}
 	}
 

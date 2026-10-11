@@ -23,3 +23,12 @@ expo-env.d.ts
 .DS_Store
 Thumbs.db
 *.log
+
+# Operations (real data or credentials: never commit)
+backups/
+*.sql.gz
+tail*.json
+credentials.json
+*.jks
+*.keystore
+*service-account*.json

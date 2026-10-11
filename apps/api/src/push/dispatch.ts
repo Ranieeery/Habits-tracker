@@ -16,6 +16,7 @@ import {
 	isDeviceNotRegistered,
 	sendExpoMessages,
 } from "./expo.ts";
+import { errorName, log } from "../lib/log.ts";
 import { createWebPushSender, type VapidKeys } from "./webpush.ts";
 
 /** Android channel created by the mobile app (`expo-notifications`). */
@@ -127,10 +128,10 @@ export function createDispatcher(context: PushContext) {
 			await response.body?.cancel();
 			if (response.ok) return "sent";
 			if (response.status === 404 || response.status === 410) return "gone";
-			console.warn(`web push: status ${response.status}`);
+			log.warn("web_push_failed", { status: response.status });
 			return "failed";
 		} catch (error) {
-			console.warn("web push: request failed", errorName(error));
+			log.warn("web_push_failed", { error: errorName(error) });
 			return "failed";
 		}
 	}
@@ -167,12 +168,14 @@ export function createDispatcher(context: PushContext) {
 					} else if (isDeviceNotRegistered(ticket)) {
 						gone.push(target.id);
 					} else {
-						console.warn(`expo push: ticket error ${ticket.details?.error}`);
+						log.warn("expo_ticket_error", {
+							code: ticket.details?.error ?? null,
+						});
 						failed += 1;
 					}
 				});
 			} catch (error) {
-				console.warn("expo push: request failed", errorName(error));
+				log.warn("expo_push_failed", { error: errorName(error) });
 				failed += batch.length;
 			}
 		}
@@ -215,7 +218,3 @@ export function createDispatcher(context: PushContext) {
 }
 
 export type Dispatcher = ReturnType<typeof createDispatcher>;
-
-function errorName(error: unknown): string {
-	return error instanceof Error ? error.name : "unknown";
-}

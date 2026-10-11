@@ -5,10 +5,12 @@ import { version } from "../package.json";
 import { AUTH_BASE_PATH } from "./auth/options.ts";
 import { readConfig } from "./config.ts";
 import { createDb } from "./db/client.ts";
+import { apiHeaders } from "./http/api-headers.ts";
 import { authOf, router } from "./http/context.ts";
 import { codeForStatus, errorBody } from "./http/errors.ts";
 import { requireUser } from "./http/require-user.ts";
 import type { Clock } from "./lib/clock.ts";
+import { errorName, log } from "./lib/log.ts";
 import { completionRoutes } from "./routes/completions.ts";
 import { habitRoutes } from "./routes/habits.ts";
 import { pushRoutes } from "./routes/push.ts";
@@ -33,6 +35,9 @@ export function createApp({
 	fetch: fetcher = (input, init) => fetch(input, init),
 }: AppOptions) {
 	const app = router().basePath("/v1");
+
+	// First, so it wraps every response (errors and Better Auth included).
+	app.use("*", apiHeaders);
 
 	app.use("*", async (c, next) => {
 		c.set("config", readConfig(c.env));
@@ -61,7 +66,12 @@ export function createApp({
 			const status = error.status;
 			return c.json(errorBody(codeForStatus(status), error.message), status);
 		}
-		console.error(error);
+		// The route pattern, never the URL (query strings) or the request body.
+		log.error("unhandled_error", {
+			method: c.req.method,
+			route: c.req.routePath,
+			error: errorName(error),
+		});
 		return c.json(errorBody("internal_error", "Internal server error"), 500);
 	});
 	app.notFound((c) => c.json(errorBody("not_found", "Not found"), 404));
