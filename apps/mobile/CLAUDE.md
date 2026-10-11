@@ -8,7 +8,7 @@ A development build is required (not Expo Go): secure storage, haptics, push, SQ
 
 1. `cp apps/mobile/.env.example apps/mobile/.env` and pick the API (see below). `EXPO_PUBLIC_API_URL` is inlined by Metro, so changing it needs a Metro restart, not a new build.
 2. Build and install the development APK once (again only after adding a native dependency or changing a config plugin in `app.json`):
-   - **EAS Build (recommended, no Android SDK needed):** `cd apps/mobile`, `pnpm dlx eas-cli@latest login`, then `pnpm dlx eas-cli@latest build --profile development --platform android`. The first run links an Expo project (writes `extra.eas.projectId` to `app.json`). Install the APK from the QR code/link.
+   - **EAS Build (recommended, no Android SDK needed):** from the repo root, `gh workflow run mobile-build -f profile=development` (GitHub Actions, Linux). Since expo-updates (Phase 8) the build compares fingerprints, and `eas build` started from Windows fails with "Runtime version mismatch" (pnpm folder names differ); from Linux, macOS or WSL, `cd apps/mobile` and `pnpm dlx eas-cli@latest build --profile development --platform android` works. The first run links an Expo project (writes `extra.eas.projectId` to `app.json`). Install the APK from the QR code/link.
    - **Local:** `pnpm --filter mobile exec expo run:android`. Needs JDK 17 (`JAVA_HOME`), Android Studio with SDK Platform 36, `ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk`, `platform-tools` on `Path`, and Windows long paths enabled. `android/` is generated (CNG) and gitignored: never edit it.
 3. `pnpm --filter mobile start` and open the app on the phone.
 
@@ -18,7 +18,7 @@ Push tokens need Firebase, and both steps below change the native app (new devel
 
 1. Firebase console: create a project, add an Android app with package `com.rxniery.habits`, download `google-services.json` to `apps/mobile/` (public identifiers, commit it; `app.config.js` only references it when the file exists).
 2. Firebase > Project settings > Service accounts > Generate new private key; upload it with `eas credentials` (Android > Google Service Account > FCM V1). That JSON is a secret: never commit it.
-3. Rebuild the development build (`eas build --profile development --platform android`).
+3. Rebuild the development build (`gh workflow run mobile-build -f profile=development`).
 
 Permission is asked only when reminders are turned on in Ajustes. Without Firebase, enabling reminders reports this device as unavailable; Web Push devices and the rest of the app keep working.
 

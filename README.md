@@ -213,12 +213,13 @@ A expiração dos tokens é opcional. Sem expiração, troque-os ("Roll") se hou
 
 Workflows em `.github/workflows/`:
 
-| Workflow     | Quando                                            | O que faz                                                                                                                                                                                                                            |
-| ------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `checks.yml` | reutilizado pelos outros                          | `pnpm install --frozen-lockfile`, `format:check`, `lint`, `typecheck`, `test`, `migrations:check`, build do web, bundle do app mobile (`expo export`), `wrangler deploy --dry-run` da API e do web. Sem segredos.                    |
-| `ci.yml`     | pull requests, segunda-feira 08:00 UTC, ou manual | `checks` + `pnpm audit --prod` (informativo: avisos viram um alerta amarelo, nunca um X).                                                                                                                                            |
-| `deploy.yml` | push na `main`, ou manual                         | `checks`; depois, no Environment `production` (com **sua aprovação**): backup do D1 no R2, migrations remotas, deploy da API, build e deploy do web, smoke test e, se o app mudou, EAS Update. Nunca cancela um deploy em andamento. |
-| `backup.yml` | domingo 07:00 UTC, ou manual                      | Confere o `/health` e exporta o D1 para o R2 (Environment `backup`, sem aprovação).                                                                                                                                                  |
+| Workflow           | Quando                                            | O que faz                                                                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `checks.yml`       | reutilizado pelos outros                          | `pnpm install --frozen-lockfile`, `format:check`, `lint`, `typecheck`, `test`, `migrations:check`, build do web, bundle do app mobile (`expo export`), `wrangler deploy --dry-run` da API e do web. Sem segredos.                    |
+| `ci.yml`           | pull requests, segunda-feira 08:00 UTC, ou manual | `checks` + `pnpm audit --prod` (informativo: avisos viram um alerta amarelo, nunca um X).                                                                                                                                            |
+| `deploy.yml`       | push na `main`, ou manual                         | `checks`; depois, no Environment `production` (com **sua aprovação**): backup do D1 no R2, migrations remotas, deploy da API, build e deploy do web, smoke test e, se o app mudou, EAS Update. Nunca cancela um deploy em andamento. |
+| `backup.yml`       | domingo 07:00 UTC, ou manual                      | Confere o `/health` e exporta o D1 para o R2 (Environment `backup`, sem aprovação).                                                                                                                                                  |
+| `mobile-build.yml` | manual                                            | Dispara um EAS Build Android (perfil `production`, `preview` ou `development`) a partir do Linux. Veja [Mobile](#mobile-builds-e-updates-eas).                                                                                       |
 
 As actions estão fixadas por SHA e as permissões são só `contents: read`. PRs de forks rodam `pull_request` (nunca `pull_request_target`), então não veem segredos.
 
@@ -278,11 +279,16 @@ pnpm dlx eas-cli@latest env:set --name EXPO_PUBLIC_API_URL --value <ORIGEM>/api 
 pnpm dlx eas-cli@latest credentials -p android      # confira a chave FCM V1 (ou envie a sua)
 ```
 
-**Primeiro build de produção** (depois que o CI estiver verde, para o build sair do mesmo código que os OTAs vão atualizar):
+**Primeiro build de produção** (depois que o CI estiver verde, para o build sair do mesmo código que os OTAs vão atualizar). Dispare pelo GitHub Actions, que roda no Linux:
 
 ```bash
-pnpm dlx eas-cli@latest build --profile production --platform android
+gh workflow run mobile-build -f profile=production
+gh run watch                                  # aprove o environment production quando ele pedir
 ```
+
+O job só envia o projeto ao EAS e termina. O build roda no EAS (de 10 a 30 minutos no plano grátis): acompanhe em expo.dev → Builds, que também manda e-mail no fim.
+
+**Não dispare `eas build` do Windows:** o EAS compara o fingerprint calculado na máquina que dispara o build com o do servidor (Linux). No Windows o pnpm encurta os nomes das pastas do `node_modules/.pnpm` de outro jeito, o fingerprint muda e o build falha em "Configure expo-updates" com `Runtime version mismatch`. No Linux, macOS ou WSL, o comando direto funciona: `pnpm dlx eas-cli@latest build --profile production --platform android`.
 
 Instale pelo link ou QR que o EAS mostra. Ele usa o mesmo package do development build, então **substitui** o dev client no aparelho. Se o Android recusar por conflito de assinatura, desinstale o dev build antes, mas **sincronize primeiro**: desinstalar apaga o banco local e as pendências.
 
@@ -293,7 +299,7 @@ Instale pelo link ou QR que o EAS mostra. Ele usa o mesmo package do development
 - **Precisa de build novo:** dependência nativa nova ou atualizada, config plugin, campos nativos do `app.json` (permissões, ícone, splash, package, plugins), `google-services.json`, SDK do Expo. O OTA publicado depois disso só chega aos builds com o mesmo fingerprint, nunca a um binário incompatível.
 - **Vai por OTA:** só JS, TS ou assets.
 - Todo OTA roda contra a API publicada, que o mesmo workflow atualiza antes. A API continua aceitando o que apps antigos mandam: contratos só aditivos, protocolo de sync `1`, outbox antigo processado mutation por mutation.
-- Publique OTA pelo CI (Linux, mesmo ambiente do EAS Build). Um `eas update` local no Windows pode calcular outro fingerprint (`pnpm dlx eas-cli@latest fingerprint:compare` confere).
+- Builds e OTAs saem do Linux (workflows `mobile-build` e `deploy`), então os dois calculam o mesmo fingerprint. Um `eas update` ou `eas build` local no Windows calcula outro. `apps/mobile/.fingerprintignore` tira as pastas `android/` e `ios/` geradas do cálculo.
 
 **Credenciais:**
 
@@ -514,19 +520,20 @@ No app e no navegador:
 
 ### Problemas comuns
 
-| Sintoma                                                      | Causa provável                                                                              | O que fazer                                                                                                                                               |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Worker exceeded resource limits" / log `exceededCpu` (1102) | CPU acima do limite do Free                                                                 | [Medir o tempo de login](#medir-o-tempo-de-login-cpu) e as três opções.                                                                                   |
-| `403 SIGNUP_DISABLED`                                        | Já existe um usuário (é o esperado)                                                         | Entre com a sua conta. Recriar o dono exige apagar o usuário no D1.                                                                                       |
-| Login no web não "pega" (volta para o login)                 | `BETTER_AUTH_URL` diferente da origem                                                       | `BETTER_AUTH_URL` = origem exata, sem barra final. Limpe os cookies do site.                                                                              |
-| PWA preso numa versão antiga                                 | Aba antiga aberta, ou o "Atualizar" ignorado                                                | Feche todas as abas do app, ou DevTools → Application → Service Workers → Update.                                                                         |
-| OTA não chega                                                | Runtime diferente (mudou algo nativo), canal errado, ou o app só aplica na segunda abertura | Feche e abra duas vezes. Compare o runtime do build e do update em expo.dev. Se for nativo, faça um build novo.                                           |
-| `eas update` falha com `Cannot find module` de Babel         | Plugin usado por um preset sem estar declarado (funciona local por hoisting do pnpm)        | Declare o pacote em `apps/mobile/package.json`. O passo "Bundle the mobile app" do `checks` pega isso no PR.                                              |
-| Deploy falhou em "Apply D1 migrations"                       | Erro de SQL ou limite do D1                                                                 | A migration que falhou não fica registrada. Corrija com uma migration nova. Se algo ficou pela metade, use o Time Travel para o instante antes do deploy. |
-| Deploy falhou depois das migrations                          | Erro de build ou de token                                                                   | O schema novo é aditivo e o código antigo segue no ar. Corrija e faça push.                                                                               |
-| `Authentication error [code: 10000]` no CI                   | Falta uma permissão no token                                                                | Veja [Pré-requisitos](#pré-requisitos).                                                                                                                   |
-| D1 com "daily limits exceeded"                               | 5 M linhas lidas ou 100 mil escritas no dia (Free)                                          | Volta às 00:00 UTC. Se for recorrente, investigue nos Logs.                                                                                               |
-| Lembrete "pendente" de um hábito já marcado no celular       | Conclusão offline ainda não sincronizada                                                    | Conhecido e aceito (ver "Push notifications" no `CLAUDE.md`).                                                                                             |
+| Sintoma                                                                    | Causa provável                                                                                                        | O que fazer                                                                                                                                               |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Worker exceeded resource limits" / log `exceededCpu` (1102)               | CPU acima do limite do Free                                                                                           | [Medir o tempo de login](#medir-o-tempo-de-login-cpu) e as três opções.                                                                                   |
+| `403 SIGNUP_DISABLED`                                                      | Já existe um usuário (é o esperado)                                                                                   | Entre com a sua conta. Recriar o dono exige apagar o usuário no D1.                                                                                       |
+| Login no web não "pega" (volta para o login)                               | `BETTER_AUTH_URL` diferente da origem                                                                                 | `BETTER_AUTH_URL` = origem exata, sem barra final. Limpe os cookies do site.                                                                              |
+| PWA preso numa versão antiga                                               | Aba antiga aberta, ou o "Atualizar" ignorado                                                                          | Feche todas as abas do app, ou DevTools → Application → Service Workers → Update.                                                                         |
+| OTA não chega                                                              | Runtime diferente (mudou algo nativo), canal errado, ou o app só aplica na segunda abertura                           | Feche e abra duas vezes. Compare o runtime do build e do update em expo.dev. Se for nativo, faça um build novo.                                           |
+| `eas update` falha com `Cannot find module` de Babel                       | Plugin usado por um preset sem estar declarado (funciona local por hoisting do pnpm)                                  | Declare o pacote em `apps/mobile/package.json`. O passo "Bundle the mobile app" do `checks` pega isso no PR.                                              |
+| EAS Build falha em "Configure expo-updates" com `Runtime version mismatch` | O build foi disparado do Windows: o pnpm nomeia as pastas do `node_modules/.pnpm` de outro jeito e o fingerprint muda | Dispare pelo workflow `mobile-build` (Linux) ou pelo WSL.                                                                                                 |
+| Deploy falhou em "Apply D1 migrations"                                     | Erro de SQL ou limite do D1                                                                                           | A migration que falhou não fica registrada. Corrija com uma migration nova. Se algo ficou pela metade, use o Time Travel para o instante antes do deploy. |
+| Deploy falhou depois das migrations                                        | Erro de build ou de token                                                                                             | O schema novo é aditivo e o código antigo segue no ar. Corrija e faça push.                                                                               |
+| `Authentication error [code: 10000]` no CI                                 | Falta uma permissão no token                                                                                          | Veja [Pré-requisitos](#pré-requisitos).                                                                                                                   |
+| D1 com "daily limits exceeded"                                             | 5 M linhas lidas ou 100 mil escritas no dia (Free)                                                                    | Volta às 00:00 UTC. Se for recorrente, investigue nos Logs.                                                                                               |
+| Lembrete "pendente" de um hábito já marcado no celular                     | Conclusão offline ainda não sincronizada                                                                              | Conhecido e aceito (ver "Push notifications" no `CLAUDE.md`).                                                                                             |
 
 ### Atualizações de dependências
 
