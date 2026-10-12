@@ -2,10 +2,12 @@ import { Email } from "@habits/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useId, useState } from "react";
+import { Backdrop } from "@/components/backdrop.tsx";
 import { FieldError } from "@/components/states.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { Wordmark } from "@/components/wordmark.tsx";
 import { AuthError, type AuthErrorReason } from "@/lib/auth.ts";
 import { queryKeys } from "@/lib/queries.ts";
 import { safeRedirect } from "@/lib/redirect.ts";
@@ -57,26 +59,35 @@ export function LoginPage({ redirect }: { redirect?: string }) {
 
 	return (
 		<main className="flex min-h-dvh items-center justify-center px-4 py-10">
+			<Backdrop />
 			<div className="flex w-full max-w-sm flex-col gap-8">
-				<header className="flex flex-col gap-2">
-					<p className="text-sm font-bold tracking-widest text-violet-400 uppercase">
-						Habits
-					</p>
-					<h1 className="text-3xl font-extrabold">Entrar</h1>
+				<header className="flex flex-col items-start gap-6">
+					<Wordmark />
+					<div className="flex flex-col gap-1">
+						<h1 className="font-display text-4xl font-bold tracking-tight">
+							Entrar
+						</h1>
+						<p className="text-sm text-night-muted">
+							Acompanhe seus hábitos, um dia de cada vez.
+						</p>
+					</div>
 				</header>
 
 				<form
 					noValidate
 					onSubmit={handleSubmit}
 					aria-describedby={error ? ids.error : undefined}
-					className="flex flex-col gap-5"
+					className="flex flex-col gap-5 rounded-xl border border-night-border bg-night-surface p-6"
 				>
 					<div className="flex flex-col gap-2">
 						<Label htmlFor={ids.email}>E-mail</Label>
 						<Input
 							id={ids.email}
+							name="email"
 							type="email"
 							autoComplete="email"
+							spellCheck={false}
+							autoCapitalize="off"
 							inputMode="email"
 							value={email}
 							onChange={(event) => setEmail(event.target.value)}
@@ -87,6 +98,7 @@ export function LoginPage({ redirect }: { redirect?: string }) {
 						<Label htmlFor={ids.password}>Senha</Label>
 						<Input
 							id={ids.password}
+							name="password"
 							type="password"
 							autoComplete="current-password"
 							value={password}

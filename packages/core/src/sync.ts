@@ -23,6 +23,7 @@ import {
 	earliestStartDate,
 	type HabitDatesProblem,
 } from "./schedule.ts";
+import { keyAfterLast } from "./sort-key.ts";
 import { isWithinWriteWindow, writeWindow } from "./window.ts";
 
 /** Days the server keeps tombstones before purging them. */
@@ -35,6 +36,8 @@ export interface HabitInput {
 	name: string;
 	schedule: Habit["schedule"];
 	start_date: CalendarDate;
+	/** Position in the list; callers put a new habit last (`keyAfterLast`). */
+	sort_key: string;
 }
 
 /** A new, live habit written at `now`. */
@@ -45,6 +48,7 @@ export function newHabit(input: HabitInput, now: number): Habit {
 		schedule: input.schedule,
 		start_date: input.start_date,
 		archived_at: null,
+		sort_key: input.sort_key,
 		created_at: now,
 		updated_at: now,
 		deleted_at: null,
@@ -52,7 +56,7 @@ export function newHabit(input: HabitInput, now: number): Habit {
 }
 
 /**
- * Rename, reschedule, archive or unarchive. Archiving an archived habit keeps
+ * Rename, reschedule, archive, unarchive or move (`sort_key`). Archiving an archived habit keeps
  * its original `archived_at`. `changed` is false when nothing differs, and
  * then `habit` is the input unchanged.
  */
@@ -67,13 +71,15 @@ export function applyHabitChanges(
 	if (archived === false) archived_at = null;
 	const name = fields.name ?? habit.name;
 	const schedule = fields.schedule ?? habit.schedule;
+	const sort_key = fields.sort_key ?? habit.sort_key;
 	const changed =
 		name !== habit.name ||
 		JSON.stringify(schedule) !== JSON.stringify(habit.schedule) ||
-		archived_at !== habit.archived_at;
+		archived_at !== habit.archived_at ||
+		sort_key !== habit.sort_key;
 	if (!changed) return { habit, changed: false };
 	return {
-		habit: { ...habit, name, schedule, archived_at, updated_at: now },
+		habit: { ...habit, name, schedule, archived_at, sort_key, updated_at: now },
 		changed: true,
 	};
 }
@@ -247,7 +253,12 @@ export function applyMutation(
 					};
 				}
 			}
-			state.habits.set(mutation.id, newHabit(mutation, ctx.now));
+			// Without a key (apps older than 2.4.0) the habit goes last.
+			const sort_key = mutation.sort_key ?? keyAfterLast(state.habits.values());
+			state.habits.set(
+				mutation.id,
+				newHabit({ ...mutation, sort_key }, ctx.now)
+			);
 			return { status: "applied", canonical_id: mutation.id, changed: true };
 		}
 		case "habit.update": {

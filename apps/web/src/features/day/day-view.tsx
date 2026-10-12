@@ -53,15 +53,24 @@ export function DayView({
 	const [weekday = "", ...rest] = formatLongDate(date).split(", ");
 
 	return (
-		<section aria-labelledby="day-title" className="flex flex-col gap-6">
+		<section
+			aria-labelledby="day-title"
+			className="mx-auto flex w-full max-w-2xl flex-col gap-6"
+		>
 			<header className="flex flex-wrap items-end justify-between gap-4">
 				<div className="flex flex-col gap-1">
-					<p className="font-semibold text-muted capitalize">
+					{/* first-letter, not capitalize: "5 de outubro", never "5 De Outubro". */}
+					<p className="font-semibold text-night-muted first-letter:uppercase">
 						{isToday ? "Hoje" : rest.join(", ")}
 					</p>
-					<h1 id="day-title" className="text-3xl font-extrabold capitalize">
+					<h1
+						id="day-title"
+						className="font-display text-4xl font-bold tracking-tight first-letter:uppercase"
+					>
 						{weekday}{" "}
-						<span className="text-muted">{formatShortDate(date)}</span>
+						<span className="text-night-subtle tabular-nums">
+							{formatShortDate(date)}
+						</span>
 					</h1>
 				</div>
 				{isToday && hasHabits && <NewHabitDialog today={today} />}
@@ -178,7 +187,7 @@ function DayContent({
 					aria-label="Progresso do dia"
 					aria-valuetext={`${completed.length} de ${possible.length} hábitos concluídos`}
 				/>
-				<p className="text-sm text-muted">
+				<p className="text-sm text-night-muted tabular-nums">
 					{completed.length} de {possible.length} concluídos (
 					{formatPercent(ratio)})
 				</p>
@@ -186,7 +195,7 @@ function DayContent({
 
 			{bar}
 
-			<ul className="flex flex-col gap-1">
+			<ul className="-mx-2 flex flex-col">
 				{possible.map((habit) => (
 					<DayHabitItem
 						key={habit.id}

@@ -43,6 +43,7 @@ describe("withSummaryDay", () => {
 		schedule: { type: "weekdays" as const, days: [0, 1, 2, 3, 4, 5, 6] },
 		start_date: "2026-10-01",
 		archived_at: null,
+		sort_key: "a0",
 		created_at: 0,
 		updated_at: 0,
 		deleted_at: null,

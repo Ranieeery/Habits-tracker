@@ -57,15 +57,23 @@
 @layer base {
 	html {
 		color-scheme: dark;
+		/* Thin night scrollbars (DESIGN.md). Standard properties for Chrome
+		   121+, Edge and Firefox; ::-webkit-scrollbar below for Safari
+		   (Chromium ignores it when the standard ones are set). */
+		scrollbar-width: thin;
+		scrollbar-color: var(--color-night-border-strong) transparent;
 	}
 
+	/* The background goes on body, never html: with no html background the
+	   body's one propagates to the canvas (under the scrollbar track too) and
+	   the fixed glow layer (components/backdrop.tsx) paints above it. */
 	body {
-		@apply bg-background text-foreground font-sans antialiased;
+		@apply bg-night-bg text-night-foreground font-sans antialiased;
 	}
 
 	/* One visible focus style for every interactive element. */
 	:focus-visible {
-		outline: 2px solid var(--color-violet-400);
+		outline: 2px solid var(--color-night-accent-text);
 		outline-offset: 2px;
 	}
 
@@ -75,8 +83,39 @@
 	}
 }
 
-/* The heatmap screen (`AppLayout` marks it with data-screen="home") wears
-   the 2.4.0 identity: its focus ring follows the night accent. */
-[data-screen="home"] :focus-visible {
-	outline-color: var(--color-night-accent-text);
+/* Heatmap cells show focus through the grid lens (one ring that glides
+   between cells), so their own outline would draw a second ring. */
+[data-heat-cell]:focus-visible {
+	outline: none;
+}
+
+/* Inner scrollers (the heatmap) share the page scrollbar style; their thumb
+   brightens while the pointer is over them. */
+[data-scrollbar="night"] {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-night-border-strong) transparent;
+}
+
+[data-scrollbar="night"]:hover {
+	scrollbar-color: var(--color-night-subtle) transparent;
+}
+
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	border: 2px solid transparent;
+	border-radius: 9999px;
+	background: var(--color-night-border-strong) padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover,
+[data-scrollbar="night"]:hover::-webkit-scrollbar-thumb {
+	background-color: var(--color-night-subtle);
 }

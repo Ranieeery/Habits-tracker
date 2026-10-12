@@ -53,6 +53,7 @@ describe("POST /v1/habits", () => {
 			schedule: WEEKDAYS,
 			start_date: "2026-10-09",
 			archived_at: null,
+			sort_key: "a0",
 			created_at: NOW_MS,
 			updated_at: NOW_MS,
 			deleted_at: null,

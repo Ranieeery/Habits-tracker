@@ -13,6 +13,7 @@ import { monthShortName, weekdayInitial, weekdayName } from "@/lib/format.ts";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion.ts";
 import { cn } from "@/lib/utils.ts";
 import { HeatmapCell } from "./heatmap-cell.tsx";
+import { HeatmapLens, type LensBox } from "./heatmap-lens.tsx";
 import { HeatmapTooltip, type TooltipTarget } from "./heatmap-tooltip.tsx";
 import {
 	isNavigable,
@@ -23,6 +24,11 @@ import {
 import { pulse } from "./pulse.ts";
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
+
+interface Spot {
+	lens: LensBox;
+	tooltip: TooltipTarget;
+}
 
 /** Entrance sweep: 6 ms per column plus one 220 ms cell, with some slack. */
 const ENTRANCE_MS = 53 * 6 + 220 + 80;
@@ -44,7 +50,12 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 	const reducedMotion = usePrefersReducedMotion();
 	const [entering, setEntering] = useState(true);
 	const [activeDate, setActiveDate] = useState<string | null>(null);
-	const [tooltip, setTooltip] = useState<TooltipTarget | null>(null);
+	// The cell under the pointer or focus: the lens and the tooltip follow it
+	// together. The last spot is kept while hidden so both fade out in place.
+	const [spot, setSpot] = useState<Spot | null>(null);
+	const [spotVisible, setSpotVisible] = useState(false);
+	const [jump, setJump] = useState(true);
+	const spotShown = useRef(false);
 
 	const labels = useMemo(
 		() =>
@@ -116,41 +127,76 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 					`[data-date="${date}"]`
 				);
 
-	const showTooltip = (element: Element) => {
+	// Layout is read here, in event handlers only, never while rendering.
+	const showSpot = (element: HTMLElement) => {
 		const container = containerRef.current;
-		const date = (element as HTMLElement).dataset.date;
+		const date = element.dataset.date;
 		const cell = date === undefined ? undefined : cells[indexOf.get(date)!];
 		if (!container || !cell) return;
 		const box = container.getBoundingClientRect();
 		const rect = element.getBoundingClientRect();
 		const center = rect.left + rect.width / 2 - box.left;
-		setTooltip({
-			cell,
-			x: Math.min(
-				Math.max(center, TOOLTIP_HALF_WIDTH),
-				Math.max(TOOLTIP_HALF_WIDTH, box.width - TOOLTIP_HALF_WIDTH)
-			),
-			y: rect.top - box.top,
+		// Appearing from hidden: place it at once instead of gliding from the
+		// last spot. Reduced motion: never glide.
+		setJump(reducedMotion || !spotShown.current);
+		spotShown.current = true;
+		setSpotVisible(true);
+		setSpot({
+			lens: {
+				x: element.offsetLeft,
+				y: element.offsetTop,
+				size: element.offsetWidth,
+			},
+			tooltip: {
+				cell,
+				x: Math.min(
+					Math.max(center, TOOLTIP_HALF_WIDTH),
+					Math.max(TOOLTIP_HALF_WIDTH, box.width - TOOLTIP_HALF_WIDTH)
+				),
+				y: rect.top - box.top,
+			},
 		});
 	};
 
-	const onPointerOver = (event: PointerEvent) => {
-		// On touch screens a tap opens the day; no tooltip.
-		if (event.pointerType === "touch") return;
-		const element = (event.target as Element).closest("[data-date]");
-		if (element) showTooltip(element);
-		else setTooltip(null);
+	const hideSpot = () => {
+		spotShown.current = false;
+		setSpotVisible(false);
 	};
+
+	const onPointerOver = (event: PointerEvent) => {
+		// On touch screens a tap opens the day; no lens, no tooltip.
+		if (event.pointerType === "touch") return;
+		const element = (event.target as Element).closest<HTMLElement>(
+			"[data-date]"
+		);
+		// Over the gaps between cells (or a label) the lens stays where it is,
+		// so a sweep glides instead of flickering; it goes when leaving the grid.
+		if (element) showSpot(element);
+	};
+
+	// Native `pointerleave`: React builds onPointerLeave from `pointerout`,
+	// which can report leaving the grid while moving between two cells.
+	const gridRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const grid = gridRef.current;
+		if (!grid) return;
+		const leave = () => {
+			spotShown.current = false;
+			setSpotVisible(false);
+		};
+		grid.addEventListener("pointerleave", leave);
+		return () => grid.removeEventListener("pointerleave", leave);
+	}, []);
 
 	const onFocus = (event: FocusEvent) => {
 		const date = (event.target as HTMLElement).dataset.date;
 		if (date === undefined) return;
 		setActiveDate(date);
-		showTooltip(event.target);
+		showSpot(event.target as HTMLElement);
 	};
 
 	const onBlur = (event: FocusEvent) => {
-		if (!event.currentTarget.contains(event.relatedTarget)) setTooltip(null);
+		if (!event.currentTarget.contains(event.relatedTarget)) hideSpot();
 	};
 
 	const onKeyDown = (event: KeyboardEvent) => {
@@ -172,12 +218,14 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 		<div ref={containerRef} className="relative">
 			<div
 				ref={scrollerRef}
+				data-scrollbar="night"
 				className="relative touch-manipulation overflow-x-auto overscroll-x-contain scroll-pl-10 pt-1 pb-3"
-				onScroll={() => setTooltip(null)}
+				onScroll={hideSpot}
 				onWheel={stopEntrance}
 				onPointerDown={stopEntrance}
 			>
 				<div
+					ref={gridRef}
 					role="grid"
 					aria-label={`Histórico de ${grid.year}`}
 					aria-rowcount={7}
@@ -188,7 +236,6 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 					onFocus={onFocus}
 					onBlur={onBlur}
 					onPointerOver={onPointerOver}
-					onPointerLeave={() => setTooltip(null)}
 				>
 					<div aria-hidden="true" className="flex gap-1">
 						<div
@@ -242,8 +289,17 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 						</div>
 					))}
 				</div>
+				<HeatmapLens
+					box={spot?.lens ?? null}
+					visible={spotVisible}
+					jump={jump}
+				/>
 			</div>
-			<HeatmapTooltip target={tooltip} />
+			<HeatmapTooltip
+				target={spot?.tooltip ?? null}
+				visible={spotVisible}
+				jump={jump}
+			/>
 		</div>
 	);
 }

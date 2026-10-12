@@ -17,9 +17,11 @@ import {
 	dayView,
 	firstDayOfYear,
 	isWithinWriteWindow,
+	keyAfterLast,
 	lastDayOfYear,
 	materialize,
 	newHabit,
+	sortHabits,
 	summarizeYear,
 	todayIn,
 } from "@habits/core";
@@ -91,13 +93,8 @@ export function createLocalRepository({
 
 		async listHabits() {
 			const { habits } = await view("habits");
-			return habits
-				.filter((habit) => habit.deleted_at === null)
-				.sort(
-					(a, b) =>
-						a.created_at - b.created_at ||
-						(a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-				);
+			// The user's order (2.4.0), the same as the API's.
+			return sortHabits(habits.filter((habit) => habit.deleted_at === null));
 		},
 		async createHabit(input) {
 			const { timezone } = await settings();
@@ -106,6 +103,8 @@ export function createLocalRepository({
 			if (input.start_date < earliest) {
 				throw new DataError("out_of_range", "start_date is too old");
 			}
+			// Last in the list, already before it syncs.
+			const { habits } = await view("habits");
 			const parsed = HabitCreateMutation.safeParse({
 				mutation_id: newId(),
 				created_at: at,
@@ -114,10 +113,17 @@ export function createLocalRepository({
 				name: input.name,
 				schedule: input.schedule,
 				start_date: input.start_date,
+				sort_key: input.sort_key ?? keyAfterLast(habits),
 			});
 			if (!parsed.success) throw invalid(parsed.error);
 			await write(parsed.data);
-			return newHabit(parsed.data, at);
+			return newHabit(
+				{
+					...parsed.data,
+					sort_key: parsed.data.sort_key ?? keyAfterLast(habits),
+				},
+				at
+			);
 		},
 		async updateHabit(habitId, changes): Promise<Habit> {
 			const { state } = await view("habits");
@@ -142,7 +148,9 @@ export function createLocalRepository({
 		async getDay(date) {
 			const { timezone } = await settings();
 			const { habits, completions } = await view({ from: date, to: date });
-			return dayView(habits, completions, date, { timeZone: timezone });
+			return dayView(sortHabits(habits), completions, date, {
+				timeZone: timezone,
+			});
 		},
 		async getYearSummary(year) {
 			const { timezone } = await settings();

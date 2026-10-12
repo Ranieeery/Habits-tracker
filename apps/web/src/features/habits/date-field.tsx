@@ -64,14 +64,21 @@ export function DateField({
 						aria-describedby={describedBy}
 						aria-invalid={invalid ? true : undefined}
 						className={cn(
-							"flex min-h-touch w-48 items-center justify-between gap-2 rounded-md border bg-surface px-4 text-base text-foreground transition-colors",
-							invalid ? "border-danger" : "border-border"
+							"flex min-h-touch w-48 items-center justify-between gap-2 rounded-md border bg-night-bg px-4 text-base text-night-foreground transition-colors hover:border-night-subtle",
+							invalid ? "border-night-danger" : "border-night-border-strong"
 						)}
 					>
-						<span className={value ? undefined : "text-muted"}>
+						<span
+							className={
+								value ? "tabular-nums" : "text-night-subtle tabular-nums"
+							}
+						>
 							{value ? formatDayMonthYear(value) : "dd/mm/aaaa"}
 						</span>
-						<CalendarIcon className="size-4 text-muted" aria-hidden="true" />
+						<CalendarIcon
+							className="size-4 text-night-muted"
+							aria-hidden="true"
+						/>
 					</button>
 				</PopoverTrigger>
 				<PopoverContent aria-labelledby={ids.title} className="w-80">
@@ -89,7 +96,7 @@ export function DateField({
 						<span
 							id={ids.title}
 							aria-live="polite"
-							className="font-semibold capitalize"
+							className="font-display font-semibold first-letter:uppercase"
 						>
 							{monthTitle(shown)}
 						</span>
@@ -111,7 +118,7 @@ export function DateField({
 										key={name}
 										scope="col"
 										abbr={weekdayName(day)}
-										className="pb-1 text-xs font-semibold text-muted"
+										className="pb-1 text-xs font-semibold text-night-subtle"
 									>
 										{name.charAt(0).toUpperCase()}
 									</th>
@@ -134,10 +141,10 @@ export function DateField({
 														setOpen(false);
 													}}
 													className={cn(
-														"flex size-touch w-full items-center justify-center rounded-md text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-30",
+														"flex size-touch w-full items-center justify-center rounded-md text-sm tabular-nums transition-colors disabled:cursor-not-allowed disabled:text-night-subtle disabled:opacity-50",
 														date === value
-															? "bg-violet-600 font-bold text-foreground"
-															: "hover:bg-border"
+															? "bg-night-accent font-bold text-night-accent-on"
+															: "hover:bg-night-surface-raised"
 													)}
 												>
 													{Number(date.slice(8))}

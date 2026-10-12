@@ -26,6 +26,7 @@ const habit: Habit = {
 	schedule: { type: "weekdays", days: [1, 3, 5] },
 	start_date: "2026-01-05",
 	archived_at: null,
+	sort_key: "a0",
 	created_at: createdAt,
 	updated_at: createdAt,
 	deleted_at: null,

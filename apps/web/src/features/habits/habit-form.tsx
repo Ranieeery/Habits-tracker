@@ -48,8 +48,8 @@ const toggleClass = (selected: boolean) =>
 	cn(
 		"flex items-center justify-center rounded-md border-2 text-sm font-bold transition-colors",
 		selected
-			? "border-violet-500 bg-violet-600 text-foreground"
-			: "border-border bg-surface text-muted hover:text-foreground"
+			? "border-night-accent bg-night-accent text-night-accent-on"
+			: "border-night-border-strong bg-night-bg text-night-muted hover:border-night-subtle hover:text-night-foreground"
 	);
 
 /** Sunday = 0 ... Saturday = 6, as toggle buttons. */
@@ -303,7 +303,7 @@ export function HabitForm({
 			</div>
 
 			{draft === null ? (
-				<p className="rounded-md border border-border p-3 text-sm text-muted">
+				<p className="rounded-md border border-night-border p-3 text-sm text-night-muted">
 					{UNSUPPORTED_SCHEDULE_TEXT}. Atualize o app para mudar a repetição;
 					aqui você pode renomear o hábito.
 				</p>
@@ -362,7 +362,7 @@ export function HabitForm({
 									labelledBy={ids.field}
 									describedBy={fieldError("monthDays")}
 								/>
-								<p className="text-xs text-muted">
+								<p className="text-xs text-night-subtle">
 									Em meses sem o dia escolhido (como 31 ou 30 em fevereiro),
 									vale o último dia do mês.
 								</p>
@@ -418,7 +418,7 @@ export function HabitForm({
 									</Select>
 								</div>
 								{draft.month === 2 && draft.day === 29 && (
-									<p className="text-xs text-muted">
+									<p className="text-xs text-night-subtle">
 										Em anos não bissextos, vale 28/02.
 									</p>
 								)}
@@ -444,17 +444,17 @@ export function HabitForm({
 					<p
 						id={ids.preview}
 						aria-live="polite"
-						className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+						className="rounded-md border border-night-border bg-night-bg px-3 py-2 text-sm"
 					>
 						{preview ? (
 							<>
 								{preview.summary}
 								{preview.next && (
-									<span className="block text-muted">{preview.next}</span>
+									<span className="block text-night-muted">{preview.next}</span>
 								)}
 							</>
 						) : (
-							<span className="text-muted">Complete a repetição.</span>
+							<span className="text-night-muted">Complete a repetição.</span>
 						)}
 					</p>
 				</>
@@ -463,7 +463,10 @@ export function HabitForm({
 			<FieldError>{error}</FieldError>
 
 			{confirming && (
-				<p role="alert" className="text-sm">
+				<p
+					role="alert"
+					className="rounded-md border border-night-warning/50 bg-night-warning-surface px-3 py-2 text-sm text-night-warning"
+				>
 					Mudar a repetição recalcula os dias passados do heatmap. Dias já
 					marcados continuam contando.
 				</p>
@@ -478,7 +481,7 @@ export function HabitForm({
 						Cancelar
 					</Button>
 				)}
-				<Button type="submit" variant="success" disabled={pending}>
+				<Button type="submit" variant="default" disabled={pending}>
 					{pending
 						? "Salvando…"
 						: confirming

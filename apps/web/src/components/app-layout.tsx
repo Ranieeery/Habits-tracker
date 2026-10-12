@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet } from "@tanstack/react-router";
 import {
 	CalendarCheckIcon,
 	LayoutGridIcon,
@@ -13,6 +13,7 @@ import { useRefreshPushSubscription } from "@/features/settings/use-reminders.ts
 import { queryKeys } from "@/lib/queries.ts";
 import { useToday } from "@/lib/use-today.ts";
 import { cn } from "@/lib/utils.ts";
+import { Backdrop } from "./backdrop.tsx";
 import { Wordmark } from "./wordmark.tsx";
 
 interface NavItem {
@@ -41,89 +42,56 @@ function useRefreshOnNewDay() {
 }
 
 /**
- * The heatmap screen wears the 2.4.0 identity (night tokens, wordmark, glow,
- * wider column); every other route keeps the previous look until the next
- * redesign stage moves it too.
+ * The current section stands out by more than color: on top, an accent-tinted
+ * pill with an inner ring; at the bottom, a pill behind the icon and a bar on
+ * the item's top edge. Accent text is 9.5:1 on the background. Hovering an
+ * inactive item draws a ring in the text color (pill on top, around the icon
+ * at the bottom), so the pointer always shows where it is. The router
+ * marks the active link (`data-status`, `aria-current="page"`).
  */
-function useIsHome() {
-	return useRouterState({ select: (state) => state.location.pathname === "/" });
-}
-
-function NavLinks({
-	variant,
-	home,
-}: {
-	variant: "top" | "bottom";
-	home: boolean;
-}) {
+function NavLinks({ variant }: { variant: "top" | "bottom" }) {
 	return NAV.map(({ to, label, icon: Icon }) => (
 		<Link
 			key={to}
 			to={to}
 			activeOptions={{ exact: true }}
 			className={cn(
-				"flex min-h-touch items-center justify-center gap-2 rounded-md font-semibold transition-colors",
-				home
-					? "text-night-muted hover:text-night-foreground data-[status=active]:text-night-foreground"
-					: "text-muted hover:text-foreground data-[status=active]:text-foreground",
+				"group relative flex min-h-touch items-center justify-center gap-2 rounded-md font-semibold text-night-muted transition-colors duration-150 hover:text-night-foreground data-[status=active]:text-night-accent-text",
 				variant === "top"
-					? cn(
-							"px-3",
-							home
-								? "data-[status=active]:bg-night-surface-raised"
-								: "data-[status=active]:bg-surface"
-						)
-					: cn(
-							"flex-1 flex-col gap-0.5 py-1 text-xs",
-							home
-								? "data-[status=active]:text-night-accent-text"
-								: "data-[status=active]:text-violet-400"
-						)
+					? "px-3 inset-ring inset-ring-transparent transition-[color,background-color,box-shadow] not-data-[status=active]:hover:bg-night-surface-raised not-data-[status=active]:hover:inset-ring-night-foreground/45 data-[status=active]:bg-night-accent/15 data-[status=active]:inset-ring-night-accent/40"
+					: "flex-1 flex-col gap-0.5 py-1 text-xs before:absolute before:inset-x-6 before:top-0 before:h-0.5 before:rounded-full before:bg-night-accent-text before:opacity-0 before:transition-opacity data-[status=active]:before:opacity-100"
 			)}
 		>
-			<Icon className="size-5" aria-hidden="true" />
+			{variant === "top" ? (
+				<Icon className="size-5" aria-hidden="true" />
+			) : (
+				<span className="flex h-7 w-12 items-center justify-center rounded-full inset-ring inset-ring-transparent transition-[color,background-color,box-shadow] duration-150 group-hover:group-not-data-[status=active]:bg-night-surface-raised group-hover:group-not-data-[status=active]:inset-ring-night-foreground/45 group-data-[status=active]:bg-night-accent/15">
+					<Icon className="size-5" aria-hidden="true" />
+				</span>
+			)}
 			{label}
 		</Link>
 	));
 }
 
+/**
+ * The shared frame (2.4.0 identity): wordmark, navigation (top from `md`,
+ * bottom bar on phones) and the night backdrop. Screens set their own
+ * reading width inside the `max-w-6xl` column.
+ */
 export function AppLayout() {
 	useRefreshOnNewDay();
 	useRefreshPushSubscription();
-	const home = useIsHome();
 
 	return (
-		<div
-			data-screen={home ? "home" : undefined}
-			className={cn(
-				"mx-auto flex min-h-dvh w-full flex-col",
-				home ? "max-w-6xl text-night-foreground" : "max-w-5xl"
-			)}
-		>
-			{home && (
-				// Fixed backdrop: the night background and one soft violet glow
-				// at the top (no image, nothing animated).
-				<div
-					aria-hidden="true"
-					className="pointer-events-none fixed inset-0 -z-10 bg-night-bg bg-[radial-gradient(ellipse_70%_45%_at_50%_-8%,color-mix(in_oklab,var(--color-night-glow)_24%,transparent),transparent_70%)]"
-				/>
-			)}
+		<div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col">
+			<Backdrop />
 			<header className="flex items-center justify-between gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4">
-				<Link
-					to="/"
-					className="text-xl font-extrabold tracking-tight"
-					aria-label="Habits, início"
-				>
-					{home ? (
-						<Wordmark />
-					) : (
-						<>
-							Habits<span className="text-accent">.</span>
-						</>
-					)}
+				<Link to="/" aria-label="Habits, início" className="rounded-md">
+					<Wordmark />
 				</Link>
 				<nav aria-label="Principal" className="hidden gap-1 md:flex">
-					<NavLinks variant="top" home={home} />
+					<NavLinks variant="top" />
 				</nav>
 			</header>
 
@@ -134,14 +102,9 @@ export function AppLayout() {
 
 			<nav
 				aria-label="Principal"
-				className={cn(
-					"fixed inset-x-0 bottom-0 z-40 flex border-t px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden",
-					home
-						? "border-night-border bg-night-bg/95"
-						: "border-border bg-background/95"
-				)}
+				className="fixed inset-x-0 bottom-0 z-40 flex border-t border-night-border bg-night-bg/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
 			>
-				<NavLinks variant="bottom" home={home} />
+				<NavLinks variant="bottom" />
 			</nav>
 		</div>
 	);

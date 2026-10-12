@@ -41,11 +41,13 @@ describe("HeatmapGrid", () => {
 	it("is a named grid with one row per weekday and one cell per week", async () => {
 		await renderInRouter(<HeatmapGrid grid={grid} />);
 		const table = screen.getByRole("grid", { name: "Histórico de 2026" });
-		const rows = within(table).getAllByRole("row");
+		// Counted with selectors: role queries over ~370 cells are slow in
+		// jsdom and time out when the whole monorepo runs its tests at once.
+		const rows = [...table.querySelectorAll<HTMLElement>("[role=row]")];
 		expect(rows).toHaveLength(7);
 		for (const row of rows) {
-			expect(within(row).getAllByRole("rowheader")).toHaveLength(1);
-			expect(within(row).getAllByRole("gridcell")).toHaveLength(53);
+			expect(row.querySelectorAll("[role=rowheader]")).toHaveLength(1);
+			expect(row.querySelectorAll("[role=gridcell]")).toHaveLength(53);
 		}
 		expect(within(rows[1]!).getByRole("rowheader")).toHaveTextContent(
 			"segunda-feira"
@@ -54,10 +56,8 @@ describe("HeatmapGrid", () => {
 
 	it("has a single tab stop, on today", async () => {
 		await renderInRouter(<HeatmapGrid grid={grid} />);
-		const stops = screen
-			.getAllByRole("link")
-			.filter((link) => link.getAttribute("tabindex") === "0");
-		expect(stops).toEqual([cellLink(TODAY)]);
+		const stops = document.querySelectorAll("a[data-date][tabindex='0']");
+		expect([...stops]).toEqual([cellLink(TODAY)]);
 		expect(cellLink(TODAY)).toHaveAttribute("aria-current", "date");
 	});
 
@@ -141,6 +141,85 @@ describe("HeatmapGrid", () => {
 		expect(tooltip()).toHaveTextContent("1 de 1 hábito (100%)");
 		await user.hover(cellLink("2026-10-03"));
 		expect(tooltip()).toHaveTextContent("Nenhum hábito previsto");
+	});
+
+	describe("lens", () => {
+		const lens = () =>
+			document.querySelector<HTMLElement>("[data-heatmap-lens]");
+		const glides = () =>
+			lens()!.className.includes("motion-safe:transition-[transform,opacity]");
+
+		// Cell offsets inside the scroller: 10-05 at x=300, today at x=500.
+		function mockLayout() {
+			vi.spyOn(HTMLElement.prototype, "offsetLeft", "get").mockImplementation(
+				function (this: HTMLElement) {
+					const at: Record<string, number> = {
+						"2026-10-05": 300,
+						[TODAY]: 500,
+					};
+					return at[this.dataset.date ?? ""] ?? 0;
+				}
+			);
+			vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockReturnValue(64);
+			vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(28);
+		}
+
+		it("is one ring that follows the pointer and fades out on leaving", async () => {
+			reduceMotion(false);
+			mockLayout();
+			await renderInRouter(<HeatmapGrid grid={grid} />);
+			const user = userEvent.setup();
+			expect(lens()).toBeNull();
+
+			await user.hover(cellLink("2026-10-05"));
+			expect(lens()).toHaveAttribute("data-visible");
+			expect(lens()).toHaveAttribute("aria-hidden", "true");
+			expect(lens()!.style.transform).toBe("translate(297px, 61px)");
+			expect(lens()!.style.width).toBe("34px");
+			// Appearing: placed at once, no glide from an old spot.
+			expect(glides()).toBe(false);
+
+			await user.hover(cellLink(TODAY));
+			expect(lens()!.style.transform).toBe("translate(497px, 61px)");
+			// Moving between cells: it glides.
+			expect(glides()).toBe(true);
+			expect(document.querySelectorAll("[data-heatmap-lens]")).toHaveLength(1);
+
+			// The gap between cells (the row itself) keeps it in place.
+			await user.hover(document.querySelector<HTMLElement>("[role=row]")!);
+			expect(lens()).toHaveAttribute("data-visible");
+			expect(lens()!.style.transform).toBe("translate(497px, 61px)");
+
+			await user.unhover(screen.getByRole("grid"));
+			expect(lens()).not.toHaveAttribute("data-visible");
+			expect(tooltip()).not.toHaveAttribute("data-visible");
+		});
+
+		it("marks keyboard focus too", async () => {
+			mockLayout();
+			await renderInRouter(<HeatmapGrid grid={grid} />);
+			act(() => cellLink(TODAY).focus());
+			expect(lens()).toHaveAttribute("data-visible");
+			expect(lens()!.style.transform).toBe("translate(497px, 61px)");
+		});
+
+		it("never glides with prefers-reduced-motion", async () => {
+			reduceMotion(true);
+			mockLayout();
+			await renderInRouter(<HeatmapGrid grid={grid} />);
+			const user = userEvent.setup();
+			await user.hover(cellLink("2026-10-05"));
+			await user.hover(cellLink(TODAY));
+			expect(lens()!.style.transform).toBe("translate(497px, 61px)");
+			expect(glides()).toBe(false);
+		});
+
+		it("leaves the cells without motion of their own", async () => {
+			await renderInRouter(<HeatmapGrid grid={grid} />);
+			for (const link of document.querySelectorAll("a[data-date]")) {
+				expect(link.className).not.toMatch(/scale|transition/);
+			}
+		});
 	});
 
 	it("plays the entrance sweep", async () => {

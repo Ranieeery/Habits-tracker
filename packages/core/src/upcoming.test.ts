@@ -12,6 +12,7 @@ function habit(name: string, overrides: Partial<Habit>): Habit {
 		schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
 		start_date: TODAY,
 		archived_at: null,
+		sort_key: "a0",
 		created_at: 1,
 		updated_at: 1,
 		deleted_at: null,
@@ -20,7 +21,7 @@ function habit(name: string, overrides: Partial<Habit>): Habit {
 }
 
 describe("upcoming", () => {
-	it("lists the next 14 days of non-weekday habits, by date then name", () => {
+	it("lists the next 14 days of non-weekday habits, by date then the user's order", () => {
 		const habits = [
 			habit("Ler", {}),
 			habit("Consulta", {
@@ -40,6 +41,25 @@ describe("upcoming", () => {
 			["2026-10-13", "Filtro"],
 			["2026-10-20", "Condomínio"],
 			["2026-10-21", "Filtro"],
+		]);
+	});
+
+	it("orders habits of the same date as the user does, not by name", () => {
+		const habits = [
+			habit("Bravo", {
+				schedule: { type: "once", date: "2026-10-13" },
+				start_date: "2026-10-13",
+				sort_key: "a1",
+			}),
+			habit("Alfa", {
+				schedule: { type: "once", date: "2026-10-13" },
+				start_date: "2026-10-13",
+				sort_key: "a2",
+			}),
+		];
+		expect(upcoming(habits, TODAY, sp).map((item) => item.habit.name)).toEqual([
+			"Bravo",
+			"Alfa",
 		]);
 	});
 

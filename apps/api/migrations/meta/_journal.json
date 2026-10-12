@@ -43,6 +43,13 @@
       "when": 1791759647291,
       "tag": "0005_schedules_digest",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791831316327,
+      "tag": "0006_habit_order",
+      "breakpoints": true
     }
   ]
 }

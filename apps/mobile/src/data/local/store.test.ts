@@ -163,3 +163,18 @@ describe("local store", () => {
 		expect(await store.acquireLease("app", 63_002, 60_000)).toBe(false);
 	});
 });
+
+describe("local migration 2 (2.4.0)", () => {
+	it("adds sort_key to a version 1 database, keeping its habits with an empty key", async () => {
+		const db = openNodeDatabase();
+		await db.exec(`BEGIN; ${MIGRATIONS[0]} PRAGMA user_version = 1; COMMIT;`);
+		await db.run(
+			"INSERT INTO habits (id, name, schedule, start_date, archived_at, created_at, updated_at, deleted_at) VALUES ('h1', 'Ler', '{\"type\":\"weekdays\",\"days\":[1]}', '2026-10-01', NULL, 1, 1, NULL)"
+		);
+		expect(await migrate(db)).toBe(MIGRATIONS.length);
+		const row = await db.first<{ sort_key: string }>(
+			"SELECT sort_key FROM habits WHERE id = 'h1'"
+		);
+		expect(row?.sort_key).toBe("");
+	});
+});

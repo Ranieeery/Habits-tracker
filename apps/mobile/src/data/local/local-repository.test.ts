@@ -166,3 +166,80 @@ describe("local repository", () => {
 		).toBe("not_found");
 	});
 });
+
+describe("habit order (2.4.0)", () => {
+	const mirrored = (
+		id: string,
+		name: string,
+		sort_key: string,
+		created_at: number
+	) => ({
+		id,
+		name,
+		schedule: EVERY_DAY,
+		start_date: "2026-10-01",
+		archived_at: null,
+		sort_key,
+		created_at,
+		updated_at: created_at,
+		deleted_at: null,
+	});
+
+	it("lists habits and the day in the server's order, and puts a new one last", async () => {
+		const { repository, store } = setup();
+		await store.applyPullPage({
+			changes: {
+				habits: [
+					mirrored("00000000-0000-7000-8000-000000000001", "Ler", "a2", 1),
+					mirrored("00000000-0000-7000-8000-000000000002", "Correr", "a0", 2),
+					mirrored("00000000-0000-7000-8000-000000000003", "Meditar", "a1", 3),
+				],
+				completions: [],
+			},
+			cursor: "1.3",
+			has_more: false,
+		});
+		expect((await repository.listHabits()).map((h) => h.name)).toEqual([
+			"Correr",
+			"Meditar",
+			"Ler",
+		]);
+
+		const created = await repository.createHabit({
+			name: "Alongar",
+			schedule: EVERY_DAY,
+			start_date: TODAY,
+		});
+		expect(created.sort_key).toBe("a3");
+		const [entry] = await store.readOutbox();
+		expect(entry?.mutation).toMatchObject({
+			type: "habit.create",
+			sort_key: "a3",
+		});
+		expect(
+			(await repository.getDay(TODAY)).possible_habits.map((h) => h.name)
+		).toEqual(["Correr", "Meditar", "Ler", "Alongar"]);
+	});
+
+	it("moves a habit through the outbox", async () => {
+		const { repository, store } = setup();
+		await store.applyPullPage({
+			changes: {
+				habits: [
+					mirrored("00000000-0000-7000-8000-000000000001", "Ler", "a0", 1),
+					mirrored("00000000-0000-7000-8000-000000000002", "Correr", "a1", 2),
+				],
+				completions: [],
+			},
+			cursor: "1.2",
+			has_more: false,
+		});
+		await repository.updateHabit("00000000-0000-7000-8000-000000000002", {
+			sort_key: "Zz",
+		});
+		expect((await repository.listHabits()).map((h) => h.name)).toEqual([
+			"Correr",
+			"Ler",
+		]);
+	});
+});

@@ -15,6 +15,7 @@ export * from "./progress.ts";
 export * from "./reminders.ts";
 export * from "./schedule.ts";
 export * from "./schedule-text.ts";
+export * from "./sort-key.ts";
 export * from "./streaks.ts";
 export * from "./sync.ts";
 export * from "./upcoming.ts";

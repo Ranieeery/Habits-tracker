@@ -52,6 +52,12 @@ export const MIGRATIONS: readonly string[] = [
 		value TEXT NOT NULL
 	);
 	`,
+	// 2 (2.4.0): the user's order of habits. Rows mirrored before it keep ''
+	// (sorted last) until the next pull, which brings the keys the server
+	// filled in (its migration 0006 moved every habit's sync cursor).
+	`
+	ALTER TABLE habits ADD COLUMN sort_key TEXT NOT NULL DEFAULT '';
+	`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<number> {

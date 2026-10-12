@@ -1,13 +1,16 @@
 import { type Habit, isSupportedSchedule } from "@habits/contracts";
-import { formatSchedule } from "@habits/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	ArchiveIcon,
 	ArchiveRestoreIcon,
+	ArrowDownIcon,
+	ArrowUpIcon,
+	EllipsisVerticalIcon,
+	GripVerticalIcon,
 	PencilIcon,
 	PlusIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState } from "@/components/states.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -18,6 +21,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog.tsx";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { errorMessage } from "@/lib/errors.ts";
 import {
@@ -29,7 +38,11 @@ import {
 import { isUnauthorized } from "@/lib/query-client.ts";
 import { useServices } from "@/lib/services.ts";
 import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
+import { cn } from "@/lib/utils.ts";
+import { HabitCard } from "./habit-card.tsx";
 import { HabitForm, type HabitFormValues } from "./habit-form.tsx";
+import { useReorderHabit } from "./use-reorder-habit.ts";
+import { useSortableList } from "./use-sortable-list.ts";
 
 /** A new habit gets its id once per opening (a double submit creates one). */
 type Editing =
@@ -92,30 +105,59 @@ export function HabitsPage() {
 		onSettled: () => invalidateHabitData(queryClient),
 	});
 
+	// Already in the user's order (the API sorts by `sort_key`).
 	const live = habits.data?.filter((habit) => habit.archived_at === null);
 	const active = live?.filter((habit) => !isPastOnce(habit, today));
 	const past = live?.filter((habit) => isPastOnce(habit, today));
 	const archived = habits.data?.filter((habit) => habit.archived_at !== null);
 
+	const editAndArchive = (habit: Habit) => (
+		<>
+			<Button
+				variant="ghost"
+				size="icon"
+				aria-label={`Editar ${habit.name}`}
+				onClick={() => setEditing({ mode: "edit", habit })}
+			>
+				<PencilIcon aria-hidden="true" />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon"
+				aria-label={`Arquivar ${habit.name}`}
+				disabled={archive.isPending}
+				onClick={() => archive.mutate({ id: habit.id, archived: true })}
+			>
+				<ArchiveIcon aria-hidden="true" />
+			</Button>
+		</>
+	);
+
 	return (
-		<section aria-labelledby="habits-title" className="flex flex-col gap-6">
+		<section
+			aria-labelledby="habits-title"
+			className="mx-auto flex w-full max-w-2xl flex-col gap-6"
+		>
 			<header className="flex flex-wrap items-center justify-between gap-4">
-				<h1 id="habits-title" className="text-3xl font-extrabold">
+				<h1
+					id="habits-title"
+					className="font-display text-4xl font-bold tracking-tight"
+				>
 					Hábitos
 				</h1>
 				<Button
 					variant="outline"
 					onClick={() => setEditing({ mode: "create", id: newId() })}
 				>
-					<PlusIcon className="text-accent" aria-hidden="true" />
+					<PlusIcon className="text-night-accent-text" aria-hidden="true" />
 					Novo hábito
 				</Button>
 			</header>
 
 			{habits.isPending ? (
 				<div className="flex flex-col gap-2" aria-busy="true">
-					<Skeleton className="h-16 w-full" />
-					<Skeleton className="h-16 w-full" />
+					<Skeleton className="h-20 w-full rounded-xl" />
+					<Skeleton className="h-20 w-full rounded-xl" />
 				</div>
 			) : habits.isError ? (
 				<ErrorState error={habits.error} onRetry={() => habits.refetch()} />
@@ -127,86 +169,65 @@ export function HabitsPage() {
 							description="Crie um hábito e escolha como ele se repete: dias da semana, a cada N dias, dias do mês, uma data ou todo ano."
 						/>
 					) : (
-						<ul className="flex flex-col gap-2">
-							{active?.map((habit) => (
-								<HabitRow key={habit.id} habit={habit} today={today}>
-									<Button
-										variant="ghost"
-										size="icon"
-										aria-label={`Editar ${habit.name}`}
-										onClick={() => setEditing({ mode: "edit", habit })}
-									>
-										<PencilIcon aria-hidden="true" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										aria-label={`Arquivar ${habit.name}`}
-										disabled={archive.isPending}
-										onClick={() =>
-											archive.mutate({ id: habit.id, archived: true })
-										}
-									>
-										<ArchiveIcon aria-hidden="true" />
-									</Button>
-								</HabitRow>
-							))}
-						</ul>
+						<ActiveList
+							habits={active ?? []}
+							today={today}
+							timeZone={timeZone}
+							archiving={archive.isPending}
+							onEdit={(habit) => setEditing({ mode: "edit", habit })}
+							onArchive={(habit) =>
+								archive.mutate({ id: habit.id, archived: true })
+							}
+						/>
 					)}
 
 					{past && past.length > 0 && (
-						<details className="group rounded-xl border border-border">
-							<summary className="flex min-h-touch cursor-pointer items-center px-4 font-semibold text-muted">
+						<details className="group rounded-xl border border-night-border">
+							<summary className="flex min-h-touch cursor-pointer items-center rounded-xl px-4 font-semibold text-night-muted hover:text-night-foreground">
 								Passados ({past.length})
 							</summary>
 							<ul className="flex flex-col gap-2 p-2">
 								{past.map((habit) => (
-									<HabitRow key={habit.id} habit={habit} today={today} muted>
-										<Button
-											variant="ghost"
-											size="icon"
-											aria-label={`Editar ${habit.name}`}
-											onClick={() => setEditing({ mode: "edit", habit })}
-										>
-											<PencilIcon aria-hidden="true" />
-										</Button>
-										<Button
-											variant="ghost"
-											size="icon"
-											aria-label={`Arquivar ${habit.name}`}
-											disabled={archive.isPending}
-											onClick={() =>
-												archive.mutate({ id: habit.id, archived: true })
-											}
-										>
-											<ArchiveIcon aria-hidden="true" />
-										</Button>
-									</HabitRow>
+									<HabitCard
+										key={habit.id}
+										habit={habit}
+										today={today}
+										timeZone={timeZone}
+										muted
+										actions={editAndArchive(habit)}
+									/>
 								))}
 							</ul>
 						</details>
 					)}
 
 					{archived && archived.length > 0 && (
-						<details className="group rounded-xl border border-border">
-							<summary className="flex min-h-touch cursor-pointer items-center px-4 font-semibold text-muted">
+						<details className="group rounded-xl border border-night-border">
+							<summary className="flex min-h-touch cursor-pointer items-center rounded-xl px-4 font-semibold text-night-muted hover:text-night-foreground">
 								Arquivados ({archived.length})
 							</summary>
 							<ul className="flex flex-col gap-2 p-2">
 								{archived.map((habit) => (
-									<HabitRow key={habit.id} habit={habit} today={today} muted>
-										<Button
-											variant="ghost"
-											size="sm"
-											disabled={archive.isPending}
-											onClick={() =>
-												archive.mutate({ id: habit.id, archived: false })
-											}
-										>
-											<ArchiveRestoreIcon aria-hidden="true" />
-											Desarquivar
-										</Button>
-									</HabitRow>
+									<HabitCard
+										key={habit.id}
+										habit={habit}
+										today={today}
+										timeZone={timeZone}
+										muted
+										actions={
+											<Button
+												variant="ghost"
+												size="sm"
+												disabled={archive.isPending}
+												onClick={() =>
+													archive.mutate({ id: habit.id, archived: false })
+												}
+											>
+												<ArchiveRestoreIcon aria-hidden="true" />
+												Desarquivar
+											</Button>
+										}
+									/>
 								))}
 							</ul>
 						</details>
@@ -249,38 +270,183 @@ export function HabitsPage() {
 	);
 }
 
-function HabitRow({
-	habit,
+/**
+ * The active habits, in the user's order: drag by the handle (pointer or
+ * keyboard), or the up/down buttons (from `md`; in the "Mais ações" menu on
+ * phones, next to "Arquivar"). Moving writes one key (core `moveHabit`).
+ */
+function ActiveList({
+	habits,
 	today,
-	muted = false,
-	children,
+	timeZone,
+	archiving,
+	onEdit,
+	onArchive,
 }: {
-	habit: Habit;
+	habits: Habit[];
 	today: string;
-	muted?: boolean;
-	children: React.ReactNode;
+	timeZone: string;
+	archiving: boolean;
+	onEdit: (habit: Habit) => void;
+	onArchive: (habit: Habit) => void;
 }) {
-	const supported = isSupportedSchedule(habit.schedule);
+	const reorder = useReorderHabit();
+	const sortable = useSortableList({
+		items: habits.map((habit) => ({ id: habit.id, label: habit.name })),
+		onMove: (id, toIndex) => reorder.move(habits, id, toIndex),
+	});
+	// The moved card changes place in the DOM: keep the focus on the button
+	// that moved it (or on its handle once that button is disabled).
+	const listRef = useRef<HTMLUListElement>(null);
+	const refocus = useRef<{ id: string; action: "up" | "down" } | null>(null);
+	useEffect(() => {
+		const target = refocus.current;
+		if (!target) return;
+		refocus.current = null;
+		const card = listRef.current?.querySelector(
+			`[data-habit-id="${target.id}"]`
+		);
+		const button = card?.querySelector<HTMLButtonElement>(
+			`[data-action="${target.action}"]`
+		);
+		(button && !button.disabled
+			? button
+			: card?.querySelector<HTMLElement>("[data-action='handle']")
+		)?.focus();
+	}, [habits]);
+
+	const step = (habit: Habit, index: number, action: "up" | "down") => {
+		refocus.current = { id: habit.id, action };
+		reorder.move(habits, habit.id, index + (action === "up" ? -1 : 1));
+	};
+
 	return (
-		<li className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-2">
-			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<span
-					className={muted ? "truncate text-muted" : "truncate font-semibold"}
-				>
-					{habit.name}
-				</span>
-				<span className="flex flex-wrap items-center gap-2 text-xs text-muted">
-					{supported ? (
-						formatSchedule(habit.schedule, { today })
-					) : (
-						<span className="rounded-sm border border-danger px-1 font-semibold text-danger">
-							Incompatível
-						</span>
-					)}
-					{!supported && <span>Atualize o app para ver a repetição.</span>}
-				</span>
-			</div>
-			{children}
-		</li>
+		<>
+			<p id={sortable.instructionsId} className="sr-only">
+				Para reordenar pela alça: Espaço pega o hábito, as setas para cima e
+				para baixo movem, Espaço solta e Esc cancela.
+			</p>
+			<p aria-live="assertive" className="sr-only">
+				{sortable.message}
+			</p>
+			<ul
+				ref={listRef}
+				aria-label="Hábitos ativos"
+				className="flex flex-col gap-2"
+			>
+				{habits.map((habit, index) => {
+					const item = sortable.itemProps(habit.id, index);
+					const lifted = item["data-dragging"] !== undefined;
+					const first = index === 0;
+					const last = index === habits.length - 1;
+					return (
+						<HabitCard
+							key={habit.id}
+							ref={item.ref}
+							style={item.style}
+							className={cn(
+								item.className,
+								lifted &&
+									"border-night-accent-text bg-night-surface-raised shadow-xl shadow-night-bg/80"
+							)}
+							habit={habit}
+							today={today}
+							timeZone={timeZone}
+							handle={
+								<button
+									type="button"
+									data-action="handle"
+									aria-label={`Reordenar ${habit.name}`}
+									aria-roledescription="alça de arrastar"
+									className="flex size-touch shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-night-subtle transition-colors hover:text-night-foreground active:cursor-grabbing"
+									{...sortable.handleProps(habit.id, index)}
+								>
+									<GripVerticalIcon className="size-5" aria-hidden="true" />
+								</button>
+							}
+							actions={
+								<>
+									<Button
+										variant="ghost"
+										size="icon"
+										data-action="up"
+										className="hidden md:inline-flex"
+										aria-label={`Mover ${habit.name} para cima`}
+										disabled={first}
+										onClick={() => step(habit, index, "up")}
+									>
+										<ArrowUpIcon aria-hidden="true" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										data-action="down"
+										className="hidden md:inline-flex"
+										aria-label={`Mover ${habit.name} para baixo`}
+										disabled={last}
+										onClick={() => step(habit, index, "down")}
+									>
+										<ArrowDownIcon aria-hidden="true" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										aria-label={`Editar ${habit.name}`}
+										onClick={() => onEdit(habit)}
+									>
+										<PencilIcon aria-hidden="true" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="hidden md:inline-flex"
+										aria-label={`Arquivar ${habit.name}`}
+										disabled={archiving}
+										onClick={() => onArchive(habit)}
+									>
+										<ArchiveIcon aria-hidden="true" />
+									</Button>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="md:hidden"
+												aria-label={`Mais ações para ${habit.name}`}
+											>
+												<EllipsisVerticalIcon aria-hidden="true" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent>
+											<DropdownMenuItem
+												disabled={first}
+												onSelect={() => step(habit, index, "up")}
+											>
+												<ArrowUpIcon aria-hidden="true" />
+												Mover para cima
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												disabled={last}
+												onSelect={() => step(habit, index, "down")}
+											>
+												<ArrowDownIcon aria-hidden="true" />
+												Mover para baixo
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												disabled={archiving}
+												onSelect={() => onArchive(habit)}
+											>
+												<ArchiveIcon aria-hidden="true" />
+												Arquivar
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</>
+							}
+						/>
+					);
+				})}
+			</ul>
+		</>
 	);
 }

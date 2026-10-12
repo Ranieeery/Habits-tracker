@@ -15,6 +15,7 @@ import {
 	eachDay,
 	heatmapLevel,
 	type HeatmapLevel,
+	initialSortKeys,
 	isHabitPossibleOn,
 	parseCalendarDate,
 } from "@habits/core";
@@ -257,6 +258,7 @@ export function buildSeed({
 			schedule: { type: "weekdays", days: spec.days },
 			start_date,
 			archived_at,
+			sort_key: "",
 			created_at,
 			updated_at: archived_at ?? created_at,
 			deleted_at: null,
@@ -333,11 +335,18 @@ export function buildSeed({
 			schedule,
 			start_date: schedule.type === "once" ? schedule.date : today,
 			archived_at: null,
+			sort_key: "",
 			created_at,
 			updated_at: created_at,
 			deleted_at: null,
 		});
 	}
+
+	// List order = the order above, with the first keys of core's scheme.
+	const keys = initialSortKeys(habits.length);
+	habits.forEach((habit, index) => {
+		habit.sort_key = keys[index]!;
+	});
 
 	const settingsAt = saoPauloInstant(`${year - 1}-12-01`, 8);
 	return {

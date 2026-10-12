@@ -2,7 +2,7 @@ import { Popover as PopoverPrimitive } from "radix-ui";
 import type * as React from "react";
 import { cn } from "@/lib/utils.ts";
 
-// shadcn/ui popover, restyled with the design tokens.
+// shadcn/ui popover, restyled with the night design tokens.
 function Popover(props: React.ComponentProps<typeof PopoverPrimitive.Root>) {
 	return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
@@ -26,7 +26,7 @@ function PopoverContent({
 				align={align}
 				sideOffset={sideOffset}
 				className={cn(
-					"z-50 rounded-xl border border-border bg-surface p-3 text-foreground shadow-lg outline-none",
+					"z-50 rounded-xl border border-night-border bg-night-surface-overlay p-3 text-night-foreground shadow-xl shadow-night-bg/70 outline-none",
 					className
 				)}
 				{...props}

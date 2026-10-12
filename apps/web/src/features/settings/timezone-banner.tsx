@@ -47,16 +47,17 @@ export function TimezoneBanner() {
 	return (
 		<aside
 			aria-label="Fuso horário diferente"
-			className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm sm:flex-row sm:items-center"
+			className="flex flex-col gap-3 rounded-xl border border-night-border bg-night-surface px-4 py-3 text-sm sm:flex-row sm:items-center"
 		>
 			<GlobeIcon
-				className="hidden size-5 shrink-0 text-muted sm:block"
+				className="hidden size-5 shrink-0 text-night-muted sm:block"
 				aria-hidden="true"
 			/>
-			<p className="flex-1 text-muted">
+			<p className="flex-1 text-night-muted">
 				Este dispositivo está em{" "}
-				<strong className="text-foreground">{device}</strong>, mas seus dias são
-				contados em <strong className="text-foreground">{saved}</strong>.
+				<strong className="text-night-foreground">{device}</strong>, mas seus
+				dias são contados em{" "}
+				<strong className="text-night-foreground">{saved}</strong>.
 			</p>
 			<div className="flex gap-2">
 				<Button

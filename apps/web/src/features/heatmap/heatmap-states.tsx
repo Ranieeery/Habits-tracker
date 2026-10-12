@@ -60,7 +60,7 @@ export function HeatmapEmpty() {
 						Cada dia em que você cumpre seus hábitos acende um quadrado aqui.
 					</p>
 				</div>
-				<Link to="/habits" className={buttonVariants({ variant: "night" })}>
+				<Link to="/habits" className={buttonVariants({ variant: "default" })}>
 					Criar primeiro hábito
 				</Link>
 			</div>
@@ -88,7 +88,7 @@ export function HeatmapError({
 				<p className="font-semibold">Não foi possível carregar o histórico</p>
 				<p className="text-sm text-night-muted">{errorMessage(error)}</p>
 			</div>
-			<Button variant="night-secondary" onClick={onRetry}>
+			<Button variant="secondary" onClick={onRetry}>
 				Tentar de novo
 			</Button>
 		</div>

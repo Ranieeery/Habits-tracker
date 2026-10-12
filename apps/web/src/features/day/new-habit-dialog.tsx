@@ -53,7 +53,7 @@ export function NewHabitDialog({
 		<Dialog open={habitId !== null} onOpenChange={onOpenChange}>
 			<DialogTrigger asChild>
 				<Button variant="outline" className={className}>
-					<PlusIcon className="text-accent" aria-hidden="true" />
+					<PlusIcon className="text-night-accent-text" aria-hidden="true" />
 					Novo hábito
 				</Button>
 			</DialogTrigger>

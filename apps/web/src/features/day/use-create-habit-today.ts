@@ -34,7 +34,9 @@ export function useCreateHabitToday(today: CalendarDate) {
 		mutationKey: ["habit", "create", today],
 		mutationFn: (input: NewHabitInput) => createHabit(api, input),
 		onMutate: async (input) => {
-			const habit = newHabit(input, now());
+			// The server gives it the key after the last habit; until then an
+			// empty key also sorts last.
+			const habit = newHabit({ ...input, sort_key: "" }, now());
 			if (newHabitNotice(habit, today, { timeZone }) !== null) {
 				return { previous: undefined };
 			}

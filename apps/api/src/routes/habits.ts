@@ -10,6 +10,7 @@ import {
 	checkHabitDates,
 	earliestStartDate,
 	habitDatesError,
+	keyAfterLast,
 	newHabit,
 } from "@habits/core";
 import { createRoute } from "@hono/zod-openapi";
@@ -94,7 +95,13 @@ export const habitRoutes = router()
 		const problem = checkHabitDates(body, earliest);
 		if (problem)
 			return c.json({ error: habitDatesError(problem, earliest) }, 422);
-		const habit = newHabit({ ...body, id: body.id ?? uuidV7(now) }, now);
+		// Without a key (clients older than 2.4.0, or the web) it goes last.
+		const sort_key =
+			body.sort_key ?? keyAfterLast(await listHabits(c.var.db, c.var.userId));
+		const habit = newHabit(
+			{ ...body, id: body.id ?? uuidV7(now), sort_key },
+			now
+		);
 		const result = await insertHabit(c.var.db, c.var.userId, habit);
 		if (!result) {
 			return c.json(errorBody("conflict", "Habit id already in use"), 409);

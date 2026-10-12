@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Completion } from "./completion.ts";
 import { ApiErrorBody } from "./errors.ts";
-import { Habit, HabitName, UpdateHabitRequest } from "./habit.ts";
+import { Habit, HabitName, SortKey, UpdateHabitRequest } from "./habit.ts";
 import { CalendarDate, TimestampMs, Uuid } from "./primitives.ts";
 import { Schedule } from "./schedule.ts";
 
@@ -32,6 +32,8 @@ export const HabitCreateMutation = z.object({
 	name: HabitName,
 	schedule: Schedule,
 	start_date: CalendarDate,
+	/** Optional (2.4.0): absent = after the user's last habit. */
+	sort_key: SortKey.optional(),
 });
 export type HabitCreateMutation = z.infer<typeof HabitCreateMutation>;
 

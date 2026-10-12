@@ -4,7 +4,7 @@ import type {
 	UpdateHabitRequest,
 } from "@habits/contracts";
 import { applyHabitChanges } from "@habits/core";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { fromHabitRow, toHabitPatchRow, toHabitRow } from "../db/records.ts";
 import { habits } from "../db/schema.ts";
@@ -12,13 +12,22 @@ import { habits } from "../db/schema.ts";
 const ownedBy = (userId: string) =>
 	and(eq(habits.user_id, userId), isNull(habits.deleted_at));
 
-/** The user's habits that are not deleted (archived ones included). */
+/**
+ * The user's habits that are not deleted (archived ones included), in list
+ * order: by `sort_key` with empty keys last, then by creation (core
+ * `compareHabitOrder`). Day views, the digest and the clients follow it.
+ */
 export async function listHabits(db: Db, userId: string): Promise<Habit[]> {
 	const rows = await db
 		.select()
 		.from(habits)
 		.where(ownedBy(userId))
-		.orderBy(asc(habits.created_at), asc(habits.id));
+		.orderBy(
+			asc(sql`${habits.sort_key} = ''`),
+			asc(habits.sort_key),
+			asc(habits.created_at),
+			asc(habits.id)
+		);
 	return rows.map(fromHabitRow);
 }
 
@@ -93,5 +102,6 @@ export function changedHabitFields(
 		...(changes.name !== undefined && { name: row.name }),
 		...(changes.schedule !== undefined && { schedule: row.schedule }),
 		...(changes.archived !== undefined && { archived_at: row.archived_at }),
+		...(changes.sort_key !== undefined && { sort_key: row.sort_key }),
 	};
 }

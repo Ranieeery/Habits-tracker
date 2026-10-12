@@ -280,21 +280,41 @@ describe("heatmap states", () => {
 });
 
 describe("frame", () => {
-	it("wears the new identity on the heatmap screen only", async () => {
+	it("is the same on every screen: wordmark and both navigations", async () => {
 		const { router } = renderApp("/", { routes: routes({ 2026: [] }) });
-		const home = await screen.findByRole("link", { name: "Habits, início" });
-		expect(home.closest("[data-screen]")).toHaveAttribute(
-			"data-screen",
-			"home"
-		);
-		expect(home.querySelector("svg")).not.toBeNull();
-
-		await router.navigate({ to: "/habits" });
-		await waitFor(() =>
+		for (const path of ["/", "/habits", "/settings"] as const) {
+			await router.navigate({ to: path });
+			const home = await screen.findByRole("link", { name: "Habits, início" });
+			// The mark (svg) and the name, never the pre-2.4.0 "Habits." text.
+			expect(home.querySelector("svg")).not.toBeNull();
+			expect(home).toHaveTextContent(/^Habits$/);
 			expect(
-				screen.getByRole("link", { name: "Habits, início" })
-			).toHaveTextContent("Habits.")
-		);
-		expect(document.querySelector("[data-screen]")).toBeNull();
+				screen.getAllByRole("navigation", { name: "Principal" })
+			).toHaveLength(2);
+		}
+	});
+});
+
+describe("navigation", () => {
+	it("marks the current section in both navigations", async () => {
+		const { router } = renderApp("/", { routes: routes({ 2026: [] }) });
+		for (const [path, current] of [
+			["/", "Histórico"],
+			["/habits", "Hábitos"],
+			["/settings", "Ajustes"],
+		] as const) {
+			await router.navigate({ to: path });
+			await waitFor(() => {
+				for (const nav of screen.getAllByRole("navigation", {
+					name: "Principal",
+				})) {
+					const active = within(nav)
+						.getAllByRole("link")
+						.filter((link) => link.getAttribute("aria-current") === "page");
+					expect(active.map((link) => link.textContent)).toEqual([current]);
+					expect(active[0]).toHaveAttribute("data-status", "active");
+				}
+			});
+		}
 	});
 });

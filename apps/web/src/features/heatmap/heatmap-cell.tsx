@@ -74,7 +74,9 @@ export function HeatmapCell({
 				className={cn(
 					SHAPE,
 					LEVEL_CLASSES[cell.level],
-					"hover:brightness-125 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:hover:scale-110 motion-safe:focus-visible:scale-110",
+					// Hover and focus are marked by the grid's lens; the cell only
+					// brightens (no motion of its own).
+					"hover:brightness-125",
 					isToday && "outline-2 outline-offset-2 outline-night-foreground"
 				)}
 			/>

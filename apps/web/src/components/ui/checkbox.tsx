@@ -3,7 +3,8 @@ import { Checkbox as CheckboxPrimitive } from "radix-ui";
 import type * as React from "react";
 import { cn } from "@/lib/utils.ts";
 
-// shadcn/ui checkbox with the legacy look: surface box, green when checked.
+// shadcn/ui checkbox: night box, green ("done") when checked with a dark
+// check mark (9.8:1).
 function Checkbox({
 	className,
 	...props
@@ -12,16 +13,16 @@ function Checkbox({
 		<CheckboxPrimitive.Root
 			data-slot="checkbox"
 			className={cn(
-				"peer flex size-8 shrink-0 items-center justify-center rounded-md border-2 border-border bg-surface transition-colors disabled:cursor-not-allowed data-[state=checked]:border-success data-[state=checked]:bg-success",
+				"peer flex size-7 shrink-0 items-center justify-center rounded-md border-2 border-night-border-strong bg-night-bg transition-colors disabled:cursor-not-allowed disabled:opacity-60 data-[state=checked]:border-night-success data-[state=checked]:bg-night-success",
 				className
 			)}
 			{...props}
 		>
 			<CheckboxPrimitive.Indicator
 				data-slot="checkbox-indicator"
-				className="grid place-content-center text-foreground"
+				className="grid place-content-center text-night-bg"
 			>
-				<CheckIcon className="size-5" strokeWidth={3} />
+				<CheckIcon className="size-4" strokeWidth={3} />
 			</CheckboxPrimitive.Indicator>
 		</CheckboxPrimitive.Root>
 	);

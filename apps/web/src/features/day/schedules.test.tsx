@@ -67,15 +67,18 @@ describe("today's view with mixed schedule types", () => {
 	it("shows Próximos: the next 14 days of non-weekday habits, read-only", async () => {
 		renderApp("/today", { routes: routes() });
 		const section = await screen.findByRole("region", { name: "Próximos" });
-		const rows = within(section)
-			.getAllByRole("listitem")
-			.map((row) => row.textContent);
-		expect(rows).toEqual([
-			"dom, 11/10Consulta no dermatologista",
-			"sáb, 17/10Trocar filtro",
-			"ter, 20/10Pagar condomínio",
+		const cards = within(section).getAllByRole("listitem");
+		// Each card reads as "<date>: <name>", then how it repeats.
+		expect(
+			cards.map((card) => card.querySelector("[data-title]")?.textContent)
+		).toEqual([
+			"dom, 11/10: Consulta no dermatologista",
+			"sáb, 17/10: Trocar filtro",
+			"ter, 20/10: Pagar condomínio",
 			// 25/10 (the next filter change) is past the 14 days.
 		]);
+		expect(within(cards[1]!).getByText("A cada 8 dias")).toBeInTheDocument();
+		expect(within(cards[2]!).getByText("Todo dia 20")).toBeInTheDocument();
 		expect(within(section).queryByRole("checkbox")).not.toBeInTheDocument();
 	});
 
@@ -91,7 +94,7 @@ describe("today's view with mixed schedule types", () => {
 			}),
 		});
 		const section = await screen.findByRole("region", { name: "Próximos" });
-		expect(section).toHaveTextContent("amanhãConsulta no dermatologista");
+		expect(section).toHaveTextContent("amanhã: Consulta no dermatologista");
 	});
 
 	it("has no Próximos on other days", async () => {
@@ -109,7 +112,7 @@ describe("habits list", () => {
 		expect(await screen.findByText("A cada 8 dias")).toBeInTheDocument();
 		expect(screen.getByText("Todo dia 20")).toBeInTheDocument();
 		expect(screen.getByText("Dia 11/10")).toBeInTheDocument();
-		expect(screen.getByText("Todos os dias")).toBeInTheDocument();
+		expect(screen.getByText("Repete: Todos os dias")).toBeInTheDocument();
 	});
 
 	it("groups past single dates in a collapsed Passados block", async () => {

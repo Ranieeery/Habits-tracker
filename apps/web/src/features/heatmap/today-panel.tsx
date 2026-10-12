@@ -2,17 +2,15 @@ import type { CalendarDate } from "@habits/contracts";
 import { completionRatio } from "@habits/core";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useId, useRef } from "react";
+import { useId } from "react";
 import { buttonVariants } from "@/components/ui/button.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { errorMessage } from "@/lib/errors.ts";
 import { formatLongDate } from "@/lib/format.ts";
 import { dayQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
-import { usePrefersReducedMotion } from "@/lib/use-reduced-motion.ts";
 import { cn } from "@/lib/utils.ts";
+import { DayHabitItem } from "@/features/day/day-habit-item.tsx";
 import { useToggleCompletion } from "@/features/day/use-toggle-completion.ts";
-import { pulse } from "./pulse.ts";
 
 /**
  * Today's habits next to the heatmap (below it on narrow screens), checked
@@ -57,7 +55,7 @@ export function TodayPanel({ today }: { today: CalendarDate }) {
 						type="button"
 						onClick={() => day.refetch()}
 						className={cn(
-							buttonVariants({ variant: "night-secondary", size: "sm" }),
+							buttonVariants({ variant: "secondary", size: "sm" }),
 							"self-start"
 						)}
 					>
@@ -85,7 +83,7 @@ export function TodayPanel({ today }: { today: CalendarDate }) {
 			<Link
 				to="/today"
 				className={cn(
-					buttonVariants({ variant: "night-ghost" }),
+					buttonVariants({ variant: "ghost" }),
 					"-mx-2 self-start text-night-accent-text"
 				)}
 			>
@@ -130,57 +128,15 @@ function TodayList({
 			</div>
 			<ul className="-mx-2 flex flex-col">
 				{habits.map((habit) => (
-					<TodayItem
+					<DayHabitItem
 						key={habit.id}
-						name={habit.name}
+						habit={habit}
 						completed={completedIds.has(habit.id)}
+						editable
 						onToggle={(completed) => onToggle(habit, completed)}
 					/>
 				))}
 			</ul>
 		</>
-	);
-}
-
-function TodayItem({
-	name,
-	completed,
-	onToggle,
-}: {
-	name: string;
-	completed: boolean;
-	onToggle: (completed: boolean) => void;
-}) {
-	const id = useId();
-	const box = useRef<HTMLButtonElement>(null);
-	const reducedMotion = usePrefersReducedMotion();
-
-	return (
-		<li>
-			<label
-				htmlFor={id}
-				className="flex min-h-touch cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 motion-safe:transition-colors motion-safe:duration-150 hover:bg-night-surface-raised"
-			>
-				<Checkbox
-					ref={box}
-					id={id}
-					checked={completed}
-					onCheckedChange={(checked) => {
-						const value = checked === true;
-						if (value && !reducedMotion) pulse(box.current);
-						onToggle(value);
-					}}
-					className="size-7 border-night-border-strong bg-night-bg data-[state=checked]:border-night-success data-[state=checked]:bg-night-success [&_svg]:size-4 [&_svg]:text-night-bg"
-				/>
-				<span
-					className={cn(
-						"min-w-0 font-medium break-words motion-safe:transition-colors motion-safe:duration-150",
-						completed && "text-night-muted line-through"
-					)}
-				>
-					{name}
-				</span>
-			</label>
-		</li>
 	);
 }

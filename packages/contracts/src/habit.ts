@@ -5,6 +5,18 @@ import { SyncableFields } from "./syncable.ts";
 
 export const HabitName = z.string().trim().min(1).max(120);
 
+/**
+ * Position of a habit in the user's list (2.4.0): a fractional index in
+ * base 62 (ASCII order: 0-9, A-Z, a-z), compared as plain strings. Moving a
+ * habit writes only its own key, between its new neighbors (core
+ * `keyBetween`), so a reorder is one field change that merges like any other.
+ */
+export const SortKey = z
+	.string()
+	.max(64)
+	.regex(/^[0-9A-Za-z]+$/);
+export type SortKey = z.infer<typeof SortKey>;
+
 export const Habit = z.object({
 	...SyncableFields,
 	name: HabitName,
@@ -16,6 +28,11 @@ export const Habit = z.object({
 	/** First local date on which the habit is possible. */
 	start_date: CalendarDate,
 	archived_at: TimestampMs.nullable(),
+	/**
+	 * Order in the list (`sortHabits` in core). Empty sorts last; defaults to
+	 * empty when reading from an API older than 2.4.0.
+	 */
+	sort_key: z.union([SortKey, z.literal("")]).default(""),
 });
 export type Habit = z.infer<typeof Habit>;
 
@@ -25,6 +42,8 @@ export const CreateHabitRequest = z.object({
 	name: HabitName,
 	schedule: Schedule,
 	start_date: CalendarDate,
+	/** Where the habit goes; absent = after the last one (server assigns). */
+	sort_key: SortKey.optional(),
 });
 export type CreateHabitRequest = z.infer<typeof CreateHabitRequest>;
 
@@ -33,6 +52,8 @@ export const UpdateHabitRequest = z
 		name: HabitName,
 		schedule: Schedule,
 		archived: z.boolean(),
+		/** Moves the habit (a key between its new neighbors). */
+		sort_key: SortKey,
 	})
 	.partial();
 export type UpdateHabitRequest = z.infer<typeof UpdateHabitRequest>;

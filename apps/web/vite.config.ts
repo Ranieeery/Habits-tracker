@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from "vite";
@@ -48,8 +48,8 @@ export default defineConfig(({ command, mode }) => {
 					scope: "/",
 					display: "standalone",
 					orientation: "portrait",
-					theme_color: colors.background,
-					background_color: colors.background,
+					theme_color: nightColors.bg,
+					background_color: nightColors.bg,
 					icons: [
 						{
 							src: "/android-chrome-192x192.png",
@@ -102,7 +102,7 @@ function themeColorMeta(): Plugin {
 		transformIndexHtml: () => [
 			{
 				tag: "meta",
-				attrs: { name: "theme-color", content: colors.background },
+				attrs: { name: "theme-color", content: nightColors.bg },
 				injectTo: "head",
 			},
 		],

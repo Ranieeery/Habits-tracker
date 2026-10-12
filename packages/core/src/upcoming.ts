@@ -8,6 +8,7 @@ import {
 	type SchedulableHabit,
 	type TimeZoneOptions,
 } from "./schedule.ts";
+import { compareHabitOrder } from "./sort-key.ts";
 
 /** Days after today that "Próximos" covers. */
 export const UPCOMING_DAYS = 14;
@@ -24,9 +25,13 @@ export interface UpcomingOptions extends TimeZoneOptions {
 
 /**
  * Occurrences from tomorrow to `today + days` of live, unarchived habits
- * whose schedule is not `weekdays`, by date (then name).
+ * whose schedule is not `weekdays`, by date, then in the user's order
+ * (`compareHabitOrder`, as in every other list).
  */
-export function upcoming<H extends SchedulableHabit & Pick<Habit, "name">>(
+export function upcoming<
+	H extends SchedulableHabit &
+		Pick<Habit, "id" | "name" | "sort_key" | "created_at">,
+>(
 	habits: readonly H[],
 	today: CalendarDate,
 	{ days = UPCOMING_DAYS, ...options }: UpcomingOptions
@@ -44,6 +49,6 @@ export function upcoming<H extends SchedulableHabit & Pick<Habit, "name">>(
 	}
 	return items.sort(
 		(a, b) =>
-			a.date.localeCompare(b.date) || a.habit.name.localeCompare(b.habit.name)
+			a.date.localeCompare(b.date) || compareHabitOrder(a.habit, b.habit)
 	);
 }

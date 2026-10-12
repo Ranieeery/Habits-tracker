@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
 	ApiError,
+	CreateHabitRequest,
+	SortKey,
+	UpdateHabitRequest,
 	CalendarDate,
 	Completion,
 	Habit,
@@ -521,5 +524,36 @@ describe("PushNotificationPayload", () => {
 		expect(
 			PushNotificationPayload.safeParse({ ...payload, v: 2 }).success
 		).toBe(false);
+	});
+});
+
+describe("habit order (2.4.0)", () => {
+	it("defaults a missing sort_key to empty (an API older than 2.4.0)", () => {
+		const { sort_key: _omitted, ...withoutKey } = { ...habit, sort_key: "a0" };
+		expect(Habit.parse(withoutKey).sort_key).toBe("");
+		expect(Habit.parse({ ...habit, sort_key: "a0" }).sort_key).toBe("a0");
+	});
+
+	it("accepts base-62 keys up to 64 characters only", () => {
+		expect(SortKey.safeParse("b0Az").success).toBe(true);
+		expect(SortKey.safeParse("").success).toBe(false);
+		expect(SortKey.safeParse("a-1").success).toBe(false);
+		expect(SortKey.safeParse("a".repeat(65)).success).toBe(false);
+	});
+
+	it("lets create and update carry a key, and old requests still parse", () => {
+		expect(UpdateHabitRequest.parse({ sort_key: "a1" })).toEqual({
+			sort_key: "a1",
+		});
+		expect(UpdateHabitRequest.safeParse({ sort_key: "" }).success).toBe(false);
+		const create = {
+			name: "Ler",
+			schedule: { type: "weekdays", days: [1] },
+			start_date: "2026-10-09",
+		};
+		expect(CreateHabitRequest.parse(create).sort_key).toBeUndefined();
+		expect(
+			CreateHabitRequest.parse({ ...create, sort_key: "a3" }).sort_key
+		).toBe("a3");
 	});
 });

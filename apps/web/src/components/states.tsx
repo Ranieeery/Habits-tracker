@@ -18,12 +18,15 @@ export function ErrorState({
 		<div
 			role="alert"
 			className={cn(
-				"flex flex-col items-center gap-4 rounded-xl border border-danger/40 bg-danger-surface/40 p-6 text-center",
+				"flex flex-col items-center gap-4 rounded-xl border border-night-danger/40 bg-night-danger-surface/60 p-6 text-center",
 				className
 			)}
 		>
-			<AlertCircleIcon className="size-8 text-danger" aria-hidden="true" />
-			<p className="text-foreground">{errorMessage(error)}</p>
+			<AlertCircleIcon
+				className="size-8 text-night-danger"
+				aria-hidden="true"
+			/>
+			<p className="text-night-foreground">{errorMessage(error)}</p>
 			{onRetry && (
 				<Button variant="secondary" onClick={onRetry}>
 					Tentar novamente
@@ -43,9 +46,11 @@ export function EmptyState({
 	action?: React.ReactNode;
 }) {
 	return (
-		<div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
-			<p className="text-lg font-bold">{title}</p>
-			{description && <p className="text-sm text-muted">{description}</p>}
+		<div className="flex flex-col items-center gap-3 rounded-xl border border-night-border bg-night-surface p-8 text-center">
+			<p className="font-display text-xl font-bold text-balance">{title}</p>
+			{description && (
+				<p className="max-w-prose text-sm text-night-muted">{description}</p>
+			)}
 			{action}
 		</div>
 	);
@@ -55,9 +60,12 @@ export function Spinner({ label = "Carregando…" }: { label?: string }) {
 	return (
 		<div
 			role="status"
-			className="flex min-h-40 items-center justify-center gap-3 text-muted"
+			className="flex min-h-40 items-center justify-center gap-3 text-night-muted"
 		>
-			<Loader2Icon className="size-6 animate-spin text-violet-600" />
+			<Loader2Icon
+				className="size-6 text-night-accent-text motion-safe:animate-spin"
+				aria-hidden="true"
+			/>
 			<span>{label}</span>
 		</div>
 	);
@@ -73,7 +81,7 @@ export function FieldError({
 }) {
 	if (!children) return null;
 	return (
-		<p id={id} role="alert" className="text-sm text-danger">
+		<p id={id} role="alert" className="text-sm text-night-danger">
 			{children}
 		</p>
 	);

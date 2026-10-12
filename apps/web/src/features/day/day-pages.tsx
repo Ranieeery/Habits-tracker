@@ -1,9 +1,21 @@
 import type { CalendarDate } from "@habits/contracts";
-import { Link } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button.tsx";
+import {
+	addDays,
+	compareDates,
+	firstDayOfYear,
+	heatmapYearRange,
+} from "@habits/core";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import { Button, buttonVariants } from "@/components/ui/button.tsx";
+import { formatLongDate } from "@/lib/format.ts";
+import { habitsQuery } from "@/lib/queries.ts";
+import { useServices } from "@/lib/services.ts";
 import { useToday } from "@/lib/use-today.ts";
 import { DayView } from "./day-view.tsx";
+import { useDayShortcuts } from "./use-day-shortcuts.ts";
 
 /** Always shows the user's current day, and follows it when the date turns. */
 export function TodayPage() {
@@ -14,22 +26,100 @@ export function TodayPage() {
 /**
  * A specific day, opened from the heatmap. Keyed by date: another day starts
  * locked again (the past-day unlock is state of one visit only).
+ * "Voltar ao histórico" (also Esc) returns to the heatmap; the arrows (also
+ * ←/→) step to the neighbor days, from January 1 of the heatmap's first year
+ * up to today. Steps replace the history entry, so Back still returns to
+ * where the day was opened from.
  */
 export function DayPage({ date }: { date: CalendarDate }) {
 	const today = useToday();
+	const navigate = useNavigate();
+	const { api } = useServices();
+	const habits = useQuery(habitsQuery(api));
+	const earliest = firstDayOfYear(
+		heatmapYearRange(habits.data ?? [], today).first
+	);
+	const previous =
+		compareDates(date, earliest) > 0 ? addDays(date, -1) : undefined;
+	const next = compareDates(date, today) < 0 ? addDays(date, 1) : undefined;
+
+	const goTo = (day: CalendarDate) =>
+		void navigate({ to: "/day/$date", params: { date: day }, replace: true });
+
+	useDayShortcuts({
+		onEscape: () => void navigate({ to: "/" }),
+		onPrevious: previous ? () => goTo(previous) : undefined,
+		onNext: next ? () => goTo(next) : undefined,
+	});
+
 	return (
-		<div className="flex flex-col gap-4">
-			<Link
-				to="/"
-				className={buttonVariants({
-					variant: "ghost",
-					className: "self-start",
-				})}
-			>
-				<ArrowLeftIcon aria-hidden="true" />
-				Voltar ao histórico
-			</Link>
+		<div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+			<div className="flex items-center justify-between gap-2">
+				<Link
+					to="/"
+					aria-keyshortcuts="Escape"
+					className={buttonVariants({ variant: "ghost", className: "-ml-3" })}
+				>
+					<ArrowLeftIcon aria-hidden="true" />
+					Voltar ao histórico
+					<kbd
+						aria-hidden="true"
+						className="hidden rounded-sm border border-night-border-strong px-1.5 font-sans text-xs text-night-subtle md:inline"
+					>
+						Esc
+					</kbd>
+				</Link>
+				<nav aria-label="Outros dias" className="flex items-center gap-1">
+					<DayStep
+						to={previous}
+						label="Dia anterior"
+						shortcut="ArrowLeft"
+						icon={<ChevronLeftIcon aria-hidden="true" />}
+					/>
+					<DayStep
+						to={next}
+						label="Próximo dia"
+						shortcut="ArrowRight"
+						icon={<ChevronRightIcon aria-hidden="true" />}
+					/>
+				</nav>
+			</div>
 			<DayView key={date} date={date} today={today} />
 		</div>
+	);
+}
+
+/** One arrow: a link to the neighbor day, or a disabled button at the edge. */
+function DayStep({
+	to,
+	label,
+	shortcut,
+	icon,
+}: {
+	to: CalendarDate | undefined;
+	label: string;
+	shortcut: string;
+	icon: ReactNode;
+}) {
+	if (to === undefined) {
+		return (
+			<Button variant="ghost" size="icon" aria-label={label} disabled>
+				{icon}
+			</Button>
+		);
+	}
+	const name = `${label}: ${formatLongDate(to)}`;
+	return (
+		<Link
+			to="/day/$date"
+			params={{ date: to }}
+			replace
+			aria-label={name}
+			title={name}
+			aria-keyshortcuts={shortcut}
+			className={buttonVariants({ variant: "ghost", size: "icon" })}
+		>
+			{icon}
+		</Link>
 	);
 }

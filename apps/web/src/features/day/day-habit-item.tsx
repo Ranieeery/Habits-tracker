@@ -1,8 +1,15 @@
 import type { Habit } from "@habits/contracts";
-import { useId } from "react";
+import { useId, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { pulse } from "@/features/heatmap/pulse.ts";
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion.ts";
 import { cn } from "@/lib/utils.ts";
 
+/**
+ * One habit of a day with its checkbox: the whole row is the target (44px+).
+ * Shared by the day view and the heatmap's "Hoje" panel. Checking pulses the
+ * box (skipped with reduced motion).
+ */
 export function DayHabitItem({
 	habit,
 	completed,
@@ -15,25 +22,35 @@ export function DayHabitItem({
 	onToggle: (completed: boolean) => void;
 }) {
 	const id = useId();
+	const box = useRef<HTMLButtonElement>(null);
+	const reducedMotion = usePrefersReducedMotion();
+
 	return (
 		<li>
 			<label
 				htmlFor={id}
 				className={cn(
-					"flex min-h-touch items-center gap-3 rounded-lg px-2 py-2 transition-colors",
-					editable ? "cursor-pointer hover:bg-surface" : "cursor-default"
+					"flex min-h-touch items-center gap-3 rounded-lg px-2 py-1.5 motion-safe:transition-colors motion-safe:duration-150",
+					editable
+						? "cursor-pointer hover:bg-night-surface-raised"
+						: "cursor-default"
 				)}
 			>
 				<Checkbox
+					ref={box}
 					id={id}
 					checked={completed}
 					disabled={!editable}
-					onCheckedChange={(checked) => onToggle(checked === true)}
+					onCheckedChange={(checked) => {
+						const value = checked === true;
+						if (value && !reducedMotion) pulse(box.current);
+						onToggle(value);
+					}}
 				/>
 				<span
 					className={cn(
-						"text-lg font-semibold transition-colors",
-						completed && "text-muted line-through"
+						"min-w-0 font-medium break-words motion-safe:transition-colors motion-safe:duration-150",
+						completed && "text-night-muted line-through"
 					)}
 				>
 					{habit.name}

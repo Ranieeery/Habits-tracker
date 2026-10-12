@@ -67,6 +67,12 @@ export const habits = sqliteTable(
 		schedule: text({ mode: "json" }).$type<StoredSchedule>().notNull(),
 		start_date: text().notNull(),
 		archived_at: timestampMs(),
+		/**
+		 * Position in the user's list (2.4.0): a fractional index compared as
+		 * text (core `sort-key.ts`). Empty sorts last; migration 0006 filled
+		 * the existing habits in creation order.
+		 */
+		sort_key: text().notNull().default(""),
 		...timestamps,
 		deleted_at: timestampMs(),
 		server_seq: serverSeq(),

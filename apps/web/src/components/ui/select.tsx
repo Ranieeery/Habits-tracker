@@ -8,7 +8,8 @@ function Select({ className, ...props }: React.ComponentProps<"select">) {
 		<select
 			data-slot="select"
 			className={cn(
-				"min-h-touch min-w-0 rounded-md border border-border bg-surface px-3 text-base text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger",
+				// Explicit background and color: Windows draws native options otherwise.
+				"min-h-touch min-w-0 rounded-md border px-3 text-base [&>option]:bg-night-surface [&>option]:text-night-foreground border-night-border-strong bg-night-bg text-night-foreground transition-colors hover:border-night-subtle focus-visible:border-night-accent-text disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-night-danger",
 				className
 			)}
 			{...props}

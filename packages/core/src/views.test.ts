@@ -11,6 +11,7 @@ function habit(id: string, overrides: Partial<Habit> = {}): Habit {
 		schedule: { type: "weekdays", days: [1, 3, 5] }, // Mon, Wed, Fri
 		start_date: "2025-12-29",
 		archived_at: null,
+		sort_key: "a0",
 		created_at: 1,
 		updated_at: 1,
 		deleted_at: null,

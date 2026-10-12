@@ -38,6 +38,7 @@ function habit(overrides: Partial<Habit> = {}): Habit {
 		schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
 		start_date: "2026-01-01",
 		archived_at: null,
+		sort_key: "a0",
 		created_at: 1,
 		updated_at: 1,
 		deleted_at: null,
@@ -526,5 +527,36 @@ describe("outbox", () => {
 		);
 		expect(remapped[0]).toEqual({ ...local, id: HABIT_ID });
 		expect(remapped[1]).toBe(habitChange);
+	});
+});
+
+describe("habit order (2.4.0)", () => {
+	it("habit.create keeps a given key, or puts the habit last", () => {
+		const state = syncState([habit({ sort_key: "a5" })], []);
+		const given = create({ sort_key: "a1" });
+		applyMutation(state, given, server());
+		expect(state.habits.get(given.id)?.sort_key).toBe("a1");
+
+		// An app older than 2.4.0 sends no key: after the largest one.
+		const old = create();
+		applyMutation(state, old, server());
+		expect(state.habits.get(old.id)?.sort_key).toBe("a6");
+	});
+
+	it("habit.update moves a habit and merges with a rename from another device", () => {
+		const state = syncState([habit({ sort_key: "a0" })], []);
+		expect(
+			applyMutation(state, update({ sort_key: "a5" }), server(T0 + 1))
+		).toMatchObject({ status: "applied", changed: true });
+		applyMutation(state, update({ name: "Ler mais" }), server(T0 + 2));
+		expect(state.habits.get(HABIT_ID)).toMatchObject({
+			sort_key: "a5",
+			name: "Ler mais",
+			updated_at: T0 + 2,
+		});
+		// The same key again changes nothing.
+		expect(
+			applyMutation(state, update({ sort_key: "a5" }), server(T0 + 3))
+		).toMatchObject({ changed: false });
 	});
 });

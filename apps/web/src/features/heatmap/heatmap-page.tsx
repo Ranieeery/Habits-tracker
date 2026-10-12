@@ -78,7 +78,7 @@ export function HeatmapPage() {
 			<header className="flex flex-wrap items-end justify-between gap-x-12 gap-y-6">
 				<div className="-ml-3 flex items-center gap-1">
 					<Button
-						variant="night-ghost"
+						variant="ghost"
 						size="icon"
 						aria-label="Ano anterior"
 						disabled={year <= range.first}
@@ -94,7 +94,7 @@ export function HeatmapPage() {
 						{year}
 					</h1>
 					<Button
-						variant="night-ghost"
+						variant="ghost"
 						size="icon"
 						aria-label="Próximo ano"
 						disabled={year >= range.last}

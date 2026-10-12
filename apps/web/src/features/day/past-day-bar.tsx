@@ -54,7 +54,7 @@ export function PastDayBar({
 
 	if (state === "past_locked") {
 		return (
-			<p className="flex items-center gap-2 text-sm text-muted">
+			<p className="flex items-center gap-2 text-sm text-night-muted">
 				<LockIcon className="size-4" aria-hidden="true" />
 				Fora do período de edição de {backfillDays} dias
 			</p>
@@ -62,7 +62,7 @@ export function PastDayBar({
 	}
 	if (state === "future") {
 		return (
-			<p className="flex items-center gap-2 text-sm text-muted">
+			<p className="flex items-center gap-2 text-sm text-night-muted">
 				<LockIcon className="size-4" aria-hidden="true" />
 				Somente leitura: este dia ainda não chegou.
 			</p>
@@ -72,9 +72,9 @@ export function PastDayBar({
 		return (
 			<div
 				role="status"
-				className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/60 bg-warning-surface px-4 py-2"
+				className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-night-warning/50 bg-night-warning-surface px-4 py-2"
 			>
-				<p className="flex items-center gap-2 font-semibold text-warning">
+				<p className="flex items-center gap-2 font-semibold text-night-warning">
 					<TriangleAlertIcon className="size-5" aria-hidden="true" />
 					Editando dia passado
 				</p>
@@ -87,14 +87,14 @@ export function PastDayBar({
 
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-3">
-			<p className="flex items-center gap-2 text-sm text-muted">
+			<p className="flex items-center gap-2 text-sm text-night-muted">
 				<LockIcon className="size-4" aria-hidden="true" />
 				Somente leitura.
 			</p>
 			<Dialog open={confirming} onOpenChange={setConfirming}>
 				<DialogTrigger asChild>
 					<Button ref={editRef} variant="outline">
-						<PencilIcon className="text-accent" aria-hidden="true" />
+						<PencilIcon className="text-night-accent-text" aria-hidden="true" />
 						Editar este dia
 					</Button>
 				</DialogTrigger>
