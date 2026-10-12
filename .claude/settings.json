@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(playwright-cli:*)"],
+    "deny": ["Bash(playwright-cli attach:*)"]
+  }
+}

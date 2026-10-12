@@ -32,3 +32,8 @@ credentials.json
 *.jks
 *.keystore
 *service-account*.json
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+
+# Skill installer staging copies (the real skills live in .claude/skills)
+.agents/

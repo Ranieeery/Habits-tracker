@@ -1,0 +1,4 @@
+{
+	"browser": { "browserName": "chromium", "isolated": true },
+	"outputDir": ".playwright-cli"
+}
