@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildYearGrid, monthLabels } from "./grid.ts";
+import {
+	buildYearGrid,
+	clampYear,
+	heatmapYearRange,
+	monthLabels,
+} from "./grid.ts";
 
 describe("buildYearGrid", () => {
 	it("pads the first week of 2026 (Jan 1 is a Thursday)", () => {
@@ -112,5 +117,57 @@ describe("monthLabels", () => {
 			buildYearGrid({ year: 2026, today: "2026-10-09" })
 		);
 		expect(labels).toHaveLength(12);
+	});
+});
+
+describe("heatmapYearRange", () => {
+	const habit = (start_date: string, deleted_at: number | null = null) => ({
+		start_date,
+		deleted_at,
+	});
+
+	it("is only the current year without habits or with this year's only", () => {
+		expect(heatmapYearRange([], "2026-10-11")).toEqual({
+			first: 2026,
+			last: 2026,
+		});
+		expect(heatmapYearRange([habit("2026-03-01")], "2026-10-11")).toEqual({
+			first: 2026,
+			last: 2026,
+		});
+	});
+
+	it("starts at the oldest live habit and ignores deleted ones", () => {
+		expect(
+			heatmapYearRange(
+				[habit("2025-06-01"), habit("2024-12-31"), habit("2019-01-01", 5)],
+				"2026-10-11"
+			)
+		).toEqual({ first: 2024, last: 2026 });
+	});
+
+	it("follows today across the year boundary", () => {
+		const habits = [habit("2026-12-01")];
+		expect(heatmapYearRange(habits, "2026-12-31").last).toBe(2026);
+		expect(heatmapYearRange(habits, "2027-01-01")).toEqual({
+			first: 2026,
+			last: 2027,
+		});
+	});
+
+	it("never goes past the current year, even for a habit starting later", () => {
+		expect(heatmapYearRange([habit("2027-02-01")], "2026-10-11")).toEqual({
+			first: 2026,
+			last: 2026,
+		});
+	});
+});
+
+describe("clampYear", () => {
+	it("keeps the year inside the range", () => {
+		const range = { first: 2024, last: 2026 };
+		expect(clampYear(2025, range)).toBe(2025);
+		expect(clampYear(2020, range)).toBe(2024);
+		expect(clampYear(2030, range)).toBe(2026);
 	});
 });

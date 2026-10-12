@@ -1,6 +1,6 @@
-import { buildYearGrid, parseCalendarDate } from "@habits/core";
+import { buildYearGrid, clampYear, heatmapYearRange } from "@habits/core";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import {
 	isSettled,
@@ -13,7 +13,7 @@ import { useToday } from "@/data/today.ts";
 import { TimezoneBanner } from "@/features/settings/timezone-banner.tsx";
 import { SyncIndicator } from "@/features/sync/sync-indicator.tsx";
 import { formatLongDate } from "@/lib/format.ts";
-import { Button } from "@/ui/button.tsx";
+import { Button, IconButton } from "@/ui/button.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
@@ -23,9 +23,13 @@ import { HeatmapLegend } from "./heatmap-legend.tsx";
 export function HeatmapScreen() {
 	const router = useRouter();
 	const today = useToday();
-	const year = parseCalendarDate(today).year;
-	const summary = useYearSummary(year);
 	const habits = useHabits();
+	const range = heatmapYearRange(habits.data ?? [], today);
+	// null: the current year, which follows "today" across New Year.
+	const [chosen, setChosen] = useState<number | null>(null);
+	const year = chosen === null ? range.last : clampYear(chosen, range);
+	const goTo = (next: number) => setChosen(next >= range.last ? null : next);
+	const summary = useYearSummary(year);
 	const { refresh, refreshing } = useRefreshAll();
 	// "Hoje" is the most used screen: have it ready before the tap.
 	usePrefetchDay(today);
@@ -40,12 +44,27 @@ export function HeatmapScreen() {
 		<Screen onRefresh={() => void refresh()} refreshing={refreshing}>
 			<View className="flex-row items-end justify-between gap-4">
 				<View className="flex-1 gap-1">
-					<Text
-						accessibilityRole="header"
-						className="text-3xl font-extrabold text-foreground"
-					>
-						{year}
-					</Text>
+					<View className="flex-row items-center">
+						<IconButton
+							icon="chevron-left"
+							label="Ano anterior"
+							disabled={year <= range.first}
+							onPress={() => goTo(year - 1)}
+						/>
+						<Text
+							accessibilityRole="header"
+							accessibilityLiveRegion="polite"
+							className="text-3xl font-extrabold text-foreground"
+						>
+							{year}
+						</Text>
+						<IconButton
+							icon="chevron-right"
+							label="Próximo ano"
+							disabled={year >= range.last}
+							onPress={() => goTo(year + 1)}
+						/>
+					</View>
 					<Text className="text-sm text-muted capitalize">
 						{formatLongDate(today)}
 					</Text>

@@ -16,7 +16,7 @@ Existing features to preserve:
 
 - Create habits that recur on chosen weekdays (Sunday = 0 ... Saturday = 6); since 2.2.0 also every N days, on days of the month, on a single date or yearly (see "Flexible schedules" in Decisions).
 - Mark a habit as done/undone for a day; a day's completion ratio drives the heatmap intensity.
-- Year-to-date heatmap grid, and a per-day view listing possible/completed habits.
+- Year-to-date heatmap grid, and a per-day view listing possible/completed habits. Since 2.2.0 arrows move between years, from the year the oldest live habit started up to the current one (core's `heatmapYearRange`/`clampYear`; the screen follows the current year across New Year until the user picks another).
 - UI text in Portuguese (pt-BR), dayjs locale `pt-br`.
 
 New features:
@@ -262,6 +262,7 @@ Owner decisions taken before Phase 0. They override anything above that seems to
 - **Version history** (one line per version, newest last):
   - `2.0.0` (2026-10-11): the monorepo rewrite (auth, push, offline sync on mobile), CI/CD and production deploy.
   - `2.1.0` (2026-10-11): create a habit from today's day view (web dialog, mobile bottom sheet, offline on mobile); app version left out of the mobile fingerprint.
+  - `2.2.0` (2026-10-11): flexible schedules (every N days, days of the month, single date, yearly), "Próximos" on today, morning digest at 09:00, reminder times in 15-minute steps, option to hide habit names in notifications, year navigation on the heatmap. Same fingerprint as 2.1.0: ships as an OTA update.
 
 ## Working agreements for Claude Code
 

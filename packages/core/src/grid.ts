@@ -1,4 +1,4 @@
-import type { SummaryDay } from "@habits/contracts";
+import type { Habit, SummaryDay } from "@habits/contracts";
 import {
 	addDays,
 	type CalendarDate,
@@ -110,4 +110,34 @@ export function monthLabels(grid: YearGrid): MonthLabel[] {
 		}
 	});
 	return labels;
+}
+
+export interface YearRange {
+	/** Earliest year with something to show. */
+	first: number;
+	/** The current year (no navigating into the future). */
+	last: number;
+}
+
+/**
+ * The years the heatmap can show: from the year the oldest live habit
+ * (archived included) started, up to the year of `today`. Without habits,
+ * only the current year.
+ */
+export function heatmapYearRange(
+	habits: readonly Pick<Habit, "start_date" | "deleted_at">[],
+	today: CalendarDate
+): YearRange {
+	const last = parseCalendarDate(today).year;
+	let first = last;
+	for (const habit of habits) {
+		if (habit.deleted_at !== null) continue;
+		first = Math.min(first, parseCalendarDate(habit.start_date).year);
+	}
+	return { first, last };
+}
+
+/** `year` limited to `range` (a year that no longer has data is not kept). */
+export function clampYear(year: number, { first, last }: YearRange): number {
+	return Math.min(last, Math.max(first, year));
 }

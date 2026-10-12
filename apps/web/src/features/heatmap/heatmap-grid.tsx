@@ -10,7 +10,7 @@ const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 /**
  * Year heatmap in the GitHub layout: one column per week (Sunday first),
  * weekday rows, month labels on top. Scrolls horizontally and starts with
- * the current week in view.
+ * the current week in view (the end of the year for past years).
  */
 export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 	const scrollerRef = useRef<HTMLDivElement>(null);
@@ -25,9 +25,12 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
-		const column = scroller?.querySelector<HTMLElement>("[data-current-week]");
-		if (!scroller || !column) return;
-		scroller.scrollLeft = scrollLeftFor(column, scroller.clientWidth);
+		if (!scroller) return;
+		const column = scroller.querySelector<HTMLElement>("[data-current-week]");
+		// Another year (no current week): show its end, the most recent days.
+		scroller.scrollLeft = column
+			? scrollLeftFor(column, scroller.clientWidth)
+			: scroller.scrollWidth;
 	}, [grid.year, currentWeek]);
 
 	return (

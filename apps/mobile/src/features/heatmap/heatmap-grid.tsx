@@ -55,6 +55,8 @@ export function HeatmapGrid({
 		<View className="flex-row">
 			<WeekdayLabels />
 			<FlatList
+				// A new list per year, so initialScrollIndex applies again.
+				key={grid.year}
 				horizontal
 				data={grid.weeks}
 				keyExtractor={(week) => week.start}
