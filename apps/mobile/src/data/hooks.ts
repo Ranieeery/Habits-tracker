@@ -251,11 +251,15 @@ export function usePrefetchDay(date: CalendarDate) {
 	});
 }
 
-export function useYearSummary(year: number) {
+export function useYearSummary(
+	year: number,
+	{ enabled = true }: { enabled?: boolean } = {}
+) {
 	const { repository } = useServices();
 	return useQuery({
 		queryKey: queryKeys.summary(year),
 		queryFn: () => repository.getYearSummary(year),
+		enabled,
 	});
 }
 

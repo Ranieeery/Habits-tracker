@@ -1,6 +1,6 @@
 # DESIGN.md
 
-Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/design-tokens/src/tokens.ts` (fonte única); aqui só aparecem os **nomes** dos tokens. Hoje a identidade vale em **todo o web** (etapas 1 e 2); o mobile adota nas etapas 3 e 4 (ver "Visual redesign" no `CLAUDE.md`).
+Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/design-tokens/src/tokens.ts` (fonte única); aqui só aparecem os **nomes** dos tokens. Vale em **todo o web** (etapas 1 e 2, 2.4.0) e na **tela principal do mobile** (etapa 3, 2.5.0); as demais telas do mobile adotam na etapa 4 (ver "Visual redesign" no `CLAUDE.md`). Regras próprias do celular em "Mobile".
 
 ## Identidade e tom
 
@@ -26,7 +26,7 @@ Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/de
 | Heatmap         | `night-heat-0` … `night-heat-5` (mais feito = mais claro; passos iguais de luminosidade)                                                                                       |
 | Estados         | `night-success`/`-surface`, `night-danger`/`-surface`, `night-warning`/`-surface`                                                                                              |
 
-Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por modificador (`/40`) ou `color-mix` sobre um token. Texto sempre ≥ 4,5:1 sobre o fundo onde aparece; componentes de UI ≥ 3:1. O conjunto antigo (`background`, `surface`, `heatmap-*`…) continua servindo as telas ainda não migradas e o mobile.
+Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por modificador (`/40`) ou `color-mix` sobre um token. Texto sempre ≥ 4,5:1 sobre o fundo onde aparece; componentes de UI ≥ 3:1. Desde a 2.5.0 web e mobile recebem exatamente os mesmos tokens. Os nomes antigos (`background`, `surface`, `violet-*`…) são apelidos obsoletos que apontam para valores `night`: servem só às telas do mobile ainda não migradas e somem na etapa 4. Código novo usa só `night-*`.
 
 ## Tipografia
 
@@ -104,6 +104,27 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 ## Acessibilidade
 
 Contraste AA no mínimo; foco sempre visível; nada só por cor (rótulos e tooltip dizem a proporção); teclado completo; `aria-live` para mudanças assíncronas (toasts do sonner); textos decorativos e ícones com `aria-hidden`; alvos de 44 px no toque.
+
+## Mobile
+
+O celular é o uso principal, quase sempre com **uma mão**. Mesma identidade, mesmos tokens; o que muda é a mão no lugar do mouse.
+
+- **Zona do polegar**: o que só se lê fica no alto (marca, data, sincronização, números); a ação do dia fica no terço de baixo (painel "Hoje", rodapés fixos como "Novo hábito" e "Editar este dia"). Nada de ação frequente no canto superior.
+- **Alvos de toque**: ≥ 44 dp (`min-h-touch`, `size-touch`); a linha inteira é o alvo. Quando o desenho precisa ser menor (célula de 28 dp do heatmap), a área de toque é o espaço inteiro sem vãos entre vizinhos e um **realce no toque** (anel `night-accent-text`) mostra o que vai abrir antes de soltar; arrastar para fora cancela.
+- **Heatmap**: colunas = semanas, células de 28 dp em passo de 32, rolagem horizontal abrindo na semana atual. Para leitor de tela, **um elemento por semana** ("Semana de 4 a 10 de outubro"): deslizar para cima/baixo escolhe o dia, toque duplo abre.
+- **Safe areas**: Android é edge-to-edge; telas usam `Screen` (safe area em cima nas abas, teclado empurra o conteúdo). O brilho do fundo passa por baixo da barra de status.
+- **Háptico**: `selection` ao marcar/desmarcar um hábito; nunca em rolagem, navegação ou carregamento.
+- **Movimento**: Reanimated no thread de UI, só `transform` e `opacity`, nenhum `setState` por quadro. Toques frequentes (marcar, abrir dia) têm só retorno curto (≤ 150 ms ou nada); abas nunca deslizam. Varredura de entrada e pulso como em "Movimento". Preferência "remover animações" do sistema (`AccessibilityInfo`) = nenhuma animação.
+- **Fontes**: números, ano, títulos de painel e marca em Bricolage Grotesque (`DisplayText`, arquivos locais carregados por JS); texto na **fonte do sistema** (Roboto). Tudo acompanha a escala de fonte do Android; só rótulos minúsculos de grade (mês, dia da semana) têm teto de crescimento para não sair do espaço.
+- **Cores fora do NativeWind** (`boxShadow`, gradiente, ícones, navegação): sempre de `@habits/design-tokens` (`nightColors.*`), alpha só com o helper sobre um token.
+
+| Fazer no celular                                         | Evitar no celular                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------- |
+| Ação diária ao alcance do polegar, sem trocar de tela    | Botão importante no canto superior                                  |
+| Realce no toque no lugar do hover                        | Depender de hover ou de toque longo para descobrir algo             |
+| Gradiente e sombra do próprio React Native (vão por OTA) | Módulo nativo para enfeite (gradiente, blur, SVG): exige build novo |
+| Um elemento acessível por grupo com rótulo útil          | Centenas de elementos soltos para o TalkBack                        |
+| Splash até fonte e dados estarem prontos                 | Tela branca ou texto trocando de fonte depois de aparecer           |
 
 ## Fazer / evitar
 

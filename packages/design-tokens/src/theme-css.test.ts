@@ -13,10 +13,12 @@ describe("renderThemeCss", () => {
 
 	it("maps DEFAULT keys to the bare name and nested keys with a dash", () => {
 		const css = renderThemeCss();
-		expect(css).toContain("--color-accent: #8e51ff;");
-		expect(css).toContain("--color-accent-hover: #c4b5fd;");
-		expect(css).toContain("--color-heatmap-1: #4c1d95;");
-		expect(css).toContain("--color-heatmap-5: #a78bfa;");
-		expect(css).toContain("--color-heatmap-5-border: #c4b5fd;");
+		expect(css).toContain("--color-night-accent: #8456e8;");
+		expect(css).toContain("--color-night-accent-text: #bba7ff;");
+		expect(css).toContain("--color-night-heat-1: #392863;");
+		expect(css).toContain("--color-night-heat-5: #bba7ff;");
+		// Deprecated aliases carry night values.
+		expect(css).toContain("--color-accent: #8456e8;");
+		expect(css).not.toContain("--color-heatmap-");
 	});
 });

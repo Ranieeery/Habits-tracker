@@ -22,6 +22,7 @@ import {
 } from "@/data/query-client.ts";
 import { getServices, ServicesContext } from "@/data/services.ts";
 import { syncQueryKeys } from "@/data/sync/hooks.ts";
+import { useDisplayFontsReady } from "@/ui/fonts.ts";
 import { keepSplashVisible } from "@/ui/splash.ts";
 import { ToastProvider } from "@/ui/toast.tsx";
 
@@ -83,8 +84,10 @@ export default function RootLayout() {
 
 function RootNavigator() {
 	const session = useSession();
-	// The native splash stays up while the stored session is restored.
-	if (session.isPending) return null;
+	const fontsReady = useDisplayFontsReady();
+	// The native splash stays up while the stored session is restored and the
+	// display font loads (never a frame in the fallback face).
+	if (session.isPending || !fontsReady) return null;
 	const signedIn = session.data?.status === "signed_in";
 
 	return (

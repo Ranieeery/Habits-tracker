@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "@habits/design-tokens";
+import { colors, nightColors } from "@habits/design-tokens";
 import type { ComponentProps, Ref } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -13,8 +13,9 @@ const CONTAINER: Record<Variant, string> = {
 	danger: "border border-danger active:bg-danger-surface",
 };
 
+// Text on the accent uses accent-on (4.7:1); the foreground would be 4.2:1.
 const LABEL: Record<Variant, string> = {
-	primary: "text-foreground",
+	primary: "text-night-accent-on",
 	secondary: "text-foreground",
 	outline: "text-foreground",
 	ghost: "text-muted",
@@ -22,7 +23,7 @@ const LABEL: Record<Variant, string> = {
 };
 
 const ICON_COLOR: Record<Variant, string> = {
-	primary: colors.foreground,
+	primary: nightColors.accent.on,
 	secondary: colors.foreground,
 	outline: colors.accent.DEFAULT,
 	ghost: colors.muted,

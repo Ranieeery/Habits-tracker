@@ -1,6 +1,8 @@
 import { WEEKDAY_SHORT_NAMES } from "@habits/core";
 import { describe, expect, it } from "vitest";
 import {
+	capitalizeFirst,
+	formatDayMonth,
 	formatFullDate,
 	formatLongDate,
 	formatPercent,
@@ -16,6 +18,14 @@ describe("pt-BR formatting", () => {
 		expect(formatLongDate("2026-10-09")).toBe("sexta-feira, 9 de outubro");
 		expect(formatFullDate("2026-01-01")).toBe("1 de janeiro de 2026");
 		expect(formatShortDate("2026-12-31")).toBe("31/12");
+		expect(formatDayMonth("2026-10-04")).toBe("4 de outubro");
+	});
+
+	it("upper-cases only the first letter of a sentence", () => {
+		expect(capitalizeFirst(formatLongDate("2026-10-12"))).toBe(
+			"Segunda-feira, 12 de outubro"
+		);
+		expect(capitalizeFirst("")).toBe("");
 	});
 
 	it("names weekdays from Sunday = 0", () => {

@@ -119,7 +119,7 @@ function DayCell({
 			className={`min-h-touch flex-1 items-center justify-center rounded-md ${selected ? "bg-violet-600" : "active:bg-border"} ${disabled ? "opacity-30" : ""}`}
 		>
 			<Text
-				className={`text-base ${selected ? "font-bold text-foreground" : "text-foreground"}`}
+				className={`text-base ${selected ? "font-bold text-night-accent-on" : "text-foreground"}`}
 			>
 				{Number(date.slice(8))}
 			</Text>

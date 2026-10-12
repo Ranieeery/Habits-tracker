@@ -12,9 +12,22 @@ dayjs.locale("pt-br");
 const fmt = (date: CalendarDate, template: string) =>
 	dayjs(date).format(template);
 
+/**
+ * Only the first letter upper-cased (DESIGN.md: "Segunda-feira, 12 de
+ * outubro", never "Segunda-Feira, 12 De Outubro" as `capitalize` does).
+ */
+export function capitalizeFirst(text: string): string {
+	return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /** "sexta-feira, 9 de outubro" */
 export function formatLongDate(date: CalendarDate): string {
 	return fmt(date, "dddd, D [de] MMMM");
+}
+
+/** "9 de outubro" */
+export function formatDayMonth(date: CalendarDate): string {
+	return fmt(date, "D [de] MMMM");
 }
 
 /** "9 de outubro de 2026" */

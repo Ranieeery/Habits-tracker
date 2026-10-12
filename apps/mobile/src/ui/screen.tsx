@@ -13,7 +13,8 @@ import {
  * keyboard (Android is edge-to-edge, so `adjustResize` alone is not enough).
  * Tab screens pass `edges={["top"]}`; screens under a native header pass none.
  * `footer` stays fixed below the scroll area (never over the content), in
- * reach of the thumb.
+ * reach of the thumb. `background` is drawn behind everything (the heatmap's
+ * glow) and never takes touches.
  */
 export function Screen({
 	children,
@@ -21,12 +22,14 @@ export function Screen({
 	onRefresh,
 	refreshing = false,
 	footer,
+	background,
 }: {
 	children: ReactNode;
 	edges?: Edge[];
 	onRefresh?: () => void;
 	refreshing?: boolean;
 	footer?: ReactNode;
+	background?: ReactNode;
 }) {
 	const insets = useSafeAreaInsets();
 	return (
@@ -34,6 +37,7 @@ export function Screen({
 			edges={edges}
 			style={{ flex: 1, backgroundColor: colors.background }}
 		>
+			{background}
 			<KeyboardAwareScrollView
 				bottomOffset={24}
 				keyboardShouldPersistTaps="handled"

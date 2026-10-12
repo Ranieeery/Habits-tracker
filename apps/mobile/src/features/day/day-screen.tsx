@@ -9,23 +9,10 @@ import {
 	isDayEditable,
 } from "@habits/core";
 import { colors } from "@habits/design-tokens";
-import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import {
-	type ReactNode,
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import { type ReactNode, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { errorMessage, isUnauthorized } from "@/data/errors.ts";
-import {
-	isSettled,
-	useDay,
-	useHabits,
-	useToggleCompletion,
-} from "@/data/hooks.ts";
+import { isSettled, useDay, useHabits } from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import {
 	formatFullDate,
@@ -39,10 +26,10 @@ import { ProgressBar } from "@/ui/progress-bar.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
-import { useDismissToast, useToast } from "@/ui/toast.tsx";
 import { EditDayFooter } from "./edit-day-sheet.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
+import { useCompletionChange } from "./use-completion-change.ts";
 
 /** Route param: a `YYYY-MM-DD` date, or "hoje" (follows the day turning). */
 export const TODAY_PARAM = "hoje";
@@ -79,55 +66,14 @@ export function DayScreen() {
  */
 function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 	const router = useRouter();
-	const toast = useToast();
-	const dismissToast = useDismissToast();
 	const day = useDay(date);
-	const toggle = useToggleCompletion(date, (error) => {
-		if (!isUnauthorized(error)) {
-			toast("error", "Não foi possível salvar", errorMessage(error));
-		}
-	});
+	const { change, dismissUndo } = useCompletionChange(date);
 	const editState = getDayEditState(date, today);
 	const [unlocked, setUnlocked] = useState(false);
 	const isToday = editState === "today";
 	const editable = isDayEditable(editState, unlocked);
 	const hasHabits = (day.data?.possible_habits.length ?? 0) > 0;
 	useHideSplashWhen(isSettled(day));
-
-	// The "Desfazer" toast of this visit: gone when the day locks or the
-	// screen closes, so it never changes a day that is not editable.
-	const undoToast = useRef<number | null>(null);
-	const dismissUndo = useCallback(() => {
-		if (undoToast.current !== null) dismissToast(undoToast.current);
-		undoToast.current = null;
-	}, [dismissToast]);
-	useEffect(() => dismissUndo, [dismissUndo]);
-
-	const change = (habit: Habit, completed: boolean, undo = false) => {
-		void Haptics.selectionAsync();
-		toggle.mutate(
-			{ habitId: habit.id, completed },
-			{
-				onSuccess: () => {
-					if (undo) {
-						undoToast.current = toast("info", "Alteração desfeita");
-						return;
-					}
-					undoToast.current = toast(
-						"info",
-						`${completed ? "Marcado" : "Desmarcado"}: ${habit.name}`,
-						undefined,
-						{
-							action: {
-								label: "Desfazer",
-								onPress: () => change(habit, !completed, true),
-							},
-						}
-					);
-				},
-			}
-		);
-	};
 
 	let footer: ReactNode;
 	if (isToday) footer = <NewHabitSheet today={today} />;

@@ -1,18 +1,46 @@
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
+import { buildYearGrid, type GridCell, type GridWeek } from "@habits/core";
 import { describe, expect, it } from "vitest";
 import {
 	CELL_PITCH,
+	canOpen,
 	cellLabel,
+	dayIndexAt,
+	dayValue,
+	defaultDayIndex,
+	hasGlow,
 	initialWeekIndex,
-	levelColors,
+	levelFill,
+	MONTH_ROW_HEIGHT,
+	stepDay,
+	SWEEP_CELL_MS,
+	sweepDelay,
+	sweepDuration,
 	visibleWeekCount,
+	weekLabel,
+	weekSignature,
 } from "./heatmap-layout.ts";
 
+/** The week of Sunday 2026-10-04 with today = Friday 2026-10-09. */
+function octoberWeek(): GridWeek {
+	const grid = buildYearGrid({
+		year: 2026,
+		today: "2026-10-09",
+		summary: [
+			{ date: "2026-10-05", completed: 1, possible: 2 },
+			{ date: "2026-10-09", completed: 3, possible: 5 },
+		],
+	});
+	const week = grid.weeks[grid.today_week_index!]!;
+	expect(week.start).toBe("2026-10-04");
+	return week;
+}
+
 describe("visibleWeekCount", () => {
-	it("counts whole 44 dp columns, at least one", () => {
-		expect(CELL_PITCH).toBe(44);
-		expect(visibleWeekCount(320)).toBe(7);
-		expect(visibleWeekCount(352)).toBe(8);
+	it("counts whole 32 dp columns, at least one", () => {
+		expect(CELL_PITCH).toBe(32);
+		expect(visibleWeekCount(320)).toBe(10);
+		expect(visibleWeekCount(352)).toBe(11);
 		expect(visibleWeekCount(10)).toBe(1);
 	});
 });
@@ -23,7 +51,6 @@ describe("initialWeekIndex", () => {
 	it("puts the current week near the right edge with one week after it", () => {
 		const start = initialWeekIndex({ ...base, todayWeekIndex: 40 });
 		expect(start).toBe(34);
-		// Columns 34..41 are visible: the current week (40) and one more.
 		expect(40 - start).toBe(6);
 	});
 
@@ -47,46 +74,137 @@ describe("initialWeekIndex", () => {
 	});
 });
 
-describe("levelColors", () => {
-	it("maps each level to the token fill and border", () => {
-		expect(levelColors(0)).toEqual({
-			fill: colors.heatmap[0],
-			border: colors.heatmap["0-border"],
-		});
-		expect(levelColors(5)).toEqual({
-			fill: colors.heatmap[5],
-			border: colors.heatmap["5-border"],
-		});
+describe("dayIndexAt", () => {
+	it("maps a touch to the weekday row under it", () => {
+		expect(dayIndexAt(MONTH_ROW_HEIGHT)).toBe(0);
+		expect(dayIndexAt(MONTH_ROW_HEIGHT + CELL_PITCH - 1)).toBe(0);
+		expect(dayIndexAt(MONTH_ROW_HEIGHT + CELL_PITCH)).toBe(1);
+		expect(dayIndexAt(MONTH_ROW_HEIGHT + CELL_PITCH * 6.5)).toBe(6);
+	});
+
+	it("ignores the month row and anything below Saturday", () => {
+		expect(dayIndexAt(0)).toBeNull();
+		expect(dayIndexAt(MONTH_ROW_HEIGHT - 1)).toBeNull();
+		expect(dayIndexAt(MONTH_ROW_HEIGHT + CELL_PITCH * 7)).toBeNull();
 	});
 });
 
-describe("cellLabel", () => {
-	const cell = {
-		date: "2026-10-09",
-		relation: "past" as const,
-		completed: 3,
-		possible: 5,
-		ratio: 0.6,
-	};
+describe("canOpen", () => {
+	it("opens past days and today, never the future or padding days", () => {
+		expect(canOpen({ in_year: true, relation: "past" })).toBe(true);
+		expect(canOpen({ in_year: true, relation: "today" })).toBe(true);
+		expect(canOpen({ in_year: true, relation: "future" })).toBe(false);
+		expect(canOpen({ in_year: false, relation: "past" })).toBe(false);
+		expect(canOpen(undefined)).toBe(false);
+	});
+});
 
-	it("reads the date and the completion ratio", () => {
+describe("weekSignature", () => {
+	it("changes only when something the column shows changes", () => {
+		const week = octoberWeek();
+		const copy: GridWeek = {
+			...week,
+			days: week.days.map((day) => ({ ...day })),
+		};
+		expect(weekSignature(copy)).toBe(weekSignature(week));
+
+		const days = copy.days.map((day): GridCell =>
+			day.date === "2026-10-09" ? { ...day, completed: 4 } : day
+		);
+		expect(weekSignature({ ...copy, days })).not.toBe(weekSignature(week));
+	});
+});
+
+describe("labels", () => {
+	it("reads a day with its date and ratio", () => {
+		const cell = {
+			date: "2026-10-09",
+			relation: "past" as const,
+			completed: 3,
+			possible: 5,
+			ratio: 0.6,
+		};
 		expect(cellLabel(cell)).toBe(
 			"9 de outubro de 2026: 3 de 5 hábitos concluídos (60%)"
 		);
-	});
-
-	it("marks today", () => {
 		expect(cellLabel({ ...cell, relation: "today" })).toBe(
 			"9 de outubro de 2026 (hoje): 3 de 5 hábitos concluídos (60%)"
 		);
-	});
-
-	it("says when nothing was planned, and for future days", () => {
 		expect(cellLabel({ ...cell, possible: 0, completed: 0, ratio: 0 })).toBe(
 			"9 de outubro de 2026: nenhum hábito previsto"
 		);
 		expect(cellLabel({ ...cell, relation: "future" })).toBe(
 			"9 de outubro de 2026: dia futuro"
 		);
+	});
+
+	it("names a week by its first and last days in the year", () => {
+		expect(weekLabel(octoberWeek())).toBe("Semana de 4 a 10 de outubro");
+		const grid = buildYearGrid({ year: 2026, today: "2026-10-09" });
+		const septOct = grid.weeks.find((week) => week.start === "2026-09-27")!;
+		expect(weekLabel(septOct)).toBe("Semana de 27 de setembro a 3 de outubro");
+		// 2026 starts on a Thursday: the first column holds only Jan 1-3.
+		expect(weekLabel(grid.weeks[0]!)).toBe("Semana de 1 a 3 de janeiro");
+	});
+
+	it("reads the chosen day with its weekday", () => {
+		expect(dayValue(octoberWeek(), 5)).toBe(
+			"sexta-feira, 9 de outubro de 2026 (hoje): 3 de 5 hábitos concluídos (60%)"
+		);
+	});
+});
+
+describe("screen reader day choice", () => {
+	it("starts on today, else on the last day that opens", () => {
+		const week = octoberWeek();
+		expect(defaultDayIndex(week)).toBe(5);
+		const grid = buildYearGrid({ year: 2026, today: "2026-10-09" });
+		const past = grid.weeks[grid.today_week_index! - 1]!;
+		expect(defaultDayIndex(past)).toBe(6);
+	});
+
+	it("steps between days that open, never into the future", () => {
+		const week = octoberWeek();
+		expect(stepDay(week, 5, -1)).toBe(4);
+		expect(stepDay(week, 0, -1)).toBe(0);
+		// Saturday 10/10 is in the future: today stays.
+		expect(stepDay(week, 5, 1)).toBe(5);
+	});
+
+	it("skips the padding days of the first week", () => {
+		const grid = buildYearGrid({ year: 2026, today: "2026-10-09" });
+		const first = grid.weeks[0]!;
+		// Sunday to Wednesday belong to 2025.
+		expect(defaultDayIndex(first)).toBe(6);
+		expect(stepDay(first, 4, -1)).toBe(4);
+	});
+});
+
+describe("levels", () => {
+	it("fills each level with its night token and lights levels 4-5", () => {
+		expect(levelFill(0)).toBe(nightColors.heat[0]);
+		expect(levelFill(5)).toBe(nightColors.heat[5]);
+		expect([0, 1, 2, 3, 4, 5].map((l) => hasGlow(l as 0))).toEqual([
+			false,
+			false,
+			false,
+			false,
+			true,
+			true,
+		]);
+	});
+});
+
+describe("entrance sweep", () => {
+	it("starts at the current week and spreads outwards", () => {
+		expect(sweepDelay(40, 40)).toBe(0);
+		expect(sweepDelay(39, 40)).toBe(6);
+		expect(sweepDelay(41, 40)).toBe(6);
+	});
+
+	it("ends after the farthest column has faded in, within ~540 ms", () => {
+		expect(sweepDuration(53, 40)).toBe(40 * 6 + SWEEP_CELL_MS);
+		expect(sweepDuration(53, 52)).toBeLessThanOrEqual(540);
+		expect(sweepDuration(1, 0)).toBe(SWEEP_CELL_MS);
 	});
 });

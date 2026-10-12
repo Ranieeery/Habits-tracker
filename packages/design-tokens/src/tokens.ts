@@ -1,66 +1,9 @@
-// Canonical design tokens (hex). Values come from the legacy apps: the mobile
-// styles and logo use Tailwind v3 hex values; the legacy web used Tailwind v4
-// OKLCH classes, converted here to the same hex so web and mobile match.
-// Keys named DEFAULT map to the bare name (e.g. `bg-accent`).
+// Canonical design tokens (hex), the single source for the web (Tailwind v4
+// theme, theme-css.ts) and the mobile (Tailwind v3 preset for NativeWind).
+// Keys named DEFAULT map to the bare name (e.g. `bg-night-accent`).
 
-export const colors = {
-	background: "#09090a",
-	surface: "#18181b", // zinc-900: heatmap cells, popovers, dialogs
-	border: "#27272a", // zinc-800: borders, inputs
-	track: "#3f3f46", // zinc-700: progress bar track
-	foreground: "#ffffff",
-	muted: "#a1a1aa", // zinc-400: secondary text
-	accent: {
-		DEFAULT: "#8e51ff", // "Novo hábito" button border/icon (both legacy apps)
-		hover: "#c4b5fd",
-	},
-	violet: {
-		300: "#c4b5fd",
-		400: "#a78bfa",
-		500: "#8b5cf6",
-		600: "#7c3aed", // progress bar fill, loading, focus ring
-		700: "#6d28d9",
-		800: "#5b21b6",
-		900: "#4c1d95",
-	},
-	success: {
-		DEFAULT: "#16a34a", // checked checkbox, confirm button
-		hover: "#22c55e",
-	},
-	// Not in the legacy apps (they had no error UI). red-400 reads well on the
-	// dark background; red-950 is the background of error alerts.
-	danger: {
-		DEFAULT: "#f87171",
-		surface: "#450a0a",
-	},
-	// Alerts that are not errors (2.3.0: "Editando dia passado"). amber-400 on
-	// amber-950 (about 9:1) and on the dark background; always paired with
-	// text and an icon, never color alone.
-	warning: {
-		DEFAULT: "#fbbf24",
-		surface: "#451a03",
-	},
-	// Heatmap levels 0 (nothing done) to 5 (>= 80%). Like GitHub's dark theme,
-	// more done is brighter: violet-900 up to violet-400 on the dark surface.
-	heatmap: {
-		0: "#18181b",
-		"0-border": "#27272a",
-		1: "#4c1d95",
-		"1-border": "#5b21b6",
-		2: "#5b21b6",
-		"2-border": "#6d28d9",
-		3: "#6d28d9",
-		"3-border": "#7c3aed",
-		4: "#7c3aed",
-		"4-border": "#8b5cf6",
-		5: "#a78bfa",
-		"5-border": "#c4b5fd",
-	},
-} as const;
-
-// Visual identity of the 2.4.0 redesign ("night": dark only, calm, violet).
-// Web only until the mobile stage: the Tailwind v3 preset (NativeWind) does
-// not include it, so the mobile keeps `colors` above unchanged. Values are
+// Visual identity since 2.4.0 ("night": dark only, calm, violet), on the web
+// since 2.4.0 and on the mobile since 2.5.0 (DESIGN.md). Values are
 // OKLCH (hue 293) converted to hex; the heatmap levels climb in equal steps
 // of OKLCH lightness (0.22 to 0.78), so each level looks one step brighter
 // (1.4 to 1.6:1 between neighbors). WCAG contrasts are noted per value.
@@ -107,8 +50,53 @@ export const nightColors = {
 	},
 } as const;
 
+/**
+ * @deprecated Older token names, kept only for the mobile screens not
+ * migrated yet (visual redesign stage 4). Since 2.5.0 every name points at a
+ * `night` value, so those screens already show the new palette; new code
+ * uses the `night-*` names. Removed in stage 4, when `night-*` becomes the
+ * plain names. (The legacy values and the old heatmap levels are in git
+ * history, tag v2.4.0 or earlier.)
+ */
+export const colors = {
+	background: nightColors.bg,
+	surface: nightColors.surface.DEFAULT,
+	border: nightColors.border.DEFAULT,
+	track: nightColors.border.strong,
+	foreground: nightColors.foreground,
+	muted: nightColors.muted,
+	accent: {
+		DEFAULT: nightColors.accent.DEFAULT,
+		hover: nightColors.accent.hover,
+	},
+	violet: {
+		300: nightColors.accent.text,
+		400: nightColors.accent.text,
+		500: nightColors.accent.hover,
+		600: nightColors.accent.DEFAULT,
+		700: nightColors.accent.hover,
+		800: nightColors.heat[2],
+		900: nightColors.heat[1],
+	},
+	success: {
+		DEFAULT: nightColors.success.DEFAULT,
+		hover: nightColors.success.DEFAULT,
+	},
+	danger: {
+		DEFAULT: nightColors.danger.DEFAULT,
+		surface: nightColors.danger.surface,
+	},
+	warning: {
+		DEFAULT: nightColors.warning.DEFAULT,
+		surface: nightColors.warning.surface,
+	},
+} as const;
+
 export const nightFonts = {
-	// Self-hosted (fontsource), Latin subset only; see apps/web/src/styles.css.
+	// Web: self-hosted (fontsource), Latin subset only; see
+	// apps/web/src/styles.css. The mobile loads static TTFs under its own
+	// family names (apps/mobile/src/ui/fonts.ts), so it does not use this
+	// stack (`font-display`) directly.
 	display: [
 		"Bricolage Grotesque Variable",
 		"ui-sans-serif",

@@ -38,9 +38,8 @@ function indent(line: string): string {
 }
 
 /**
- * Renders the tokens as a Tailwind v4 `@theme` block (web). Besides the
- * tokens shared with the mobile preset, it carries the web-only `night` set
- * (`--color-night-*`, `--font-display`) until the mobile adopts it.
+ * Renders the tokens as a Tailwind v4 `@theme` block (web): the same tokens
+ * as the mobile preset (`night` set and the deprecated aliases).
  */
 export function renderThemeCss(): string {
 	const lines = [

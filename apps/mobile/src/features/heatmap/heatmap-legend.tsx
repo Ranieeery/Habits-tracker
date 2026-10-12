@@ -1,6 +1,7 @@
+import { nightColors } from "@habits/design-tokens";
 import { HEATMAP_LEVEL_COUNT, type HeatmapLevel } from "@habits/core";
-import { Text, View } from "react-native";
-import { levelColors } from "./heatmap-layout.ts";
+import { StyleSheet, Text, View } from "react-native";
+import { levelFill } from "./heatmap-layout.ts";
 
 const LEVELS = Array.from(
 	{ length: HEATMAP_LEVEL_COUNT },
@@ -12,26 +13,25 @@ export function HeatmapLegend() {
 		<View
 			accessible
 			accessibilityLabel="Legenda: as cores vão de nenhum hábito concluído, à esquerda, a todos concluídos, à direita"
-			className="flex-row items-center gap-2"
+			className="flex-row items-center gap-1.5 self-end"
 		>
-			<Text className="text-xs text-muted">Menos</Text>
-			{LEVELS.map((level) => {
-				const { fill, border } = levelColors(level);
-				return (
-					<View
-						key={level}
-						style={{
-							width: 16,
-							height: 16,
-							borderRadius: 4,
-							borderWidth: 2,
-							backgroundColor: fill,
-							borderColor: border,
-						}}
-					/>
-				);
-			})}
-			<Text className="text-xs text-muted">Mais</Text>
+			<Text className="mr-1 text-xs text-night-subtle">Menos</Text>
+			{LEVELS.map((level) => (
+				<View
+					key={level}
+					style={[
+						styles.swatch,
+						{ backgroundColor: levelFill(level) },
+						level === 0 && styles.empty,
+					]}
+				/>
+			))}
+			<Text className="ml-1 text-xs text-night-subtle">Mais</Text>
 		</View>
 	);
 }
+
+const styles = StyleSheet.create({
+	swatch: { width: 12, height: 12, borderRadius: 3 },
+	empty: { borderWidth: 1, borderColor: nightColors.border.strong },
+});

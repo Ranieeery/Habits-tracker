@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import { View } from "react-native";
 
 /** Visual only: the whole row around it is the touch target. */
@@ -12,7 +12,8 @@ export function CheckboxBox({ checked }: { checked: boolean }) {
 				<MaterialCommunityIcons
 					name="check-bold"
 					size={20}
-					color={colors.foreground}
+					// The bg on the success green reads at about 10:1 (white: about 1.9:1).
+					color={nightColors.bg}
 				/>
 			) : null}
 		</View>

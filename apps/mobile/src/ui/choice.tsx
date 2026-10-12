@@ -35,7 +35,7 @@ export function Choice({
 			className={`min-h-touch min-w-touch items-center justify-center rounded-md border-2 px-3 ${selected ? "border-violet-500 bg-violet-600" : "border-border bg-surface active:bg-border"} ${disabled ? "opacity-40" : ""} ${className}`}
 		>
 			<Text
-				className={`text-base font-bold ${selected ? "text-foreground" : "text-muted"}`}
+				className={`text-base font-bold ${selected ? "text-night-accent-on" : "text-muted"}`}
 			>
 				{label}
 			</Text>

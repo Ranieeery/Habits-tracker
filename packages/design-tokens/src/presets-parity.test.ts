@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { tailwindV3Preset } from "./tailwind-v3-preset.ts";
 import { renderThemeCss } from "./theme-css.ts";
-import { colors, HEATMAP_LEVELS, nightColors } from "./tokens.ts";
+import { colors, HEATMAP_LEVELS, nightColors, nightFonts } from "./tokens.ts";
 
 type Tree = { readonly [key: string]: string | readonly string[] | Tree };
 
@@ -37,37 +37,39 @@ function v4Vars(): Map<string, string> {
 	return vars;
 }
 
+// Since 2.5.0 the mobile uses the same identity as the web: both outputs
+// must expose exactly the same tokens with the same values, in both
+// directions (a token only one side has would be a drift).
 describe("Tailwind v3 preset and v4 theme", () => {
-	it("expose the same shared tokens with the same values", () => {
-		const v4 = v4Vars();
-		for (const [name, value] of v3Vars()) {
-			expect(v4.get(name), name).toBe(value);
+	it("expose exactly the same tokens with the same values", () => {
+		const v3 = Object.fromEntries(v3Vars());
+		const v4 = Object.fromEntries(v4Vars());
+		expect(v3).toEqual(v4);
+	});
+
+	it("include the night set and the display font", () => {
+		const v3 = v3Vars();
+		for (const [name, value] of flatten(nightColors, "--color-night")) {
+			expect(v3.get(name), name).toBe(value);
+		}
+		expect(v3.get("--font-display")).toBe(nightFonts.display.join(","));
+	});
+
+	it("point every deprecated alias at a night value", () => {
+		const night = new Set(
+			flatten(nightColors, "--color-night").map(([, value]) => value)
+		);
+		for (const [name, value] of flatten(colors, "--color")) {
+			expect(night.has(value), name).toBe(true);
 		}
 	});
 
-	it("add only the web-only night set to the v4 theme", () => {
-		const v3 = v3Vars();
-		const extra = [...v4Vars().keys()].filter((name) => !v3.has(name));
-		expect(extra.sort()).toEqual(
-			[
-				...flatten(nightColors, "--color-night").map(([name]) => name),
-				"--font-display",
-			].sort()
-		);
-	});
-
-	it("define every heatmap level with a border", () => {
-		const levels = Array.from({ length: HEATMAP_LEVELS }, (_, i) => i);
-		expect(Object.keys(colors.heatmap).sort()).toEqual(
-			levels.flatMap((i) => [`${i}`, `${i}-border`]).sort()
-		);
+	it("define one night color per heatmap level", () => {
+		expect(Object.keys(nightColors.heat)).toHaveLength(HEATMAP_LEVELS);
 	});
 
 	it("use lowercase 6-digit hex for every color", () => {
-		for (const [name, value] of [
-			...flatten(colors, "--color"),
-			...flatten(nightColors, "--color-night"),
-		]) {
+		for (const [name, value] of flatten(nightColors, "--color-night")) {
 			expect(value, name).toMatch(/^#[0-9a-f]{6}$/);
 		}
 	});

@@ -1,6 +1,7 @@
 // Since 2.4.0 the web uses only the `night` design tokens (DESIGN.md). The
-// older set still exists in the generated theme for the mobile until its own
-// redesign stages; this keeps it from creeping back into the web.
+// older names still exist in the generated theme as deprecated aliases for
+// the mobile screens not migrated yet (stage 4); this keeps them from
+// creeping back into the web.
 import { describe, expect, it } from "vitest";
 
 const sources = import.meta.glob<string>(
