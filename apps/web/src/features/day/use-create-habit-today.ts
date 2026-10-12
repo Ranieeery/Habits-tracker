@@ -12,10 +12,13 @@ export interface NewHabitInput {
 	id: string;
 	name: string;
 	schedule: Schedule;
+	/** "Começa em" from the form (today by default). */
+	start_date: CalendarDate;
 }
 
 /**
- * Creates a habit that starts on `today`. When it counts today it joins the
+ * Creates a habit from today's view (it starts today unless the form says
+ * later). When it counts today it joins the
  * day's list at once (unchecked) and rolls back on failure; otherwise a toast
  * says on which days it shows up. One request at a time: a second submit
  * while the first is in flight is ignored (the id makes a retry harmless too).
@@ -29,10 +32,9 @@ export function useCreateHabitToday(today: CalendarDate) {
 
 	const mutation = useMutation({
 		mutationKey: ["habit", "create", today],
-		mutationFn: (input: NewHabitInput) =>
-			createHabit(api, { ...input, start_date: today }),
+		mutationFn: (input: NewHabitInput) => createHabit(api, input),
 		onMutate: async (input) => {
-			const habit = newHabit({ ...input, start_date: today }, now());
+			const habit = newHabit(input, now());
 			if (newHabitNotice(habit, today, { timeZone }) !== null) {
 				return { previous: undefined };
 			}

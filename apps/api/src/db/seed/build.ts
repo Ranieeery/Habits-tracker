@@ -5,6 +5,7 @@ import {
 	type Completion,
 	DEFAULT_TIME_ZONE,
 	type Habit,
+	type Schedule,
 	type UserSettings,
 	type Weekday,
 } from "@habits/contracts";
@@ -122,6 +123,37 @@ const HABITS: HabitSpec[] = [
 		name: "Revisão semanal",
 		days: [0],
 		start: thisYear("02-01"),
+	},
+];
+
+/**
+ * Habits with the schedules added in 2.2.0, created on the reference day
+ * (start today), so they leave the past heatmap as it was: one of each type.
+ */
+const SCHEDULED_TODAY: readonly {
+	key: string;
+	name: string;
+	schedule: (today: CalendarDate) => Schedule;
+}[] = [
+	{
+		key: "dermatologist",
+		name: "Consulta no dermatologista",
+		schedule: (today) => ({ type: "once", date: addDays(today, 2) }),
+	},
+	{
+		key: "filter",
+		name: "Trocar filtro",
+		schedule: (today) => ({ type: "interval", every: 8, anchor_date: today }),
+	},
+	{
+		key: "condo",
+		name: "Pagar condomínio",
+		schedule: () => ({ type: "monthly_days", days: [20] }),
+	},
+	{
+		key: "birthday",
+		name: "Aniversário da Ana",
+		schedule: () => ({ type: "yearly", month: 11, day: 20 }),
 	},
 ];
 
@@ -291,6 +323,22 @@ export function buildSeed({
 		}
 	}
 
+	// After the completions: they never get any (they start today).
+	for (const spec of SCHEDULED_TODAY) {
+		const created_at = saoPauloInstant(today, 8);
+		const schedule = spec.schedule(today);
+		habits.push({
+			id: uuidV7(created_at, `habit:${spec.key}`),
+			name: spec.name,
+			schedule,
+			start_date: schedule.type === "once" ? schedule.date : today,
+			archived_at: null,
+			created_at,
+			updated_at: created_at,
+			deleted_at: null,
+		});
+	}
+
 	const settingsAt = saoPauloInstant(`${year - 1}-12-01`, 8);
 	return {
 		userId: DEV_USER_ID,
@@ -299,6 +347,8 @@ export function buildSeed({
 		settings: {
 			timezone: timeZone,
 			reminder_time: "21:00",
+			morning_digest_enabled: true,
+			show_titles_in_notifications: true,
 			created_at: settingsAt,
 			updated_at: settingsAt,
 		},

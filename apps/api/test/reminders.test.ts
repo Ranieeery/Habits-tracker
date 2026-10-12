@@ -195,7 +195,7 @@ describe("reminder cron", () => {
 		expect(fake.web()).toHaveLength(1);
 	});
 
-	it("does not send when every habit is done (and claims the day)", async () => {
+	it("does not send when every habit is done (and leaves the day unclaimed)", async () => {
 		const { api, user, habitId, fake } = await setup();
 		await addWebDevice(api, user, "chrome");
 		const done = await api.request(
@@ -207,6 +207,21 @@ describe("reminder cron", () => {
 		const report = await runCron(AT_2015, fake);
 
 		expect(report.usersNotified).toBe(0);
+		expect(fake.requests).toHaveLength(0);
+		// Decided before claiming (2.2.0): nothing to send claims nothing.
+		const [state] = await db
+			.select()
+			.from(reminderState)
+			.where(eq(reminderState.user_id, user.id));
+		expect(state?.last_reminder_date ?? null).toBeNull();
+	});
+
+	it("does not send long after the reminder time (grace window)", async () => {
+		const { api, user, fake } = await setup();
+		await addWebDevice(api, user, "chrome");
+		// 21:15 in São Paulo: past REMINDER_GRACE_MINUTES after 20:00.
+		const report = await runCron("2026-10-11T00:15:00Z", fake);
+		expect(report.usersDue).toBe(0);
 		expect(fake.requests).toHaveLength(0);
 	});
 

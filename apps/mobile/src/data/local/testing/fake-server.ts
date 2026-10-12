@@ -106,6 +106,8 @@ export function createFakeServer(nowMs: number): FakeServer {
 		settings: {
 			timezone: TIME_ZONE,
 			reminder_time: null,
+			morning_digest_enabled: true,
+			show_titles_in_notifications: true,
 			created_at: 0,
 			updated_at: 0,
 		},

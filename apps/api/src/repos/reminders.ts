@@ -2,7 +2,7 @@
 // and `listDueTickets` read across users by design; every write is still
 // scoped by the user it concerns.
 import type { CalendarDate } from "@habits/contracts";
-import { and, eq, exists, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, eq, exists, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import {
 	pushSubscriptions,
@@ -14,26 +14,35 @@ import {
 export interface ReminderCandidate {
 	user_id: string;
 	timezone: string;
-	reminder_time: string;
+	reminder_time: string | null;
+	morning_digest_enabled: boolean;
+	show_titles_in_notifications: boolean;
 	last_reminder_date: CalendarDate | null;
+	last_digest_date: CalendarDate | null;
 }
 
-/** Users with reminders on and at least one device. */
+/** Users with the reminder or the morning digest on and at least one device. */
 export async function listReminderCandidates(
 	db: Db
 ): Promise<ReminderCandidate[]> {
-	const rows = await db
+	return db
 		.select({
 			user_id: userSettings.user_id,
 			timezone: userSettings.timezone,
 			reminder_time: userSettings.reminder_time,
+			morning_digest_enabled: userSettings.morning_digest_enabled,
+			show_titles_in_notifications: userSettings.show_titles_in_notifications,
 			last_reminder_date: reminderState.last_reminder_date,
+			last_digest_date: reminderState.last_digest_date,
 		})
 		.from(userSettings)
 		.leftJoin(reminderState, eq(reminderState.user_id, userSettings.user_id))
 		.where(
 			and(
-				isNotNull(userSettings.reminder_time),
+				or(
+					isNotNull(userSettings.reminder_time),
+					eq(userSettings.morning_digest_enabled, true)
+				),
 				exists(
 					db
 						.select({ id: pushSubscriptions.id })
@@ -43,11 +52,6 @@ export async function listReminderCandidates(
 			)
 		)
 		.orderBy(userSettings.user_id);
-	return rows.flatMap((row) =>
-		row.reminder_time === null
-			? []
-			: [{ ...row, reminder_time: row.reminder_time }]
-	);
 }
 
 /**
@@ -68,6 +72,28 @@ export async function claimReminderDay(
 			target: reminderState.user_id,
 			set: { last_reminder_date: today, updated_at: now },
 			setWhere: sql`${reminderState.last_reminder_date} IS NULL OR ${reminderState.last_reminder_date} < ${today}`,
+		})
+		.returning({ user_id: reminderState.user_id });
+	return claimed.length > 0;
+}
+
+/**
+ * Claims today's morning digest for the user, like `claimReminderDay`
+ * (independent of it): true only for the first caller of the day.
+ */
+export async function claimDigestDay(
+	db: Db,
+	userId: string,
+	today: CalendarDate,
+	now: number
+): Promise<boolean> {
+	const claimed = await db
+		.insert(reminderState)
+		.values({ user_id: userId, last_digest_date: today, updated_at: now })
+		.onConflictDoUpdate({
+			target: reminderState.user_id,
+			set: { last_digest_date: today, updated_at: now },
+			setWhere: sql`${reminderState.last_digest_date} IS NULL OR ${reminderState.last_digest_date} < ${today}`,
 		})
 		.returning({ user_id: reminderState.user_id });
 	return claimed.length > 0;

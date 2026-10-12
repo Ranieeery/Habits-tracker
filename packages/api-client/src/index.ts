@@ -5,7 +5,11 @@
 //   const api = createApiClient({ baseUrl: import.meta.env.VITE_API_URL });
 //   const { habits } = await unwrap(api.v1.habits.$get());
 
-import { ApiError } from "@habits/contracts";
+import {
+	ApiError,
+	SCHEDULE_VERSION,
+	SCHEDULE_VERSION_HEADER,
+} from "@habits/contracts";
 import type { AppType } from "api/app";
 import { type ClientResponse, hc } from "hono/client";
 import type { SuccessStatusCode } from "hono/utils/http-status";
@@ -39,7 +43,10 @@ export function createApiClient({
 		init: credentials ? { credentials } : undefined,
 		headers: async (): Promise<Record<string, string>> => {
 			const token = await getToken?.();
-			return token ? { Authorization: `Bearer ${token}` } : {};
+			// Lets the API send schedule types this build understands (older
+			// builds without the header only get weekday habits).
+			const version = { [SCHEDULE_VERSION_HEADER]: String(SCHEDULE_VERSION) };
+			return token ? { ...version, Authorization: `Bearer ${token}` } : version;
 		},
 	});
 }

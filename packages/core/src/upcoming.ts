@@ -1,0 +1,49 @@
+// "Próximos" on today's screen: the coming dates of habits that do not repeat
+// by weekday (single dates, intervals, days of the month, yearly), computed
+// on the client from the habits it already has.
+import { type Habit, isSupportedSchedule } from "@habits/contracts";
+import { addDays, type CalendarDate } from "./dates.ts";
+import {
+	occurrencesBetween,
+	type SchedulableHabit,
+	type TimeZoneOptions,
+} from "./schedule.ts";
+
+/** Days after today that "Próximos" covers. */
+export const UPCOMING_DAYS = 14;
+
+export interface UpcomingItem<H> {
+	date: CalendarDate;
+	habit: H;
+}
+
+export interface UpcomingOptions extends TimeZoneOptions {
+	/** Days after `today` to include (default `UPCOMING_DAYS`). */
+	days?: number;
+}
+
+/**
+ * Occurrences from tomorrow to `today + days` of live, unarchived habits
+ * whose schedule is not `weekdays`, by date (then name).
+ */
+export function upcoming<H extends SchedulableHabit & Pick<Habit, "name">>(
+	habits: readonly H[],
+	today: CalendarDate,
+	{ days = UPCOMING_DAYS, ...options }: UpcomingOptions
+): UpcomingItem<H>[] {
+	const from = addDays(today, 1);
+	const to = addDays(today, days);
+	const items: UpcomingItem<H>[] = [];
+	for (const habit of habits) {
+		if (habit.deleted_at !== null || habit.archived_at !== null) continue;
+		if (!isSupportedSchedule(habit.schedule)) continue;
+		if (habit.schedule.type === "weekdays") continue;
+		for (const date of occurrencesBetween(habit, from, to, options)) {
+			items.push({ date, habit });
+		}
+	}
+	return items.sort(
+		(a, b) =>
+			a.date.localeCompare(b.date) || a.habit.name.localeCompare(b.habit.name)
+	);
+}

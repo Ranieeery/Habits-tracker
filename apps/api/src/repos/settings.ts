@@ -12,6 +12,8 @@ export function defaultSettings(now: number): UserSettings {
 	return {
 		timezone: DEFAULT_TIME_ZONE,
 		reminder_time: null,
+		morning_digest_enabled: true,
+		show_titles_in_notifications: true,
 		created_at: now,
 		updated_at: now,
 	};

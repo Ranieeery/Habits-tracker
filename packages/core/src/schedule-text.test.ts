@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { SchedulableHabit } from "./schedule.ts";
 import {
+	formatDayMonth,
+	formatRelativeDate,
+	formatSchedule,
 	formatWeekdays,
 	listWeekdays,
 	newHabitNotice,
+	repeatSummary,
+	UNSUPPORTED_SCHEDULE_TEXT,
 	WEEKDAY_SHORT_NAMES,
 } from "./schedule-text.ts";
 
@@ -64,5 +69,114 @@ describe("newHabitNotice", () => {
 		expect(newHabitNotice(later, FRIDAY, sp)).toBe(
 			"Hábito criado. Aparece em: sex"
 		);
+	});
+});
+
+describe("formatSchedule", () => {
+	it("names every schedule type in pt-BR", () => {
+		expect(formatSchedule({ type: "weekdays", days: [1, 2, 3, 4, 5] })).toBe(
+			"Dias úteis"
+		);
+		expect(
+			formatSchedule({ type: "interval", every: 8, anchor_date: FRIDAY })
+		).toBe("A cada 8 dias");
+		expect(
+			formatSchedule({ type: "interval", every: 1, anchor_date: FRIDAY })
+		).toBe("Todos os dias");
+		expect(formatSchedule({ type: "monthly_days", days: [20] })).toBe(
+			"Todo dia 20"
+		);
+		expect(formatSchedule({ type: "monthly_days", days: [20, 5] })).toBe(
+			"Todo dia 5 e 20"
+		);
+		expect(formatSchedule({ type: "monthly_days", days: [30, 1, 15] })).toBe(
+			"Todo dia 1, 15 e 30"
+		);
+		expect(formatSchedule({ type: "yearly", month: 11, day: 20 })).toBe(
+			"Todo ano em 20/11"
+		);
+		expect(formatSchedule({ type: "yearly", month: 2, day: 29 })).toBe(
+			"Todo ano em 29/02 (28/02 em anos não bissextos)"
+		);
+		expect(formatSchedule({ type: "once", date: "2026-11-20" })).toBe(
+			"Dia 20/11"
+		);
+	});
+
+	it("shows the year of a single date only when it is not this year", () => {
+		const once = { type: "once", date: "2027-01-05" } as const;
+		expect(formatSchedule(once, { today: "2027-01-01" })).toBe("Dia 05/01");
+		expect(formatSchedule(once, { today: FRIDAY })).toBe("Dia 05/01/2027");
+	});
+
+	it("does not break on a schedule from a newer version", () => {
+		expect(formatSchedule({ type: "lunar" })).toBe(UNSUPPORTED_SCHEDULE_TEXT);
+	});
+});
+
+describe("formatRelativeDate and formatDayMonth", () => {
+	it("says hoje, amanhã, or the weekday and date", () => {
+		expect(formatRelativeDate(FRIDAY, FRIDAY)).toBe("hoje");
+		expect(formatRelativeDate("2026-10-10", FRIDAY)).toBe("amanhã");
+		expect(formatRelativeDate("2026-11-20", FRIDAY)).toBe("sex, 20/11");
+		expect(formatRelativeDate("2027-01-04", "2026-12-31")).toBe(
+			"seg, 04/01/2027"
+		);
+		expect(formatDayMonth("2026-03-07")).toBe("07/03");
+	});
+});
+
+describe("repeatSummary", () => {
+	it("describes the repetition and a future start", () => {
+		expect(
+			repeatSummary(
+				{
+					schedule: { type: "interval", every: 8, anchor_date: "2026-10-22" },
+					start_date: "2026-10-22",
+				},
+				FRIDAY
+			)
+		).toBe("Repete a cada 8 dias, a partir de 22/10");
+		expect(
+			repeatSummary(
+				{ schedule: { type: "weekdays", days: [1, 3] }, start_date: FRIDAY },
+				FRIDAY
+			)
+		).toBe("Repete em seg, qua");
+		expect(
+			repeatSummary(
+				{ schedule: { type: "monthly_days", days: [20] }, start_date: FRIDAY },
+				FRIDAY
+			)
+		).toBe("Repete todo dia 20");
+		expect(
+			repeatSummary(
+				{
+					schedule: { type: "once", date: "2026-11-20" },
+					start_date: "2026-11-20",
+				},
+				FRIDAY
+			)
+		).toBe("Uma vez, dia 20/11");
+	});
+});
+
+describe("newHabitNotice for the new schedules", () => {
+	it("tells when a habit not happening today comes next", () => {
+		const consulta: SchedulableHabit = {
+			schedule: { type: "once", date: "2026-11-20" },
+			start_date: "2026-11-20",
+			archived_at: null,
+			deleted_at: null,
+		};
+		expect(newHabitNotice(consulta, FRIDAY, sp)).toBe(
+			"Hábito criado. Próxima vez: sex, 20/11"
+		);
+		const today: SchedulableHabit = {
+			...consulta,
+			schedule: { type: "once", date: FRIDAY },
+			start_date: FRIDAY,
+		};
+		expect(newHabitNotice(today, FRIDAY, sp)).toBeNull();
 	});
 });

@@ -5,6 +5,11 @@ import {
 	heatmapLevel,
 	summarizeDay,
 } from "@habits/core";
+import {
+	type Habit,
+	SCHEDULE_VERSION,
+	SCHEDULE_VERSION_HEADER,
+} from "@habits/contracts";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { hashPassword } from "../src/auth/password.ts";
@@ -123,11 +128,23 @@ describe("applySeed", () => {
 		const { user } = (await response.json()) as { user: { id: string } };
 		expect(user.id).toBe(DEV_USER_ID);
 
+		const authorization = `Bearer ${bearerOf(response)}`;
 		const habitsResponse = await api.request("/v1/habits", {
-			headers: { Authorization: `Bearer ${bearerOf(response)}` },
+			headers: {
+				Authorization: authorization,
+				[SCHEDULE_VERSION_HEADER]: String(SCHEDULE_VERSION),
+			},
 		});
 		const body = (await habitsResponse.json()) as { habits: unknown[] };
 		expect(body.habits).toHaveLength(seed.habits.length);
+
+		// A 2.1.0 client (no header) only gets the weekday habits.
+		const oldResponse = await api.request("/v1/habits", {
+			headers: { Authorization: authorization },
+		});
+		const old = (await oldResponse.json()) as { habits: Habit[] };
+		expect(old.habits.length).toBeLessThan(seed.habits.length);
+		expect(old.habits.every((h) => h.schedule.type === "weekdays")).toBe(true);
 	});
 
 	it("is idempotent", async () => {

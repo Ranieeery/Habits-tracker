@@ -1,3 +1,4 @@
+import { SCHEDULE_VERSION } from "@habits/contracts";
 import type {
 	CompletionResponse,
 	HabitListResponse,
@@ -47,6 +48,17 @@ describe("createApiClient", () => {
 		await unwrap(api.v1.habits.$get());
 
 		expect(requests[0]!.headers.get("authorization")).toBeNull();
+	});
+
+	it("announces the schedule version it understands", async () => {
+		const { fetch, requests } = fakeFetch(() => ok({ habits: [] }));
+		const api = createApiClient({ baseUrl: "http://api.test", fetch });
+
+		await unwrap(api.v1.habits.$get());
+
+		expect(requests[0]!.headers.get("x-habits-schedule-version")).toBe(
+			String(SCHEDULE_VERSION)
+		);
 	});
 
 	it("builds path params and JSON bodies", async () => {

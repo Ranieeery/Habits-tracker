@@ -32,6 +32,58 @@ export function localTimeAt(instantMs: number, timeZone: string): LocalTime {
 	return `${hour.padStart(2, "0")}:${get("minute").padStart(2, "0")}`;
 }
 
+/**
+ * How late a reminder may still go out after `reminderTime` (the cron runs
+ * every 15 minutes and can be delayed). Turning reminders on long after the
+ * time passed no longer sends one that day.
+ */
+export const REMINDER_GRACE_MINUTES = 60;
+
+function minutesOf(time: LocalTime): number {
+	const [hours = 0, minutes = 0] = time.split(":").map(Number);
+	return hours * 60 + minutes;
+}
+
+/**
+ * Rounds `HH:MM` down to the 15-minute step the cron runs on ("20:07" is
+ * "20:00"; never crosses midnight). Times saved before 2.2.0 were rounded the
+ * same way by migration `0005`.
+ */
+export function roundDownToQuarter(time: LocalTime): LocalTime {
+	const total = minutesOf(time);
+	const rounded = total - (total % 15);
+	const hh = String(Math.floor(rounded / 60)).padStart(2, "0");
+	const mm = String(rounded % 60).padStart(2, "0");
+	return `${hh}:${mm}`;
+}
+
+export interface SendWindowInput {
+	/** Current instant in UTC ms. */
+	nowMs: number;
+	/** The user's IANA time zone. */
+	timeZone: string;
+	/** Scheduled local time, `HH:MM`. */
+	time: LocalTime;
+	/** Minutes after `time` during which sending is still allowed. */
+	graceMinutes: number;
+}
+
+/**
+ * Whether the local time at `nowMs` is in `[time, time + graceMinutes)` on
+ * the same local day: a window that would run past midnight ends there. A
+ * time skipped by a DST jump still fires while the window lasts.
+ */
+export function isWithinSendWindow({
+	nowMs,
+	timeZone,
+	time,
+	graceMinutes,
+}: SendWindowInput): boolean {
+	const now = minutesOf(localTimeAt(nowMs, timeZone));
+	const start = minutesOf(time);
+	return now >= start && now < start + graceMinutes;
+}
+
 export interface ReminderTimingInput {
 	/** Current instant in UTC ms (the cron's scheduled time). */
 	nowMs: number;
@@ -51,8 +103,8 @@ export interface ReminderDue {
 
 /**
  * Whether today's reminder is due by time alone: reminders are on, the local
- * time reached `reminderTime`, and none was sent today. A time skipped by a
- * DST jump still fires, since the check is "already passed".
+ * time is within `REMINDER_GRACE_MINUTES` after `reminderTime` (rounded down
+ * to the 15-minute step), and none was sent today.
  */
 export function isReminderDue({
 	nowMs,
@@ -65,7 +117,15 @@ export function isReminderDue({
 	if (lastReminderDate !== null && lastReminderDate >= today) {
 		return { due: false, today };
 	}
-	return { due: localTimeAt(nowMs, timeZone) >= reminderTime, today };
+	return {
+		due: isWithinSendWindow({
+			nowMs,
+			timeZone,
+			time: roundDownToQuarter(reminderTime),
+			graceMinutes: REMINDER_GRACE_MINUTES,
+		}),
+		today,
+	};
 }
 
 export interface ShouldSendReminderInput extends ReminderTimingInput {
@@ -74,8 +134,9 @@ export interface ShouldSendReminderInput extends ReminderTimingInput {
 }
 
 /**
- * At most one reminder per local day, only after `reminderTime` in the user's
- * time zone, only with pending habits, never when reminders are off.
+ * At most one reminder per local day, only within `REMINDER_GRACE_MINUTES`
+ * after `reminderTime` in the user's time zone, only with pending habits,
+ * never when reminders are off. Independent of the morning digest.
  */
 export function shouldSendReminder(input: ShouldSendReminderInput): boolean {
 	return input.pendingCount > 0 && isReminderDue(input).due;

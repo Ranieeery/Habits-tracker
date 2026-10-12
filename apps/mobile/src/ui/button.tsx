@@ -85,19 +85,23 @@ export function Button({
 export function IconButton({
 	icon,
 	label,
+	disabled = false,
 	onPress,
 }: {
 	icon: IconName;
 	label: string;
+	disabled?: boolean;
 	onPress: () => void;
 }) {
 	return (
 		<Pressable
 			accessibilityRole="button"
 			accessibilityLabel={label}
+			accessibilityState={{ disabled }}
+			disabled={disabled}
 			onPress={onPress}
 			hitSlop={4}
-			className="size-touch items-center justify-center rounded-md active:bg-surface"
+			className={`size-touch items-center justify-center rounded-md active:bg-surface ${disabled ? "opacity-30" : ""}`}
 		>
 			<View>
 				<MaterialCommunityIcons name={icon} size={24} color={colors.muted} />

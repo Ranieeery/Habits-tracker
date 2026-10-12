@@ -1,9 +1,16 @@
-// The reminder job, run by the Cron Trigger every 15 minutes. "Now" is the
-// trigger's scheduled time, passed in (never read here), and each user's day
-// is computed in their own time zone by @habits/core.
+// The notification job, run by the Cron Trigger every 15 minutes: the morning
+// digest (fixed MORNING_DIGEST_TIME) and the daily reminder (reminder_time),
+// decided independently by @habits/core. "Now" is the trigger's scheduled
+// time, passed in (never read here), and each user's day is computed in their
+// own time zone.
+import type { CalendarDate } from "@habits/contracts";
 import {
+	digestMessage,
+	isDigestDue,
 	isReminderDue,
 	reminderMessage,
+	selectDigestContent,
+	shouldSendMorningDigest,
 	shouldSendReminder,
 	summarizeDay,
 } from "@habits/core";
@@ -26,6 +33,7 @@ import { listLiveCompletions } from "../repos/completions.ts";
 import { listHabits } from "../repos/habits.ts";
 import { deletePushSubscriptions, listPushTargets } from "../repos/push.ts";
 import {
+	claimDigestDay,
 	claimReminderDay,
 	deleteTickets,
 	listDueTickets,
@@ -44,6 +52,8 @@ export const RECEIPT_DELAY_MS = 15 * 60_000;
 export const TICKET_MAX_AGE_MS = 24 * 60 * 60_000;
 /** A reminder not delivered within 12 hours is useless. */
 export const REMINDER_TTL_SECONDS = 12 * 60 * 60;
+/** The digest is about today and tomorrow: useless after the afternoon. */
+export const DIGEST_TTL_SECONDS = 6 * 60 * 60;
 
 export interface ReminderJobDeps {
 	db: Db;
@@ -58,6 +68,8 @@ export interface ReminderJobReport {
 	usersDue: number;
 	usersNotified: number;
 	usersDeferred: number;
+	digests: number;
+	reminders: number;
 	sent: number;
 	failed: number;
 	removed: number;
@@ -74,6 +86,8 @@ export async function runReminderJob(
 		usersDue: 0,
 		usersNotified: 0,
 		usersDeferred: 0,
+		digests: 0,
+		reminders: 0,
 		sent: 0,
 		failed: 0,
 		removed: 0,
@@ -90,63 +104,119 @@ export async function runReminderJob(
 	});
 
 	for (const candidate of await listReminderCandidates(db)) {
-		const { due, today } = isReminderDue({
+		const timeZone = candidate.timezone;
+		// Time checks first: no query for users with nothing due.
+		const digestDue = isDigestDue({
 			nowMs: now,
-			timeZone: candidate.timezone,
+			timeZone,
+			enabled: candidate.morning_digest_enabled,
+			lastDigestDate: candidate.last_digest_date,
+		});
+		const reminderDue = isReminderDue({
+			nowMs: now,
+			timeZone,
 			reminderTime: candidate.reminder_time,
 			lastReminderDate: candidate.last_reminder_date,
 		});
-		if (!due) continue;
+		if (!digestDue.due && !reminderDue.due) continue;
 		report.usersDue += 1;
+		const today = digestDue.today;
 
 		const targets = withinFetchLimit(
 			await listPushTargets(db, candidate.user_id),
 			MAX_FETCHES_PER_RUN
 		);
 		if (targets.length === 0) continue;
-		const cost = fetchCost(targets);
-		if (!budget.canAfford(cost)) {
-			// Not claimed: the next run picks this user up.
-			report.usersDeferred += 1;
-			continue;
-		}
-		// Claim the day first: a concurrent or repeated run gets false here.
-		if (!(await claimReminderDay(db, candidate.user_id, today, now))) continue;
 
-		const timeZone = candidate.timezone;
+		// Decide with the data before claiming: a run with nothing to send leaves
+		// the day unclaimed (a single date added later today still gets in).
 		const [habits, completions] = await Promise.all([
 			listHabits(db, candidate.user_id),
 			listLiveCompletions(db, candidate.user_id, today, today),
 		]);
-		const { possible, completed } = summarizeDay(habits, completions, today, {
-			timeZone,
-		});
-		const pendingCount = possible - completed;
-		const wantsReminder = shouldSendReminder({
-			nowMs: now,
-			timeZone,
-			reminderTime: candidate.reminder_time,
-			lastReminderDate: candidate.last_reminder_date,
-			pendingCount,
-		});
-		// Nothing pending: the day stays claimed (no reminder today).
-		if (!wantsReminder) continue;
+		const outgoing: Outgoing[] = [];
+		if (digestDue.due) {
+			const content = selectDigestContent(habits, completions, today, {
+				timeZone,
+			});
+			const wanted = shouldSendMorningDigest({
+				nowMs: now,
+				timeZone,
+				enabled: candidate.morning_digest_enabled,
+				lastDigestDate: candidate.last_digest_date,
+				content,
+			});
+			if (wanted) {
+				outgoing.push({
+					claim: claimDigestDay,
+					message: {
+						kind: "digest",
+						...digestMessage(content, candidate.show_titles_in_notifications),
+						tag: `digest-${today}`,
+						ttl: DIGEST_TTL_SECONDS,
+					},
+				});
+			}
+		}
+		if (reminderDue.due) {
+			const { possible, completed } = summarizeDay(habits, completions, today, {
+				timeZone,
+			});
+			const pendingCount = possible - completed;
+			const wanted = shouldSendReminder({
+				nowMs: now,
+				timeZone,
+				reminderTime: candidate.reminder_time,
+				lastReminderDate: candidate.last_reminder_date,
+				pendingCount,
+			});
+			if (wanted) {
+				outgoing.push({
+					claim: claimReminderDay,
+					message: {
+						kind: "reminder",
+						...reminderMessage(pendingCount),
+						tag: `reminder-${today}`,
+						ttl: REMINDER_TTL_SECONDS,
+					},
+				});
+			}
+		}
 
-		budget.spend(cost);
-		const message: PushMessage = {
-			kind: "reminder",
-			...reminderMessage(pendingCount),
-			tag: `reminder-${today}`,
-			ttl: REMINDER_TTL_SECONDS,
-		};
-		const result = await send(candidate.user_id, targets, message);
-		report.usersNotified += 1;
-		report.sent += result.sent;
-		report.failed += result.failed;
-		report.removed += result.removed;
+		let notified = false;
+		for (const { claim, message } of outgoing) {
+			const cost = fetchCost(targets);
+			if (!budget.canAfford(cost)) {
+				// Not claimed: the next run picks this user up.
+				report.usersDeferred += 1;
+				break;
+			}
+			// Claim the day first: a concurrent or repeated run gets false here.
+			if (!(await claim(db, candidate.user_id, today, now))) continue;
+			budget.spend(cost);
+			const result = await send(candidate.user_id, targets, message);
+			notified = true;
+			if (message.kind === "digest") report.digests += 1;
+			else report.reminders += 1;
+			report.sent += result.sent;
+			report.failed += result.failed;
+			report.removed += result.removed;
+		}
+		if (notified) report.usersNotified += 1;
 	}
 
 	return report;
+}
+
+interface Outgoing {
+	/** Claims the day for this kind (before sending; false: already sent). */
+	claim: (
+		db: Db,
+		userId: string,
+		today: CalendarDate,
+		now: number
+	) => Promise<boolean>;
+	message: PushMessage;
 }
 
 /**

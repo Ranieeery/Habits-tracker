@@ -27,6 +27,7 @@ import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { useToast } from "@/ui/toast.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
+import { UpcomingSection } from "./upcoming-section.tsx";
 
 /** Route param: a `YYYY-MM-DD` date, or "hoje" (follows the day turning). */
 export const TODAY_PARAM = "hoje";
@@ -99,7 +100,7 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 					) : data.possible_habits.length === 0 ? (
 						<EmptyState
 							title="Nenhum hábito para este dia"
-							description="Hábitos aparecem nos dias da semana escolhidos para eles."
+							description="Hábitos aparecem nos dias em que se repetem."
 							action={
 								<Button
 									variant="outline"
@@ -121,6 +122,7 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 					)
 				}
 			</QueryState>
+			{editable ? <UpcomingSection today={today} /> : null}
 		</Screen>
 	);
 }
@@ -134,7 +136,7 @@ function TodayEmptyState() {
 	return hasActive ? (
 		<EmptyState
 			title="Nenhum hábito para hoje"
-			description="Hábitos aparecem nos dias da semana escolhidos para eles. Toque em Novo hábito, aqui embaixo, para criar outro."
+			description="Hábitos aparecem nos dias em que se repetem. Toque em Novo hábito, aqui embaixo, para criar outro."
 			action={
 				<Button
 					variant="ghost"

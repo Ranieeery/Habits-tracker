@@ -18,8 +18,12 @@ import type {
 	Mutation,
 	UpdateHabitRequest,
 } from "@habits/contracts";
-import { addDays } from "./dates.ts";
-import { BACKFILL_DAYS, isWithinWriteWindow, writeWindow } from "./window.ts";
+import {
+	checkHabitDates,
+	earliestStartDate,
+	type HabitDatesProblem,
+} from "./schedule.ts";
+import { isWithinWriteWindow, writeWindow } from "./window.ts";
 
 /** Days the server keeps tombstones before purging them. */
 export const TOMBSTONE_RETENTION_DAYS = 90;
@@ -182,6 +186,23 @@ function reject(
 	};
 }
 
+/** The rejection for a `checkHabitDates` problem (REST answers the same). */
+export function habitDatesError(
+	problem: HabitDatesProblem,
+	earliest: CalendarDate
+): ApiErrorBody {
+	return problem === "date_out_of_range"
+		? {
+				code: "date_out_of_range",
+				message: "Date is before the earliest allowed date",
+				details: { earliest },
+			}
+		: {
+				code: "validation_error",
+				message: "Single date is before the habit start date",
+			};
+}
+
 function liveHabit(state: SyncState, habitId: string): Habit | null {
 	const habit = state.habits.get(habitId);
 	return habit && habit.deleted_at === null ? habit : null;
@@ -214,13 +235,16 @@ export function applyMutation(
 				return reject("conflict", "Habit id already in use");
 			}
 			if (ctx.today !== undefined) {
-				const earliest = addDays(ctx.today, -BACKFILL_DAYS);
-				if (mutation.start_date < earliest) {
-					return reject(
-						"date_out_of_range",
-						"start_date is too far in the past",
-						{ earliest }
-					);
+				// Offline creations get the backfill window for every schedule.
+				const earliest = earliestStartDate(mutation.schedule, ctx.today, {
+					offline: true,
+				});
+				const problem = checkHabitDates(mutation, earliest);
+				if (problem) {
+					return {
+						status: "rejected",
+						error: habitDatesError(problem, earliest),
+					};
 				}
 			}
 			state.habits.set(mutation.id, newHabit(mutation, ctx.now));
@@ -229,6 +253,23 @@ export function applyMutation(
 		case "habit.update": {
 			const habit = liveHabit(state, mutation.habit_id);
 			if (!habit) return reject("not_found", "Habit not found");
+			const { schedule } = mutation.changes;
+			if (schedule !== undefined && ctx.today !== undefined) {
+				const earliest = earliestStartDate(schedule, ctx.today, {
+					offline: true,
+				});
+				const problem = checkHabitDates(
+					{ schedule, start_date: habit.start_date },
+					earliest,
+					{ checkStart: false }
+				);
+				if (problem) {
+					return {
+						status: "rejected",
+						error: habitDatesError(problem, earliest),
+					};
+				}
+			}
 			const result = applyHabitChanges(habit, mutation.changes, ctx.now);
 			if (result.changed) state.habits.set(habit.id, result.habit);
 			return {

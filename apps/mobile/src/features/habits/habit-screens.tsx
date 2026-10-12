@@ -7,7 +7,7 @@ import {
 	useHabits,
 	useUpdateHabit,
 } from "@/data/hooks.ts";
-import { useToday } from "@/data/today.ts";
+import { useToday, useUserTimeZone } from "@/data/today.ts";
 import { Button } from "@/ui/button.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
@@ -26,6 +26,7 @@ export function NewHabitScreen() {
 	useHideSplashWhen(true);
 	const router = useRouter();
 	const today = useToday();
+	const timeZone = useUserTimeZone();
 	const toast = useToast();
 	const create = useCreateHabit();
 	const onError = useErrorToast("Não foi possível criar o hábito");
@@ -33,12 +34,15 @@ export function NewHabitScreen() {
 	return (
 		<Screen edges={["bottom"]}>
 			<HabitForm
+				today={today}
+				timeZone={timeZone}
 				submitLabel="Criar hábito"
 				pending={create.isPending}
-				onSubmit={(values) =>
+				onSubmit={({ name, schedule, start_date }) =>
+					schedule &&
 					create.mutate(
-						// Starts today: a new habit never rewrites past heatmap days.
-						{ ...values, start_date: today },
+						// Starts today or later ("Começa em"): never rewrites past days.
+						{ name, schedule, start_date },
 						{
 							onSuccess: (habit) => {
 								toast("success", "Hábito criado", habit.name);
@@ -58,6 +62,8 @@ export function EditHabitScreen() {
 	const router = useRouter();
 	const toast = useToast();
 	const habits = useHabits();
+	const today = useToday();
+	const timeZone = useUserTimeZone();
 	const update = useUpdateHabit();
 	const onError = useErrorToast("Não foi possível salvar o hábito");
 	useHideSplashWhen(isSettled(habits));
@@ -102,11 +108,19 @@ export function EditHabitScreen() {
 						<View className="gap-10">
 							<HabitForm
 								initial={habit}
+								today={today}
+								timeZone={timeZone}
 								submitLabel="Salvar"
 								pending={update.isPending}
 								onSubmit={(values) =>
 									update.mutate(
-										{ habitId: habit.id, changes: values },
+										{
+											habitId: habit.id,
+											changes: {
+												name: values.name,
+												...(values.schedule && { schedule: values.schedule }),
+											},
+										},
 										{
 											onSuccess: () => {
 												toast("success", "Hábito salvo", values.name);

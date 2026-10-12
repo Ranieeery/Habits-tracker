@@ -11,7 +11,10 @@ import {
 	PushSubscriptionView,
 	PushTestResponse,
 	RegisterPushSubscriptionRequest,
+	isSupportedSchedule,
 	Schedule,
+	SCHEDULE_TYPE_VERSION,
+	scheduleVersionOf,
 	SignInRequest,
 	SignUpRequest,
 	SYNC_PUSH_MAX_MUTATIONS,
@@ -68,6 +71,59 @@ describe("Schedule", () => {
 
 	it("rejects unknown schedule types", () => {
 		expect(Schedule.safeParse({ type: "monthly", days: [1] }).success).toBe(
+			false
+		);
+	});
+
+	it.each([
+		{ type: "interval", every: 8, anchor_date: "2026-10-22" },
+		{ type: "interval", every: 366, anchor_date: "2026-10-22" },
+		{ type: "monthly_days", days: [20] },
+		{ type: "monthly_days", days: [1, 15, 31] },
+		{ type: "once", date: "2026-11-20" },
+		{ type: "yearly", month: 11, day: 20 },
+		{ type: "yearly", month: 2, day: 29 },
+	])("accepts %j", (schedule) => {
+		expect(Schedule.safeParse(schedule).success).toBe(true);
+	});
+
+	it.each([
+		{ type: "interval", every: 0, anchor_date: "2026-10-22" },
+		{ type: "interval", every: 367, anchor_date: "2026-10-22" },
+		{ type: "interval", every: 1.5, anchor_date: "2026-10-22" },
+		{ type: "interval", every: 2, anchor_date: "2026-02-30" },
+		{ type: "monthly_days", days: [] },
+		{ type: "monthly_days", days: [0] },
+		{ type: "monthly_days", days: [32] },
+		{ type: "monthly_days", days: [5, 5] },
+		{ type: "once", date: "20/11/2026" },
+		{ type: "yearly", month: 13, day: 1 },
+		{ type: "yearly", month: 2, day: 30 },
+		{ type: "yearly", month: 4, day: 31 },
+	])("rejects %j", (schedule) => {
+		expect(Schedule.safeParse(schedule).success).toBe(false);
+	});
+
+	it("versions each type; weekdays is what 2.1.0 clients understand", () => {
+		expect(SCHEDULE_TYPE_VERSION.weekdays).toBe(1);
+		expect(scheduleVersionOf({ type: "weekdays", days: [1] })).toBe(1);
+		expect(scheduleVersionOf({ type: "once", date: "2026-11-20" })).toBe(2);
+		expect(scheduleVersionOf({ type: "lunar" })).toBe(Infinity);
+	});
+});
+
+describe("Habit (tolerant reads)", () => {
+	it("keeps a schedule from a newer version instead of failing", () => {
+		const parsed = Habit.parse({
+			...habit,
+			schedule: { type: "lunar", phase: "full" },
+		});
+		expect(parsed.schedule).toEqual({ type: "lunar", phase: "full" });
+		expect(isSupportedSchedule(parsed.schedule)).toBe(false);
+	});
+
+	it("still requires an object with a string type", () => {
+		expect(Habit.safeParse({ ...habit, schedule: { days: [1] } }).success).toBe(
 			false
 		);
 	});
@@ -243,6 +299,8 @@ describe("UserSettings", () => {
 	const settings = {
 		timezone: "America/Sao_Paulo",
 		reminder_time: "21:30",
+		morning_digest_enabled: true,
+		show_titles_in_notifications: false,
 		created_at: 1_767_787_200_000,
 		updated_at: 1_767_787_200_000,
 	};
@@ -254,7 +312,29 @@ describe("UserSettings", () => {
 		).toBe(true);
 	});
 
-	it.each(["24:00", "9:00", "12:60", "12:00:00"])(
+	it("defaults the 2.2.0 notification flags to on (older stored copies)", () => {
+		const { morning_digest_enabled, show_titles_in_notifications, ...old } =
+			settings;
+		expect(UserSettings.parse(old)).toMatchObject({
+			morning_digest_enabled: true,
+			show_titles_in_notifications: true,
+		});
+		expect([morning_digest_enabled, show_titles_in_notifications]).toEqual([
+			true,
+			false,
+		]);
+	});
+
+	it.each(["00:00", "08:15", "12:30", "23:45"])(
+		"accepts reminder time %s (15-minute steps)",
+		(reminder_time) => {
+			expect(
+				UserSettings.safeParse({ ...settings, reminder_time }).success
+			).toBe(true);
+		}
+	);
+
+	it.each(["24:00", "9:00", "12:60", "12:00:00", "20:07", "23:50"])(
 		"rejects reminder time %s",
 		(reminder_time) => {
 			expect(
@@ -415,8 +495,15 @@ describe("PushNotificationPayload", () => {
 		tag: "reminder-2026-10-10",
 	};
 
-	it("accepts a reminder", () => {
+	it("accepts a reminder and a morning digest", () => {
 		expect(PushNotificationPayload.safeParse(payload).success).toBe(true);
+		expect(
+			PushNotificationPayload.safeParse({
+				...payload,
+				kind: "digest",
+				tag: "digest-2026-10-10",
+			}).success
+		).toBe(true);
 	});
 
 	it("rejects external URLs and unknown versions", () => {

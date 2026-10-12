@@ -16,6 +16,7 @@ import { dayQuery, habitsQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
 import { DayHabitItem } from "./day-habit-item.tsx";
 import { NewHabitDialog } from "./new-habit-dialog.tsx";
+import { UpcomingSection } from "./upcoming-section.tsx";
 import { useToggleCompletion } from "./use-toggle-completion.ts";
 
 /**
@@ -66,7 +67,7 @@ export function DayView({
 			) : day.data.possible_habits.length === 0 ? (
 				<EmptyState
 					title="Nenhum hábito para este dia"
-					description="Hábitos aparecem nos dias da semana escolhidos para eles."
+					description="Hábitos aparecem nos dias em que se repetem."
 					action={
 						<Link
 							to="/habits"
@@ -86,6 +87,8 @@ export function DayView({
 					}
 				/>
 			)}
+
+			{editable && <UpcomingSection today={today} />}
 		</section>
 	);
 }
@@ -101,7 +104,7 @@ function TodayEmptyState({ today }: { today: CalendarDate }) {
 			title={hasActive ? "Nenhum hábito para hoje" : "Nenhum hábito ainda"}
 			description={
 				hasActive
-					? "Hábitos aparecem nos dias da semana escolhidos para eles."
+					? "Hábitos aparecem nos dias em que se repetem."
 					: "Crie um hábito: ele começa a contar hoje."
 			}
 			action={

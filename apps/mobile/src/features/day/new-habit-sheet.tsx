@@ -5,9 +5,11 @@ import {
 	AccessibilityInfo,
 	Modal,
 	Pressable,
+	ScrollView,
 	StyleSheet,
 	Text,
 	type TextInput,
+	useWindowDimensions,
 	View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -22,11 +24,6 @@ import {
 import { Button, IconButton } from "@/ui/button.tsx";
 import { useToast } from "@/ui/toast.tsx";
 
-const EVERY_DAY: HabitFormValues = {
-	name: "",
-	schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
-};
-
 /**
  * "Novo hábito" for today's view: a full-width button (the screen's fixed
  * footer, in reach of the thumb) that opens a bottom sheet with the habits
@@ -38,6 +35,7 @@ const EVERY_DAY: HabitFormValues = {
  */
 export function NewHabitSheet({ today }: { today: CalendarDate }) {
 	const insets = useSafeAreaInsets();
+	const { height } = useWindowDimensions();
 	const toast = useToast();
 	const newId = useNewId();
 	const timeZone = useUserTimeZone();
@@ -75,13 +73,13 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 		if (!sending.current) setHabitId(null);
 	};
 
-	const submit = (values: HabitFormValues) => {
-		if (habitId === null || sending.current) return;
+	const submit = ({ name, schedule, start_date }: HabitFormValues) => {
+		if (habitId === null || sending.current || !schedule) return;
 		sending.current = true;
 		setError(undefined);
 		create.mutate(
-			// Starts today: a new habit never rewrites past heatmap days.
-			{ id: habitId, ...values, start_date: today },
+			// Starts today or later ("Começa em"): never rewrites past days.
+			{ id: habitId, name, schedule, start_date },
 			{
 				onSuccess: (habit) => {
 					sending.current = false;
@@ -148,18 +146,26 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 								<IconButton icon="close" label="Fechar" onPress={close} />
 							</View>
 							<Text className="text-sm text-muted">
-								Começa a contar hoje e não muda os dias anteriores.
+								Começa a contar na data escolhida e não muda os dias anteriores.
 							</Text>
 							{habitId !== null ? (
-								<HabitForm
-									key={habitId}
-									initial={EVERY_DAY}
-									submitLabel="Criar hábito"
-									pending={create.isPending}
-									error={error}
-									nameRef={nameRef}
-									onSubmit={submit}
-								/>
+								// The form grows with the repetition fields: it scrolls
+								// inside the sheet, which never covers the status bar.
+								<ScrollView
+									style={{ maxHeight: height * 0.6 }}
+									keyboardShouldPersistTaps="handled"
+								>
+									<HabitForm
+										key={habitId}
+										today={today}
+										timeZone={timeZone}
+										submitLabel="Criar hábito"
+										pending={create.isPending}
+										error={error}
+										nameRef={nameRef}
+										onSubmit={submit}
+									/>
+								</ScrollView>
 							) : null}
 						</View>
 					</View>

@@ -1,4 +1,8 @@
-import type { ReminderTime } from "@habits/contracts";
+import type {
+	ReminderTime,
+	UpdateUserSettingsRequest,
+	UserSettings,
+} from "@habits/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -35,7 +39,71 @@ export function useSaveReminderTime() {
 	});
 }
 
+type NotificationFlags = Pick<
+	UpdateUserSettingsRequest,
+	"morning_digest_enabled" | "show_titles_in_notifications"
+>;
+
+/**
+ * Saves the morning digest and title preferences optimistically: the switch
+ * moves at once and goes back if saving fails.
+ */
+export function useSaveNotificationFlags() {
+	const { api } = useServices();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (changes: NotificationFlags) => updateSettings(api, changes),
+		onMutate: async (changes) => {
+			await queryClient.cancelQueries({ queryKey: queryKeys.settings });
+			const previous = queryClient.getQueryData<UserSettings>(
+				queryKeys.settings
+			);
+			if (previous) {
+				queryClient.setQueryData<UserSettings>(queryKeys.settings, {
+					...previous,
+					...changes,
+				});
+			}
+			return { previous };
+		},
+		onError: (error, _changes, context) => {
+			if (context?.previous) {
+				queryClient.setQueryData(queryKeys.settings, context.previous);
+			}
+			if (!isUnauthorized(error)) {
+				toast.error("Não foi possível salvar a preferência", {
+					description: errorMessage(error),
+				});
+			}
+		},
+		onSuccess: (settings) =>
+			queryClient.setQueryData(queryKeys.settings, settings),
+	});
+}
+
 export type EnableOutcome = "enabled" | "denied" | "unsupported";
+
+/**
+ * Turns the morning digest on and makes sure this browser can receive it
+ * (permission asked only now, from the click). The setting is saved even
+ * when this browser refuses: other devices still get the digest.
+ */
+export function useEnableDigest() {
+	const { api, push } = useServices();
+	const save = useSaveNotificationFlags();
+	return useMutation({
+		mutationFn: async (): Promise<EnableOutcome> => {
+			const result = await push.enable();
+			if (result.status === "subscribed") {
+				push.storeId(
+					await registerWebPush(api, result.subscription, push.deviceLabel())
+				);
+			}
+			await save.mutateAsync({ morning_digest_enabled: true });
+			return result.status === "subscribed" ? "enabled" : result.status;
+		},
+	});
+}
 
 /**
  * Turns reminders on: asks this browser for permission (only now, from the

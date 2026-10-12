@@ -46,7 +46,7 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 - `src/data/sync/`: `engine.ts` (push → pull → settings, lock + lease, backoff with jitter, status for the UI), `transport.ts` (requests with a 20 s timeout, error classification, `Date`/`Retry-After` headers), `triggers.ts` (`useSyncTriggers`: launch, foreground, network via `expo-network`, every 5 min, background registration after the first sync), `background.ts` (`habits-sync` task, expo-background-task), `failures.ts` (pt-BR descriptions of refused changes), `hooks.ts`.
 - `src/features/sync/`: `initial-sync-gate.tsx`, `sync-indicator.tsx` (heatmap header and Ajustes), `sync-screen.tsx` (status, "Sincronizar agora", clock warning, failures with "Tentar de novo"/"Descartar").
 - `src/features/notifications/notification-responder.tsx` (in the authenticated layout): registers the token, handles taps (also from a cold start) by opening `/day/hoje`, and shows foreground notifications as a toast (the handler hides the banner and sound).
-- `src/features/<screen>/`: screens and their components. `features/day/new-habit-sheet.tsx`: today's "Novo hábito" (the day screen's fixed footer, full width: one-handed reach, never over the list) opening a bottom sheet (React Native `Modal` + keyboard-controller's `KeyboardAvoidingView`, no sheet library) with the same `HabitForm` as the habits tab; one id per opening (`useNewId`), written to the outbox like any habit (works offline); when the habit does not count today, a toast with core's `newHabitNotice`. `src/ui/`: shared primitives (Button, TextField, states, Toast, Screen with an optional fixed `footer`, splash). `src/lib/`: pure helpers (dayjs pt-BR formatting, time zone banner rule).
+- `src/features/<screen>/`: screens and their components. `features/day/new-habit-sheet.tsx`: today's "Novo hábito" (the day screen's fixed footer, full width: one-handed reach, never over the list) opening a bottom sheet (React Native `Modal` + keyboard-controller's `KeyboardAvoidingView`, no sheet library) with the same `HabitForm` as the habits tab; one id per opening (`useNewId`), written to the outbox like any habit (works offline); when the habit does not count today, a toast with core's `newHabitNotice`. `src/ui/`: shared primitives (Button, TextField, states, Toast, Screen with an optional fixed `footer`, splash, `Choice` chips, `DatePicker` (inline month calendar, 44 dp days, no native picker) and `QuarterTimePicker` (hour -/+ and minutes 00/15/30/45)). `features/habits/habit-form.tsx` renders core's `habit-draft.ts` ("Repetição", fields per kind, "Começa em", preview, an `Alert` before changing a repetition); `features/day/upcoming-section.tsx` is "Próximos" on today; the habits tab shows `formatSchedule`, a collapsible "Passados" and "Incompatível". `src/lib/`: pure helpers (dayjs pt-BR formatting, time zone banner rule, `calendar.ts` for the pickers).
 
 ## Rules
 
@@ -61,7 +61,7 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 
 - Add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK; check with `pnpm dlx expo-doctor`.
 - Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins. `@babel/plugin-transform-react-jsx` is a devDependency only because the NativeWind/css-interop preset loads it by name without declaring it (a clean install cannot resolve it otherwise); keep it.
-- Version (`2.1.0`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
+- Version (`2.2.0`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
 - `*.config.js` files are CommonJS (ESLint override in `eslint.config.mjs`); the Vitest config is `vitest.config.mts` because the package is CommonJS.
 
 ## Manual checks on the device (Phase 7)
@@ -77,6 +77,20 @@ Pending, on a new development build with the API migrated (`db:migrate:local` or
 7. Sign out with pending changes: the warning lists them; "Sincronizar e sair" sends them first; "Sair mesmo assim" wipes them. Signing in as another user never shows the previous user's data.
 8. Background: with the app closed, change something on the web and wait (at least 15 minutes, OS-scheduled); reopening shows it without a visible sync. In a development build, Sincronização > "Rodar a tarefa em segundo plano (debug)" runs the task at once (`triggerTaskWorkerForTestingAsync`).
 9. Failures: create a habit offline, keep the phone offline for more than 7 days (or move the clock): the creation and its completions appear grouped in "Falhas"; "Descartar" removes them all.
+
+## Manual checks (2.2.0: flexible schedules and morning digest)
+
+Pending, after the deploy (migration, API, web, then the OTA update; no new build: the fingerprint did not change). Confirm in Ajustes that the phone runs 2.2.0 before step 2.
+
+1. Old app with the new API: before the OTA reaches the phone, the 2.1.0 app keeps syncing (habits of new types are simply absent) and the web still works. After the update, the app pulls everything again once and the new habits appear.
+2. Create "Consulta no dermatologista" as a single date two days from today (web or phone). The next day at 09:00 (until 12:00) the digest says "Amanhã: Consulta no dermatologista"; on the day, at 09:00, it is in "Hoje: …". Tapping opens today (`/today` on the web, `/day/hoje` on the phone).
+3. Create "Trocar filtro" every 8 days and "Pagar condomínio" on day 20: the form shows the summary and the next date; the day views and "Próximos" show them on the right days; the habits list shows "A cada 8 dias" and "Todo dia 20".
+4. Create a habit offline (airplane mode) with a single date tomorrow; reconnect before 09:00 and the digest includes it. Created and not synced, it is not in the digest (documented).
+5. Reminder time: only 00, 15, 30 and 45 can be chosen; the reminder arrives within 15 minutes of it, only with pending habits, and not when turned on more than an hour late.
+6. Turn off "Mostrar nomes nas notificações": the digest says "Você tem compromissos hoje" (no names), also on the lock screen and on the web.
+7. Change the time zone in Ajustes (e.g. to Asia/Tokyo): the digest and the reminder follow the new zone's 09:00 and reminder time.
+8. Edit the repetition of an older habit: a confirmation appears; past completed days keep counting in the heatmap.
+9. A single date in the past moves to "Passados" (collapsed) and is not archived.
 
 ## Manual checks on the device (2.1.0: new habit from today)
 

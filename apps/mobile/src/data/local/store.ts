@@ -2,14 +2,14 @@
 // mutations, and small key/value metadata. No domain rules here: those live
 // in @habits/core (`materialize`, `remapIds`, ...) and in the repository and
 // sync engine that call this store.
-import type {
-	ApiErrorBody,
-	CalendarDate,
-	Completion,
-	Habit,
-	Mutation,
-	MutationResult,
-	SyncChanges,
+import {
+	type ApiErrorBody,
+	type CalendarDate,
+	type Completion,
+	type Habit,
+	type Mutation,
+	type MutationResult,
+	type SyncChanges,
 	UserSettings,
 } from "@habits/contracts";
 import { habitDependency, remapIds } from "@habits/core";
@@ -48,6 +48,8 @@ type MetaKey =
 	| "cursor"
 	| "last_synced_at"
 	| "initial_sync_done"
+	/** `SCHEDULE_VERSION` the mirror was pulled with (absent: 1, before 2.2.0). */
+	| "schedule_version"
 	| "settings"
 	| "lock_owner"
 	| "lock_until";
@@ -443,7 +445,12 @@ export function createLocalStore(open: () => Promise<SqlDatabase>): LocalStore {
 
 		async getSettings() {
 			const value = await getMeta("settings");
-			return value ? (JSON.parse(value) as UserSettings) : null;
+			if (!value) return null;
+			// A copy saved by 2.1.0 lacks the 2.2.0 fields: the schema fills
+			// their defaults.
+			const stored: unknown = JSON.parse(value);
+			const parsed = UserSettings.safeParse(stored);
+			return parsed.success ? parsed.data : (stored as UserSettings);
 		},
 		async setSettings(settings) {
 			await setMetaIn(await db(), "settings", JSON.stringify(settings));
