@@ -30,20 +30,19 @@ describe("HeatmapCell", () => {
 		"renders %i of %i habits with level %i classes",
 		async (completed, possible, level) => {
 			await renderInRouter(
-				<HeatmapCell cell={cellOf("2026-10-01", completed, possible)} />
+				<HeatmapCell col={0} cell={cellOf("2026-10-01", completed, possible)} />
 			);
 			const link = screen.getByRole("link");
 			expect(link).toHaveAttribute("data-level", String(level));
-			expect(link).toHaveClass(
-				`bg-heatmap-${level}`,
-				`border-heatmap-${level}-border`
-			);
+			expect(link).toHaveClass(`bg-night-heat-${level}`);
 			expect(link).toHaveAttribute("href", "/day/2026-10-01");
 		}
 	);
 
 	it("describes the date and the ratio for screen readers", async () => {
-		await renderInRouter(<HeatmapCell cell={cellOf("2026-10-01", 3, 5)} />);
+		await renderInRouter(
+			<HeatmapCell col={0} cell={cellOf("2026-10-01", 3, 5)} />
+		);
 		expect(
 			screen.getByRole("link", {
 				name: "1 de outubro de 2026: 3 de 5 hábitos concluídos (60%)",
@@ -57,15 +56,31 @@ describe("HeatmapCell", () => {
 		);
 	});
 
+	it("is the tab stop only when the grid says so", async () => {
+		await renderInRouter(
+			<HeatmapCell col={0} tabbable cell={cellOf("2026-10-01", 1, 2)} />
+		);
+		expect(screen.getByRole("link")).toHaveAttribute("tabindex", "0");
+	});
+
+	it("is out of the tab order otherwise", async () => {
+		await renderInRouter(
+			<HeatmapCell col={0} cell={cellOf("2026-10-01", 1, 2)} />
+		);
+		expect(screen.getByRole("link")).toHaveAttribute("tabindex", "-1");
+	});
+
 	it("marks today", async () => {
-		await renderInRouter(<HeatmapCell cell={cellOf(TODAY, 1, 2)} />);
+		await renderInRouter(<HeatmapCell col={0} cell={cellOf(TODAY, 1, 2)} />);
 		const link = screen.getByRole("link");
 		expect(link).toHaveAttribute("aria-current", "date");
 		expect(link.getAttribute("aria-label")).toContain("(hoje)");
 	});
 
 	it("renders future days as inert placeholders", async () => {
-		await renderInRouter(<HeatmapCell cell={cellOf("2026-10-20", 0, 0)} />);
+		await renderInRouter(
+			<HeatmapCell col={0} cell={cellOf("2026-10-20", 0, 0)} />
+		);
 		expect(screen.queryByRole("link")).not.toBeInTheDocument();
 		expect(
 			document.querySelector('[data-relation="future"]')
@@ -76,7 +91,7 @@ describe("HeatmapCell", () => {
 		const padding = buildYearGrid({ year: 2026, today: TODAY }).weeks[0]!
 			.days[0]!;
 		expect(padding.in_year).toBe(false);
-		await renderInRouter(<HeatmapCell cell={padding} />);
+		await renderInRouter(<HeatmapCell col={0} cell={padding} />);
 		expect(screen.queryByRole("link")).not.toBeInTheDocument();
 	});
 });

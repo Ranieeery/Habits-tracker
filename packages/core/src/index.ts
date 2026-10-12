@@ -10,6 +10,7 @@ export * from "./digest.ts";
 export * from "./grid.ts";
 export * from "./habit-draft.ts";
 export * from "./ids.ts";
+export * from "./overview.ts";
 export * from "./progress.ts";
 export * from "./reminders.ts";
 export * from "./schedule.ts";

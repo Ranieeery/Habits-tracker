@@ -19,14 +19,14 @@ const LEVELS = Array.from(
 
 export function HeatmapLegend() {
 	return (
-		<div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-			<span>0%</span>
+		<div className="flex items-center gap-2 text-xs text-night-subtle">
+			<span aria-hidden="true">Menos</span>
 			<ul aria-label="Legenda de intensidade" className="flex gap-1">
 				{LEVELS.map((level) => (
 					<li
 						key={level}
 						title={LEVEL_DESCRIPTIONS[level]}
-						className={cn("size-4 rounded-sm border-2", LEVEL_CLASSES[level])}
+						className={cn("size-3.5 rounded-[4px]", LEVEL_CLASSES[level])}
 					>
 						<span className="sr-only">
 							Nível {level}: {LEVEL_DESCRIPTIONS[level]}
@@ -34,7 +34,7 @@ export function HeatmapLegend() {
 					</li>
 				))}
 			</ul>
-			<span>100%</span>
+			<span aria-hidden="true">Mais</span>
 		</div>
 	);
 }

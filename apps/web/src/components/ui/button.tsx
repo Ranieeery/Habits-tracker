@@ -19,6 +19,13 @@ const buttonVariants = cva(
 				ghost: "text-muted hover:bg-surface hover:text-foreground",
 				danger: "border border-danger/40 text-danger hover:bg-danger-surface",
 				link: "text-violet-400 underline-offset-4 hover:underline",
+				// 2.4.0 identity (heatmap screen only until the other screens move).
+				night:
+					"bg-night-accent text-night-accent-on hover:bg-night-accent-hover",
+				"night-secondary":
+					"border border-night-border-strong bg-night-surface text-night-foreground hover:bg-night-surface-raised",
+				"night-ghost":
+					"text-night-muted hover:bg-night-surface-raised hover:text-night-foreground",
 			},
 			size: {
 				default: "min-h-touch px-4",

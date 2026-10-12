@@ -43,7 +43,7 @@ describe("heatmap year navigation", () => {
 		expect(title()).toHaveTextContent("2024");
 		expect(previous()).toBeDisabled();
 		expect(
-			await screen.findByRole("region", { name: "Histórico de 2024" })
+			await screen.findByRole("grid", { name: "Histórico de 2024" })
 		).toBeInTheDocument();
 		const years = requests
 			.filter((r) => new URL(r.url).pathname.endsWith("/v1/summary"))
@@ -58,8 +58,11 @@ describe("heatmap year navigation", () => {
 
 	it("has both arrows disabled without older habits", async () => {
 		renderApp("/", { routes: routes([]) });
+		// Without habits the empty state replaces the grid.
 		expect(
-			await screen.findByRole("region", { name: "Histórico de 2026" })
+			await screen.findByRole("heading", {
+				name: "Seu ano começa com um hábito",
+			})
 		).toBeInTheDocument();
 		expect(previous()).toBeDisabled();
 		expect(next()).toBeDisabled();

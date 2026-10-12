@@ -58,6 +58,65 @@ export const colors = {
 	},
 } as const;
 
+// Visual identity of the 2.4.0 redesign ("night": dark only, calm, violet).
+// Web only until the mobile stage: the Tailwind v3 preset (NativeWind) does
+// not include it, so the mobile keeps `colors` above unchanged. Values are
+// OKLCH (hue 293) converted to hex; the heatmap levels climb in equal steps
+// of OKLCH lightness (0.22 to 0.78), so each level looks one step brighter
+// (1.4 to 1.6:1 between neighbors). WCAG contrasts are noted per value.
+export const nightColors = {
+	bg: "#0a0911", // near-black with a violet tint
+	surface: {
+		DEFAULT: "#13111c", // panels
+		raised: "#1c1928", // hover, raised cards
+		overlay: "#262234", // tooltip, popovers
+	},
+	border: {
+		DEFAULT: "#2c2939", // subtle dividers
+		strong: "#403c53", // empty heatmap cells, fields
+	},
+	foreground: "#f2f0f9", // 17.6:1 on bg
+	muted: "#b1aec3", // 9.2:1 on bg
+	subtle: "#8c89a0", // 5.9:1 on bg: month/weekday labels, legend
+	accent: {
+		DEFAULT: "#8456e8", // primary button, switch on (UI, 4.2:1 on bg)
+		hover: "#946cf8",
+		text: "#bba7ff", // links, focus ring, active nav (9.5:1 on bg)
+		on: "#ffffff", // text on `accent` (4.7:1; foreground would be 4.2)
+	},
+	glow: "#7c49e3", // page glow and level 4-5 cells, always with alpha
+	heat: {
+		0: "#1b1827", // nothing done (outlined with border-strong)
+		1: "#392863",
+		2: "#583b9c",
+		3: "#7952d4",
+		4: "#9978f5",
+		5: "#bba7ff",
+	},
+	success: {
+		DEFAULT: "#4fce74", // 9.8:1 on bg
+		surface: "#0d2814",
+	},
+	danger: {
+		DEFAULT: "#fd7273", // 7.4:1 on bg, 6.3:1 on its surface
+		surface: "#371112",
+	},
+	warning: {
+		DEFAULT: "#fabb41",
+		surface: "#311d03",
+	},
+} as const;
+
+export const nightFonts = {
+	// Self-hosted (fontsource), Latin subset only; see apps/web/src/styles.css.
+	display: [
+		"Bricolage Grotesque Variable",
+		"ui-sans-serif",
+		"system-ui",
+		"sans-serif",
+	],
+} as const;
+
 /** Number of heatmap intensity levels, including level 0. */
 export const HEATMAP_LEVELS = 6;
 

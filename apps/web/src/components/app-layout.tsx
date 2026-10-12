@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
 	CalendarCheckIcon,
 	LayoutGridIcon,
@@ -13,6 +13,7 @@ import { useRefreshPushSubscription } from "@/features/settings/use-reminders.ts
 import { queryKeys } from "@/lib/queries.ts";
 import { useToday } from "@/lib/use-today.ts";
 import { cn } from "@/lib/utils.ts";
+import { Wordmark } from "./wordmark.tsx";
 
 interface NavItem {
 	to: "/" | "/today" | "/habits" | "/settings";
@@ -39,17 +40,45 @@ function useRefreshOnNewDay() {
 	}, [today, queryClient]);
 }
 
-function NavLinks({ variant }: { variant: "top" | "bottom" }) {
+/**
+ * The heatmap screen wears the 2.4.0 identity (night tokens, wordmark, glow,
+ * wider column); every other route keeps the previous look until the next
+ * redesign stage moves it too.
+ */
+function useIsHome() {
+	return useRouterState({ select: (state) => state.location.pathname === "/" });
+}
+
+function NavLinks({
+	variant,
+	home,
+}: {
+	variant: "top" | "bottom";
+	home: boolean;
+}) {
 	return NAV.map(({ to, label, icon: Icon }) => (
 		<Link
 			key={to}
 			to={to}
 			activeOptions={{ exact: true }}
 			className={cn(
-				"flex min-h-touch items-center justify-center gap-2 rounded-md font-semibold text-muted transition-colors hover:text-foreground data-[status=active]:text-foreground",
+				"flex min-h-touch items-center justify-center gap-2 rounded-md font-semibold transition-colors",
+				home
+					? "text-night-muted hover:text-night-foreground data-[status=active]:text-night-foreground"
+					: "text-muted hover:text-foreground data-[status=active]:text-foreground",
 				variant === "top"
-					? "px-3 data-[status=active]:bg-surface"
-					: "flex-1 flex-col gap-0.5 py-1 text-xs data-[status=active]:text-violet-400"
+					? cn(
+							"px-3",
+							home
+								? "data-[status=active]:bg-night-surface-raised"
+								: "data-[status=active]:bg-surface"
+						)
+					: cn(
+							"flex-1 flex-col gap-0.5 py-1 text-xs",
+							home
+								? "data-[status=active]:text-night-accent-text"
+								: "data-[status=active]:text-violet-400"
+						)
 			)}
 		>
 			<Icon className="size-5" aria-hidden="true" />
@@ -61,19 +90,40 @@ function NavLinks({ variant }: { variant: "top" | "bottom" }) {
 export function AppLayout() {
 	useRefreshOnNewDay();
 	useRefreshPushSubscription();
+	const home = useIsHome();
 
 	return (
-		<div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col">
+		<div
+			data-screen={home ? "home" : undefined}
+			className={cn(
+				"mx-auto flex min-h-dvh w-full flex-col",
+				home ? "max-w-6xl text-night-foreground" : "max-w-5xl"
+			)}
+		>
+			{home && (
+				// Fixed backdrop: the night background and one soft violet glow
+				// at the top (no image, nothing animated).
+				<div
+					aria-hidden="true"
+					className="pointer-events-none fixed inset-0 -z-10 bg-night-bg bg-[radial-gradient(ellipse_70%_45%_at_50%_-8%,color-mix(in_oklab,var(--color-night-glow)_24%,transparent),transparent_70%)]"
+				/>
+			)}
 			<header className="flex items-center justify-between gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4">
 				<Link
 					to="/"
 					className="text-xl font-extrabold tracking-tight"
 					aria-label="Habits, início"
 				>
-					Habits<span className="text-accent">.</span>
+					{home ? (
+						<Wordmark />
+					) : (
+						<>
+							Habits<span className="text-accent">.</span>
+						</>
+					)}
 				</Link>
 				<nav aria-label="Principal" className="hidden gap-1 md:flex">
-					<NavLinks variant="top" />
+					<NavLinks variant="top" home={home} />
 				</nav>
 			</header>
 
@@ -84,9 +134,14 @@ export function AppLayout() {
 
 			<nav
 				aria-label="Principal"
-				className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+				className={cn(
+					"fixed inset-x-0 bottom-0 z-40 flex border-t px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden",
+					home
+						? "border-night-border bg-night-bg/95"
+						: "border-border bg-background/95"
+				)}
 			>
-				<NavLinks variant="bottom" />
+				<NavLinks variant="bottom" home={home} />
 			</nav>
 		</div>
 	);
