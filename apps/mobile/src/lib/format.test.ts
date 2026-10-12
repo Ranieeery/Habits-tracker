@@ -1,10 +1,10 @@
+import { WEEKDAY_SHORT_NAMES } from "@habits/core";
 import { describe, expect, it } from "vitest";
 import {
 	formatFullDate,
 	formatLongDate,
 	formatPercent,
 	formatShortDate,
-	formatWeekdays,
 	monthShortName,
 	pluralHabits,
 	weekdayInitial,
@@ -36,10 +36,11 @@ describe("pt-BR formatting", () => {
 		expect(pluralHabits(0)).toBe("0 hábitos");
 	});
 
-	it("summarizes weekday schedules", () => {
-		expect(formatWeekdays([0, 1, 2, 3, 4, 5, 6])).toBe("Todos os dias");
-		expect(formatWeekdays([5, 1, 2, 3, 4])).toBe("Dias úteis");
-		expect(formatWeekdays([6, 0])).toBe("Fins de semana");
-		expect(formatWeekdays([5, 1, 3])).toBe("seg, qua, sex");
+	it("agrees with core's short weekday names", () => {
+		// Schedules are summarized by @habits/core (formatWeekdays) with its own
+		// table; it must say the same as the day names shown here.
+		WEEKDAY_SHORT_NAMES.forEach((short, day) =>
+			expect(weekdayName(day).slice(0, 3)).toBe(short)
+		);
 	});
 });

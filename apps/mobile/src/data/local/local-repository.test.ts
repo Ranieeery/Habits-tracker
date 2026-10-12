@@ -12,6 +12,8 @@ const EVERY_DAY = { type: "weekdays" as const, days: [0, 1, 2, 3, 4, 5, 6] };
 const SETTINGS: UserSettings = {
 	timezone: "America/Sao_Paulo",
 	reminder_time: null,
+	morning_digest_enabled: true,
+	show_titles_in_notifications: true,
 	created_at: 0,
 	updated_at: 0,
 };

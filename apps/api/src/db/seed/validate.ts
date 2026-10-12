@@ -1,4 +1,4 @@
-import { Completion, Habit, UserSettings } from "@habits/contracts";
+import { Completion, Habit, Schedule, UserSettings } from "@habits/contracts";
 import { isHabitPossibleOn } from "@habits/core";
 import type { Seed } from "./build.ts";
 
@@ -9,7 +9,10 @@ import type { Seed } from "./build.ts";
  */
 export function validateSeed(seed: Seed): Seed {
 	const timeZone = UserSettings.parse(seed.settings).timezone;
-	const habits = seed.habits.map((habit) => Habit.parse(habit));
+	// Strict schedules: the seed writes only types this version knows.
+	const habits = seed.habits.map((habit) =>
+		Habit.extend({ schedule: Schedule }).parse(habit)
+	);
 	const byId = new Map(habits.map((habit) => [habit.id, habit]));
 	const seen = new Set<string>();
 

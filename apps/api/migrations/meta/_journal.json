@@ -36,6 +36,13 @@
       "when": 1791679585992,
       "tag": "0004_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791759647291,
+      "tag": "0005_schedules_digest",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { SCHEDULE_VERSION_HEADER } from "@habits/contracts";
 import { swaggerUI } from "@hono/swagger-ui";
 import { HTTPException } from "hono/http-exception";
 import { cors } from "hono/cors";
@@ -54,7 +55,7 @@ export function createApp({
 		return cors({
 			origin: (origin) => (trustedOrigins.includes(origin) ? origin : null),
 			credentials: true,
-			allowHeaders: ["Content-Type", "Authorization"],
+			allowHeaders: ["Content-Type", "Authorization", SCHEDULE_VERSION_HEADER],
 			allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			exposeHeaders: ["set-auth-token"],
 			maxAge: 600,

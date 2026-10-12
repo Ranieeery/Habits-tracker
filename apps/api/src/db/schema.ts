@@ -8,7 +8,7 @@
 // (`pnpm --filter api auth:generate`): regenerate it instead of editing it.
 // Unlike the domain tables, its instants are `timestamp_ms` (read as `Date`)
 // because Better Auth owns those rows.
-import { DEFAULT_TIME_ZONE, type Schedule } from "@habits/contracts";
+import { DEFAULT_TIME_ZONE, type StoredSchedule } from "@habits/contracts";
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnySQLiteColumn,
@@ -64,7 +64,7 @@ export const habits = sqliteTable(
 		 * write. The CHECK only guarantees JSON with a string `type`, so new
 		 * schedule types need no migration.
 		 */
-		schedule: text({ mode: "json" }).$type<Schedule>().notNull(),
+		schedule: text({ mode: "json" }).$type<StoredSchedule>().notNull(),
 		start_date: text().notNull(),
 		archived_at: timestampMs(),
 		...timestamps,
@@ -113,8 +113,20 @@ export const userSettings = sqliteTable(
 			.primaryKey()
 			.references(() => user.id, { onDelete: "cascade" }),
 		timezone: text().notNull().default(DEFAULT_TIME_ZONE),
-		/** `HH:MM` in `timezone`; null turns reminders off. */
+		/**
+		 * `HH:MM` in `timezone`, in 15-minute steps since 2.2.0 (contracts; the
+		 * CHECK below predates the steps and is kept to avoid a table rebuild);
+		 * null turns reminders off.
+		 */
 		reminder_time: text(),
+		/** Morning digest at the fixed `MORNING_DIGEST_TIME` (core). */
+		morning_digest_enabled: integer({ mode: "boolean" })
+			.notNull()
+			.default(true),
+		/** Habit names in notification texts. */
+		show_titles_in_notifications: integer({ mode: "boolean" })
+			.notNull()
+			.default(true),
 		...timestamps,
 	},
 	(t) => [
@@ -175,6 +187,8 @@ export const reminderState = sqliteTable(
 		 * Set with a conditional update BEFORE sending: at most one per day.
 		 */
 		last_reminder_date: text(),
+		/** Same as `last_reminder_date`, for the morning digest (independent). */
+		last_digest_date: text(),
 		/** Last `POST /v1/push/test` (rate limit). */
 		last_test_push_at: timestampMs(),
 		updated_at: timestampMs().notNull(),
@@ -183,6 +197,10 @@ export const reminderState = sqliteTable(
 		check(
 			"reminder_state_last_reminder_date_check",
 			sql`${t.last_reminder_date} IS NULL OR date(${t.last_reminder_date}) IS ${t.last_reminder_date}`
+		),
+		check(
+			"reminder_state_last_digest_date_check",
+			sql`${t.last_digest_date} IS NULL OR date(${t.last_digest_date}) IS ${t.last_digest_date}`
 		),
 	]
 );

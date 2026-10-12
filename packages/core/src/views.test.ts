@@ -45,18 +45,25 @@ describe("dayView", () => {
 		expect(view.completed_habit_ids).toEqual([a]);
 	});
 
-	it("does not count completions of habits not possible that day", () => {
+	it("lists a habit completed on a day its schedule does not include", () => {
 		const view = dayView(
-			[habit(a)],
+			[habit(a), habit(b)],
 			[completion(a, "2026-01-06")],
-			"2026-01-06",
+			"2026-01-06", // Tuesday: neither is scheduled
 			options
 		);
-		expect(view).toEqual({
-			date: "2026-01-06",
-			possible_habits: [],
-			completed_habit_ids: [],
-		});
+		expect(view.possible_habits.map((h) => h.id)).toEqual([a]);
+		expect(view.completed_habit_ids).toEqual([a]);
+	});
+
+	it("leaves out a habit whose schedule this build does not understand", () => {
+		const view = dayView(
+			[habit(a, { schedule: { type: "lunar" } })],
+			[],
+			"2026-01-05",
+			options
+		);
+		expect(view.possible_habits).toEqual([]);
 	});
 });
 

@@ -37,13 +37,34 @@ describe("localTimeAt", () => {
 });
 
 describe("shouldSendReminder", () => {
-	it("waits for the reminder time, then sends", () => {
+	it("waits for the reminder time, then sends within the grace window", () => {
 		expect(
 			shouldSendReminder({ ...base, nowMs: sp("2026-10-10", "19:59") })
 		).toBe(false);
 		expect(shouldSendReminder(base)).toBe(true);
 		expect(
-			shouldSendReminder({ ...base, nowMs: sp("2026-10-10", "23:45") })
+			shouldSendReminder({ ...base, nowMs: sp("2026-10-10", "20:59") })
+		).toBe(true);
+		// REMINDER_GRACE_MINUTES (60) later, it is too late for today.
+		expect(
+			shouldSendReminder({ ...base, nowMs: sp("2026-10-10", "21:00") })
+		).toBe(false);
+	});
+
+	it("never sends after the day turns, even inside the window", () => {
+		const late = { ...base, reminderTime: "23:45" };
+		expect(
+			shouldSendReminder({ ...late, nowMs: sp("2026-10-10", "23:45") })
+		).toBe(true);
+		expect(
+			shouldSendReminder({ ...late, nowMs: sp("2026-10-11", "00:15") })
+		).toBe(false);
+	});
+
+	it("rounds an off-step time down to the 15-minute step", () => {
+		const offStep = { ...base, reminderTime: "20:07" };
+		expect(
+			shouldSendReminder({ ...offStep, nowMs: sp("2026-10-10", "20:00") })
 		).toBe(true);
 	});
 
@@ -125,7 +146,7 @@ describe("shouldSendReminder", () => {
 describe("isReminderDue", () => {
 	it("returns the user's today with the decision", () => {
 		expect(
-			isReminderDue({ ...base, nowMs: Date.parse("2027-01-01T01:00:00Z") })
+			isReminderDue({ ...base, nowMs: Date.parse("2026-12-31T23:30:00Z") })
 		).toEqual({ due: true, today: "2026-12-31" });
 	});
 });

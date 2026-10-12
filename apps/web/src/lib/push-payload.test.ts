@@ -24,6 +24,24 @@ describe("notificationFor", () => {
 		});
 	});
 
+	it("shows the morning digest (2.2.0) and opens today", () => {
+		expect(
+			notificationFor({
+				v: 1,
+				kind: "digest",
+				title: "Resumo do dia",
+				body: "Hoje: Trocar filtro. 2 hábitos hoje.",
+				url: "/today",
+				tag: "digest-2026-10-10",
+			})
+		).toEqual({
+			title: "Resumo do dia",
+			body: "Hoje: Trocar filtro. 2 hábitos hoje.",
+			url: "/today",
+			tag: "digest-2026-10-10",
+		});
+	});
+
 	it("falls back for unreadable or unknown payloads", () => {
 		expect(notificationFor(null)).toBe(FALLBACK_NOTIFICATION);
 		expect(notificationFor({ v: 2, title: "x" })).toBe(FALLBACK_NOTIFICATION);

@@ -1,7 +1,7 @@
 import type { Completion, Habit } from "@habits/contracts";
 import type { CalendarDate } from "./dates.ts";
 import {
-	isHabitPossibleOn,
+	isHabitCountedOn,
 	type SchedulableHabit,
 	type TimeZoneOptions,
 } from "./schedule.ts";
@@ -33,9 +33,9 @@ export interface DayProgress {
 }
 
 /**
- * Counts the habits possible on `date` and how many of them were completed.
- * Deleted completions and completions of habits not possible that day are
- * ignored.
+ * Counts the habits that count on `date` (`isHabitCountedOn`: possible, or
+ * completed that day) and how many of them were completed, so the ratio is
+ * never above 1. Deleted completions and deleted habits are ignored.
  */
 export function summarizeDay(
 	habits: readonly (SchedulableHabit & Pick<Habit, "id">)[],
@@ -43,20 +43,21 @@ export function summarizeDay(
 	date: CalendarDate,
 	options: TimeZoneOptions
 ): DayProgress {
-	const possibleIds = new Set(
-		habits
-			.filter((habit) => isHabitPossibleOn(habit, date, options))
-			.map((habit) => habit.id)
-	);
-	const completedIds = new Set(
+	const done = new Set(
 		completions
 			.filter(
 				(completion) =>
-					completion.date === date &&
-					completion.deleted_at === null &&
-					possibleIds.has(completion.habit_id)
+					completion.date === date && completion.deleted_at === null
 			)
 			.map((completion) => completion.habit_id)
 	);
-	return { possible: possibleIds.size, completed: completedIds.size };
+	let possible = 0;
+	let completed = 0;
+	for (const habit of habits) {
+		const isDone = done.has(habit.id);
+		if (!isHabitCountedOn(habit, date, isDone, options)) continue;
+		possible += 1;
+		if (isDone) completed += 1;
+	}
+	return { possible, completed };
 }

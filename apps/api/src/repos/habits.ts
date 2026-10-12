@@ -1,8 +1,12 @@
-import type { Habit, UpdateHabitRequest } from "@habits/contracts";
+import type {
+	ApiErrorBody,
+	Habit,
+	UpdateHabitRequest,
+} from "@habits/contracts";
 import { applyHabitChanges } from "@habits/core";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { fromHabitRow, toHabitRow } from "../db/records.ts";
+import { fromHabitRow, toHabitPatchRow, toHabitRow } from "../db/records.ts";
 import { habits } from "../db/schema.ts";
 
 const ownedBy = (userId: string) =>
@@ -52,17 +56,21 @@ export async function insertHabit(
 /**
  * Applies the changes (rules in `applyHabitChanges`, shared with sync); null
  * if the habit is not the user's. Only the fields the request carries are
- * written, so a concurrent change of another field is kept.
+ * written, so a concurrent change of another field is kept. `check` may
+ * refuse the change after seeing the current habit (nothing is written).
  */
 export async function updateHabit(
 	db: Db,
 	userId: string,
 	habitId: string,
 	changes: UpdateHabitRequest,
-	now: number
-): Promise<Habit | null> {
+	now: number,
+	check?: (current: Habit) => ApiErrorBody | null
+): Promise<Habit | { error: ApiErrorBody } | null> {
 	const current = await getHabit(db, userId, habitId);
 	if (!current) return null;
+	const error = check?.(current);
+	if (error) return { error };
 	const result = applyHabitChanges(current, changes, now);
 	if (!result.changed) return current;
 	const [row] = await db
@@ -79,7 +87,7 @@ export function changedHabitFields(
 	next: Habit,
 	changes: UpdateHabitRequest
 ): Partial<typeof habits.$inferInsert> {
-	const row = toHabitRow(userId, next);
+	const row = toHabitPatchRow(userId, next);
 	return {
 		updated_at: row.updated_at,
 		...(changes.name !== undefined && { name: row.name }),

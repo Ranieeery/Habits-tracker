@@ -30,6 +30,10 @@ import {
 	jsonBody,
 	jsonResponse,
 } from "../http/errors.ts";
+import {
+	clientScheduleVersion,
+	isReadableBy,
+} from "../http/schedule-version.ts";
 import { userToday } from "../http/today.ts";
 import { uuidV7 } from "../lib/ids.ts";
 import {
@@ -73,6 +77,8 @@ const pullRoute = createRoute({
 	path: "/sync/pull",
 	tags,
 	summary: "Changes since a cursor (tombstones included), paginated",
+	description:
+		"Habits whose schedule type is newer than the client's X-Habits-Schedule-Version (1 when absent), and their completions, are left out; the cursor still moves past them, so a page may hold fewer records than limit.",
 	request: { query: SyncPullQuery },
 	responses: {
 		200: jsonResponse(SyncPullResponseSchema, "A page of changes"),
@@ -264,7 +270,15 @@ export const syncRoutes = router()
 			})),
 		].sort((a, b) => a.record.server_seq - b.record.server_seq);
 		const delivered = merged.slice(0, limit);
+		// The cursor follows every row read, so leaving rows out below never
+		// stalls an older client.
 		const last = delivered.at(-1);
+		const version = clientScheduleVersion(c);
+		const hidden = new Set(
+			page.schedules
+				.filter((habit) => !isReadableBy(habit, version))
+				.map((habit) => habit.id)
+		);
 		const response: SyncPullResponse = {
 			cursor: encodeCursor(last ? last.record.server_seq : after),
 			has_more: merged.length > limit,
@@ -272,6 +286,9 @@ export const syncRoutes = router()
 			remaining: Math.max(0, page.total - delivered.length),
 		};
 		for (const item of delivered) {
+			const habitId =
+				item.kind === "habit" ? item.record.id : item.record.habit_id;
+			if (hidden.has(habitId)) continue;
 			if (item.kind === "habit") {
 				const { server_seq: _, ...habit } = item.record;
 				response.changes.habits.push(habit);

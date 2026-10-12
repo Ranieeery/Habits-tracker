@@ -163,7 +163,10 @@ describe("applyHabitChanges", () => {
 		expect(
 			applyHabitChanges(
 				current,
-				{ name: "Ler", schedule: current.schedule },
+				{
+					name: "Ler",
+					schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
+				},
 				T0
 			).changed
 		).toBe(false);
@@ -327,6 +330,68 @@ describe("applyMutation on the server", () => {
 			status: "rejected",
 			error: { code: "date_out_of_range", details: { earliest: "2026-10-02" } },
 		});
+	});
+
+	it("habit.create with a new schedule: offline backfill, single date checks", () => {
+		const state = syncState([], []);
+		// Created offline yesterday for "today" then: still accepted.
+		expect(
+			applyMutation(
+				state,
+				create({
+					schedule: { type: "once", date: "2026-10-08" },
+					start_date: "2026-10-08",
+				}),
+				server()
+			)
+		).toMatchObject({ status: "applied" });
+		expect(
+			applyMutation(
+				state,
+				create({
+					schedule: { type: "once", date: "2026-10-01" },
+					start_date: "2026-10-01",
+				}),
+				server()
+			)
+		).toMatchObject({
+			status: "rejected",
+			error: { code: "date_out_of_range", details: { earliest: "2026-10-02" } },
+		});
+		expect(
+			applyMutation(
+				state,
+				create({
+					schedule: { type: "once", date: "2026-10-10" },
+					start_date: "2026-10-12",
+				}),
+				server()
+			)
+		).toMatchObject({
+			status: "rejected",
+			error: { code: "validation_error" },
+		});
+	});
+
+	it("habit.update to a single date checks it like a creation", () => {
+		const state = syncState([habit()], []);
+		expect(
+			applyMutation(
+				state,
+				update({ schedule: { type: "once", date: "2026-09-01" } }),
+				server()
+			)
+		).toMatchObject({
+			status: "rejected",
+			error: { code: "date_out_of_range" },
+		});
+		expect(
+			applyMutation(
+				state,
+				update({ schedule: { type: "monthly_days", days: [20] } }),
+				server()
+			)
+		).toMatchObject({ status: "applied", changed: true });
 	});
 
 	it("habit.update merges per field: rename and archive from two devices both survive", () => {

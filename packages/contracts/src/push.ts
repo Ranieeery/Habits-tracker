@@ -103,11 +103,12 @@ export type PushTestResponse = z.infer<typeof PushTestResponse>;
 /**
  * What a Web Push message carries to the service worker (encrypted). `v` lets
  * the service worker accept newer payloads it does not understand gracefully.
- * Never includes habit names: it can show on the lock screen.
+ * It can show on the lock screen: habit names appear only in the morning
+ * digest, and only while the user's `show_titles_in_notifications` is on.
  */
 export const PushNotificationPayload = z.object({
 	v: z.literal(1),
-	kind: z.enum(["reminder", "test"]),
+	kind: z.enum(["reminder", "digest", "test"]),
 	title: z.string().min(1).max(120),
 	body: z.string().min(1).max(240),
 	/** Same-app path to open on click, e.g. `/today` (never `//host`). */

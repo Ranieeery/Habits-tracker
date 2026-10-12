@@ -39,6 +39,8 @@ export const USER: SessionUser = {
 export const SETTINGS: UserSettings = {
 	timezone: TIME_ZONE,
 	reminder_time: null,
+	morning_digest_enabled: true,
+	show_titles_in_notifications: true,
 	created_at: 0,
 	updated_at: 0,
 };
@@ -135,6 +137,8 @@ export interface ServicesOptions {
 	deviceTimeZone?: string;
 	now?: number;
 	push?: PushService;
+	/** Ids the app generates, in order (then a counter). */
+	ids?: string[];
 }
 
 export function fakeServices({
@@ -144,14 +148,20 @@ export function fakeServices({
 	deviceTimeZone = TIME_ZONE,
 	now = NOW,
 	push = fakePush(),
+	ids = [],
 }: ServicesOptions = {}) {
 	const api = fakeApi(routes);
+	const pendingIds = [...ids];
+	let counter = 0;
 	const services: Services = {
 		api: createApiClient({ baseUrl: "http://app.test/api", fetch: api.fetch }),
 		auth,
 		push,
 		now: () => now,
 		deviceTimeZone: () => deviceTimeZone,
+		newId: () =>
+			pendingIds.shift() ??
+			`0199c9a0-ffff-7000-8000-${String(++counter).padStart(12, "0")}`,
 	};
 	return { services, requests: api.requests };
 }

@@ -52,11 +52,10 @@ describe("summarizeDay", () => {
 		schedule: { type: "weekdays" as const, days: [1] },
 	};
 
-	it("counts only live completions of habits possible that day", () => {
+	it("counts only live completions of that day", () => {
 		// 2026-01-06 is a Tuesday: only the daily habit is possible.
 		const completions = [
 			{ habit_id: "a", date: "2026-01-06", deleted_at: null },
-			{ habit_id: "b", date: "2026-01-06", deleted_at: null },
 			{ habit_id: "a", date: "2026-01-05", deleted_at: null },
 		];
 		expect(
@@ -70,5 +69,28 @@ describe("summarizeDay", () => {
 				sp
 			)
 		).toEqual({ possible: 1, completed: 0 });
+	});
+
+	it("counts a completion on a day the schedule no longer includes", () => {
+		// The Monday habit was completed on a Tuesday (schedule edited later):
+		// it counts as possible and done, so the ratio stays at most 100%.
+		const completions = [
+			{ habit_id: "a", date: "2026-01-06", deleted_at: null },
+			{ habit_id: "b", date: "2026-01-06", deleted_at: null },
+		];
+		expect(
+			summarizeDay([daily, mondays], completions, "2026-01-06", sp)
+		).toEqual({ possible: 2, completed: 2 });
+	});
+
+	it("ignores completions of deleted habits", () => {
+		expect(
+			summarizeDay(
+				[{ ...mondays, deleted_at: 5 }],
+				[{ habit_id: "b", date: "2026-01-06", deleted_at: null }],
+				"2026-01-06",
+				sp
+			)
+		).toEqual({ possible: 0, completed: 0 });
 	});
 });

@@ -1,7 +1,7 @@
 import type { SummaryDay } from "@habits/contracts";
 import { type CalendarDate, eachDay } from "./dates.ts";
 import {
-	isHabitPossibleOn,
+	isHabitCountedOn,
 	type SchedulableHabit,
 	type TimeZoneOptions,
 } from "./schedule.ts";
@@ -58,7 +58,8 @@ export function habitStreaks(
 	return computeStreaks({
 		from: habit.start_date,
 		today,
-		isPossible: (date) => isHabitPossibleOn(habit, date, options),
+		isPossible: (date) =>
+			isHabitCountedOn(habit, date, done.has(date), options),
 		isDone: (date) => done.has(date),
 	});
 }

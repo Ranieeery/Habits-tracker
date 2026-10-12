@@ -9,20 +9,20 @@ import type {
 } from "@habits/contracts";
 import { eachDay, firstDayOfYear, lastDayOfYear } from "./dates.ts";
 import { summarizeDay } from "./progress.ts";
-import { isHabitPossibleOn, type TimeZoneOptions } from "./schedule.ts";
+import { isHabitCountedOn, type TimeZoneOptions } from "./schedule.ts";
 
 type CompletionFacts = Pick<Completion, "habit_id" | "date" | "deleted_at">;
 
-/** Habits possible on `date` and which of them were completed. */
+/**
+ * Habits that count on `date` (possible, or completed that day:
+ * `isHabitCountedOn`) and which of them were completed.
+ */
 export function dayView(
 	habits: readonly Habit[],
 	completions: readonly CompletionFacts[],
 	date: CalendarDate,
 	options: TimeZoneOptions
 ): DayResponse {
-	const possible = habits.filter((habit) =>
-		isHabitPossibleOn(habit, date, options)
-	);
 	const done = new Set(
 		completions
 			.filter(
@@ -30,6 +30,9 @@ export function dayView(
 					completion.date === date && completion.deleted_at === null
 			)
 			.map((completion) => completion.habit_id)
+	);
+	const possible = habits.filter((habit) =>
+		isHabitCountedOn(habit, date, done.has(habit.id), options)
 	);
 	return {
 		date,

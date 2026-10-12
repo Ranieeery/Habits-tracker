@@ -63,3 +63,40 @@ describe("/v1/settings", () => {
 		});
 	});
 });
+
+describe("2.2.0 notification settings", () => {
+	it("defaults the morning digest and titles to on, and updates them", async () => {
+		const { api, owner, patch } = await setup();
+		const initial = await api.request("/v1/settings", {
+			headers: owner.auth(),
+		});
+		expect(await initial.json()).toMatchObject({
+			settings: {
+				morning_digest_enabled: true,
+				show_titles_in_notifications: true,
+			},
+		});
+
+		const response = await patch({
+			morning_digest_enabled: false,
+			show_titles_in_notifications: false,
+		});
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			settings: {
+				morning_digest_enabled: false,
+				show_titles_in_notifications: false,
+			},
+		});
+	});
+
+	it("accepts reminder times in 15-minute steps only", async () => {
+		const { patch } = await setup();
+		expect((await patch({ reminder_time: "20:45" })).status).toBe(200);
+		const offStep = await patch({ reminder_time: "20:07" });
+		expect(offStep.status).toBe(422);
+		expect(await offStep.json()).toMatchObject({
+			error: { code: "validation_error" },
+		});
+	});
+});

@@ -1,0 +1,52 @@
+import type { CalendarDate } from "@habits/contracts";
+import { formatRelativeDate, UPCOMING_DAYS, upcoming } from "@habits/core";
+import { Text, View } from "react-native";
+import { useHabits } from "@/data/hooks.ts";
+import { useUserTimeZone } from "@/data/today.ts";
+
+/**
+ * "Próximos" on today's screen (read-only): the coming dates of habits that
+ * do not repeat by weekday, from the device's habits (core's `upcoming`), so
+ * it works offline. Hidden when nothing happens in the next UPCOMING_DAYS.
+ */
+export function UpcomingSection({ today }: { today: CalendarDate }) {
+	const habits = useHabits();
+	const timeZone = useUserTimeZone();
+	if (!habits.data) return null;
+	const items = upcoming(habits.data, today, { timeZone });
+	if (items.length === 0) return null;
+
+	return (
+		<View className="gap-2">
+			<Text
+				accessibilityRole="header"
+				className="text-lg font-bold text-foreground"
+			>
+				Próximos
+			</Text>
+			<Text className="text-xs text-muted">
+				Nos próximos {UPCOMING_DAYS} dias.
+			</Text>
+			<View className="gap-1">
+				{items.map(({ date, habit }) => (
+					<View
+						key={`${habit.id}:${date}`}
+						accessible
+						accessibilityLabel={`${formatRelativeDate(date, today)}: ${habit.name}`}
+						className="min-h-touch flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4"
+					>
+						<Text className="w-24 text-sm font-semibold text-muted">
+							{formatRelativeDate(date, today)}
+						</Text>
+						<Text
+							numberOfLines={1}
+							className="flex-1 text-base text-foreground"
+						>
+							{habit.name}
+						</Text>
+					</View>
+				))}
+			</View>
+		</View>
+	);
+}

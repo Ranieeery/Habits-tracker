@@ -4,7 +4,7 @@
 //
 // Statement budget (D1 Free: 50 queries per invocation; each statement of a
 // batch is counted): a push reads at most ~6 times and writes in one batch of
-// chunked multi-row statements; a pull is one batch of 5 reads.
+// chunked multi-row statements; a pull is one batch of 6 reads.
 import type {
 	CalendarDate,
 	Completion,
@@ -228,6 +228,8 @@ export interface ChangesPage {
 	completions: (Completion & { server_seq: number })[];
 	/** Rows with a seq above the cursor, this page included. */
 	total: number;
+	/** Every habit of the user (deleted included) with its schedule. */
+	schedules: Pick<Habit, "id" | "schedule">[];
 }
 
 /**
@@ -241,45 +243,55 @@ export async function readChanges(
 	afterSeq: number,
 	limit: number
 ): Promise<ChangesPage> {
-	const [state, habitRows, completionRows, habitCount, completionCount] =
-		await db.batch([
-			db
-				.select({ seq: syncState.seq, purgedSeq: syncState.purged_seq })
-				.from(syncState)
-				.where(eq(syncState.user_id, userId)),
-			db
-				.select()
-				.from(habits)
-				.where(and(eq(habits.user_id, userId), gt(habits.server_seq, afterSeq)))
-				.orderBy(habits.server_seq)
-				.limit(limit + 1),
-			db
-				.select()
-				.from(completions)
-				.where(
-					and(
-						eq(completions.user_id, userId),
-						gt(completions.server_seq, afterSeq)
-					)
+	const [
+		state,
+		habitRows,
+		completionRows,
+		habitCount,
+		completionCount,
+		scheduleRows,
+	] = await db.batch([
+		db
+			.select({ seq: syncState.seq, purgedSeq: syncState.purged_seq })
+			.from(syncState)
+			.where(eq(syncState.user_id, userId)),
+		db
+			.select()
+			.from(habits)
+			.where(and(eq(habits.user_id, userId), gt(habits.server_seq, afterSeq)))
+			.orderBy(habits.server_seq)
+			.limit(limit + 1),
+		db
+			.select()
+			.from(completions)
+			.where(
+				and(
+					eq(completions.user_id, userId),
+					gt(completions.server_seq, afterSeq)
 				)
-				.orderBy(completions.server_seq)
-				.limit(limit + 1),
-			db
-				.select({ n: count() })
-				.from(habits)
-				.where(
-					and(eq(habits.user_id, userId), gt(habits.server_seq, afterSeq))
-				),
-			db
-				.select({ n: count() })
-				.from(completions)
-				.where(
-					and(
-						eq(completions.user_id, userId),
-						gt(completions.server_seq, afterSeq)
-					)
-				),
-		]);
+			)
+			.orderBy(completions.server_seq)
+			.limit(limit + 1),
+		db
+			.select({ n: count() })
+			.from(habits)
+			.where(and(eq(habits.user_id, userId), gt(habits.server_seq, afterSeq))),
+		db
+			.select({ n: count() })
+			.from(completions)
+			.where(
+				and(
+					eq(completions.user_id, userId),
+					gt(completions.server_seq, afterSeq)
+				)
+			),
+		// For clients that do not understand every schedule type (the route
+		// leaves those habits and their completions out). Same snapshot.
+		db
+			.select({ id: habits.id, schedule: habits.schedule })
+			.from(habits)
+			.where(eq(habits.user_id, userId)),
+	]);
 	return {
 		position: state[0] ?? { seq: 0, purgedSeq: 0 },
 		habits: habitRows.map((row) => ({
@@ -291,6 +303,7 @@ export async function readChanges(
 			server_seq: row.server_seq,
 		})),
 		total: (habitCount[0]?.n ?? 0) + (completionCount[0]?.n ?? 0),
+		schedules: scheduleRows,
 	};
 }
 

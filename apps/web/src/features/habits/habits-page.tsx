@@ -1,4 +1,5 @@
-import type { Habit } from "@habits/contracts";
+import { type Habit, isSupportedSchedule } from "@habits/contracts";
+import { formatSchedule } from "@habits/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	ArchiveIcon,
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { errorMessage } from "@/lib/errors.ts";
-import { weekdayInitial, weekdayName } from "@/lib/format.ts";
 import {
 	createHabit,
 	habitsQuery,
@@ -28,10 +28,21 @@ import {
 } from "@/lib/queries.ts";
 import { isUnauthorized } from "@/lib/query-client.ts";
 import { useServices } from "@/lib/services.ts";
-import { useToday } from "@/lib/use-today.ts";
+import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
 import { HabitForm, type HabitFormValues } from "./habit-form.tsx";
 
-type Editing = { mode: "create" } | { mode: "edit"; habit: Habit } | null;
+/** A new habit gets its id once per opening (a double submit creates one). */
+type Editing =
+	{ mode: "create"; id: string } | { mode: "edit"; habit: Habit } | null;
+
+/** A single-date habit whose date has passed (kept, not archived). */
+function isPastOnce(habit: Habit, today: string): boolean {
+	return (
+		isSupportedSchedule(habit.schedule) &&
+		habit.schedule.type === "once" &&
+		habit.schedule.date < today
+	);
+}
 
 function notifyError(title: string) {
 	return (error: unknown) => {
@@ -42,17 +53,24 @@ function notifyError(title: string) {
 }
 
 export function HabitsPage() {
-	const { api } = useServices();
+	const { api, newId } = useServices();
 	const queryClient = useQueryClient();
 	const today = useToday();
+	const timeZone = useUserTimeZone();
 	const habits = useQuery(habitsQuery(api));
 	const [editing, setEditing] = useState<Editing>(null);
 
 	const save = useMutation({
-		mutationFn: (values: HabitFormValues) =>
-			editing?.mode === "edit"
-				? updateHabit(api, editing.habit.id, values)
-				: createHabit(api, { ...values, start_date: today }),
+		mutationFn: ({ name, schedule, start_date }: HabitFormValues) => {
+			if (editing?.mode === "edit") {
+				return updateHabit(api, editing.habit.id, {
+					name,
+					...(schedule && { schedule }),
+				});
+			}
+			if (!schedule || !editing) throw new Error("Missing schedule");
+			return createHabit(api, { id: editing.id, name, schedule, start_date });
+		},
 		onSuccess: () => {
 			toast.success(
 				editing?.mode === "edit" ? "Hábito atualizado" : "Hábito criado"
@@ -74,7 +92,9 @@ export function HabitsPage() {
 		onSettled: () => invalidateHabitData(queryClient),
 	});
 
-	const active = habits.data?.filter((habit) => habit.archived_at === null);
+	const live = habits.data?.filter((habit) => habit.archived_at === null);
+	const active = live?.filter((habit) => !isPastOnce(habit, today));
+	const past = live?.filter((habit) => isPastOnce(habit, today));
 	const archived = habits.data?.filter((habit) => habit.archived_at !== null);
 
 	return (
@@ -85,7 +105,7 @@ export function HabitsPage() {
 				</h1>
 				<Button
 					variant="outline"
-					onClick={() => setEditing({ mode: "create" })}
+					onClick={() => setEditing({ mode: "create", id: newId() })}
 				>
 					<PlusIcon className="text-accent" aria-hidden="true" />
 					Novo hábito
@@ -104,12 +124,12 @@ export function HabitsPage() {
 					{active?.length === 0 ? (
 						<EmptyState
 							title="Nenhum hábito ainda"
-							description="Crie um hábito e escolha os dias da semana em que ele se repete."
+							description="Crie um hábito e escolha como ele se repete: dias da semana, a cada N dias, dias do mês, uma data ou todo ano."
 						/>
 					) : (
 						<ul className="flex flex-col gap-2">
 							{active?.map((habit) => (
-								<HabitRow key={habit.id} habit={habit}>
+								<HabitRow key={habit.id} habit={habit} today={today}>
 									<Button
 										variant="ghost"
 										size="icon"
@@ -134,6 +154,39 @@ export function HabitsPage() {
 						</ul>
 					)}
 
+					{past && past.length > 0 && (
+						<details className="group rounded-xl border border-border">
+							<summary className="flex min-h-touch cursor-pointer items-center px-4 font-semibold text-muted">
+								Passados ({past.length})
+							</summary>
+							<ul className="flex flex-col gap-2 p-2">
+								{past.map((habit) => (
+									<HabitRow key={habit.id} habit={habit} today={today} muted>
+										<Button
+											variant="ghost"
+											size="icon"
+											aria-label={`Editar ${habit.name}`}
+											onClick={() => setEditing({ mode: "edit", habit })}
+										>
+											<PencilIcon aria-hidden="true" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											aria-label={`Arquivar ${habit.name}`}
+											disabled={archive.isPending}
+											onClick={() =>
+												archive.mutate({ id: habit.id, archived: true })
+											}
+										>
+											<ArchiveIcon aria-hidden="true" />
+										</Button>
+									</HabitRow>
+								))}
+							</ul>
+						</details>
+					)}
+
 					{archived && archived.length > 0 && (
 						<details className="group rounded-xl border border-border">
 							<summary className="flex min-h-touch cursor-pointer items-center px-4 font-semibold text-muted">
@@ -141,7 +194,7 @@ export function HabitsPage() {
 							</summary>
 							<ul className="flex flex-col gap-2 p-2">
 								{archived.map((habit) => (
-									<HabitRow key={habit.id} habit={habit} muted>
+									<HabitRow key={habit.id} habit={habit} today={today} muted>
 										<Button
 											variant="ghost"
 											size="sm"
@@ -174,14 +227,17 @@ export function HabitsPage() {
 						</DialogTitle>
 						<DialogDescription>
 							{editing?.mode === "edit"
-								? "Mudar os dias altera também a contagem dos dias passados."
-								: "O hábito passa a contar a partir de hoje."}
+								? "Mudar a repetição altera também a contagem dos dias passados."
+								: "O hábito passa a contar a partir da data escolhida."}
 						</DialogDescription>
 					</DialogHeader>
 					{editing && (
 						<HabitForm
-							key={editing.mode === "edit" ? editing.habit.id : "new"}
+							key={editing.mode === "edit" ? editing.habit.id : editing.id}
 							initial={editing.mode === "edit" ? editing.habit : undefined}
+							today={today}
+							timeZone={timeZone}
+							autoFocusName={editing.mode === "create"}
 							submitLabel={editing.mode === "edit" ? "Salvar" : "Criar"}
 							pending={save.isPending}
 							onSubmit={(values) => save.mutate(values)}
@@ -195,14 +251,16 @@ export function HabitsPage() {
 
 function HabitRow({
 	habit,
+	today,
 	muted = false,
 	children,
 }: {
 	habit: Habit;
+	today: string;
 	muted?: boolean;
 	children: React.ReactNode;
 }) {
-	const days = habit.schedule.type === "weekdays" ? habit.schedule.days : [];
+	const supported = isSupportedSchedule(habit.schedule);
 	return (
 		<li className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-2">
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -211,11 +269,15 @@ function HabitRow({
 				>
 					{habit.name}
 				</span>
-				<span
-					className="text-xs tracking-widest text-muted"
-					aria-label={days.map(weekdayName).join(", ")}
-				>
-					{days.map(weekdayInitial).join(" ")}
+				<span className="flex flex-wrap items-center gap-2 text-xs text-muted">
+					{supported ? (
+						formatSchedule(habit.schedule, { today })
+					) : (
+						<span className="rounded-sm border border-danger px-1 font-semibold text-danger">
+							Incompatível
+						</span>
+					)}
+					{!supported && <span>Atualize o app para ver a repetição.</span>}
 				</span>
 			</div>
 			{children}

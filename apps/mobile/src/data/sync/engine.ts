@@ -4,11 +4,12 @@
 // own local transaction, so an interrupted run resumes without duplicates:
 // resent mutations come back as `duplicate`, and the pull continues from the
 // last cursor written.
-import type {
-	ApiErrorBody,
-	Mutation,
-	MutationResult,
-	UserSettings,
+import {
+	type ApiErrorBody,
+	type Mutation,
+	type MutationResult,
+	SCHEDULE_VERSION,
+	type UserSettings,
 } from "@habits/contracts";
 import { blockedBy, habitDependency, orderOutbox } from "@habits/core";
 import type { LocalStore } from "../local/store.ts";
@@ -279,6 +280,18 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
 		let received = 0;
 		let resets = 0;
 		let changed = false;
+		// A mirror pulled by an older build (2.1.0 announced no schedule
+		// version) lacks the habits the API left out for it, behind its cursor:
+		// pull everything again (the outbox stays).
+		const pulledWith = Number((await store.getMeta("schedule_version")) ?? 1);
+		if (pulledWith < SCHEDULE_VERSION) {
+			if (cursor !== null) {
+				await store.resetMirror();
+				cursor = null;
+				changed = true;
+			}
+			await store.setMeta("schedule_version", String(SCHEDULE_VERSION));
+		}
 		for (;;) {
 			const page = await transport.pull(cursor, PULL_PAGE_SIZE);
 			if (page.reset) {

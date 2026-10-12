@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CalendarDate, TimestampMs, Uuid } from "./primitives.ts";
-import { Schedule } from "./schedule.ts";
+import { Schedule, StoredSchedule } from "./schedule.ts";
 import { SyncableFields } from "./syncable.ts";
 
 export const HabitName = z.string().trim().min(1).max(120);
@@ -8,7 +8,11 @@ export const HabitName = z.string().trim().min(1).max(120);
 export const Habit = z.object({
 	...SyncableFields,
 	name: HabitName,
-	schedule: Schedule,
+	/**
+	 * Read tolerantly: a schedule type from a newer version is kept as is (see
+	 * `UnsupportedSchedule`). Writes always validate with `Schedule`.
+	 */
+	schedule: StoredSchedule,
 	/** First local date on which the habit is possible. */
 	start_date: CalendarDate,
 	archived_at: TimestampMs.nullable(),
