@@ -300,8 +300,8 @@ describe("POST /v1/sync/push", () => {
 			// Unknown habit and another user's habit look the same.
 			setMutation(true, { habit_id: id() }),
 			setMutation(true, { habit_id: bobHabit.id }),
-			// Outside [today - 7, today + 1].
-			setMutation(true, { date: "2026-10-01" }),
+			// Outside [today - 30, today + 1].
+			setMutation(true, { date: "2026-09-08" }),
 			setMutation(true, { date: "2026-10-11" }),
 			// Invalid shape and a type this server does not know.
 			{ mutation_id: id(), type: "completion.set", date: "nope" },
@@ -331,11 +331,22 @@ describe("POST /v1/sync/push", () => {
 			"applied",
 		]);
 		expect(results[2]?.error?.details).toEqual({
-			from: "2026-10-02",
+			from: "2026-09-09",
 			to: "2026-10-10",
 		});
 		// Bob's data is untouched.
 		expect(await storedCompletions(bobHabit.id)).toEqual([]);
+	});
+
+	it("applies a change from 30 days ago and refuses one from 31", async () => {
+		const results = await push(alice, [
+			setMutation(true, { date: "2026-09-09" }),
+			setMutation(true, { date: "2026-09-08" }),
+		]);
+		expect(results.map((r) => r.status)).toEqual(["applied", "rejected"]);
+		expect(results[1]?.error?.code).toBe("date_out_of_range");
+		const stored = await storedCompletions();
+		expect(stored.map((row) => row.date)).toEqual(["2026-09-09"]);
 	});
 
 	it("does not remember rejections: a retry is evaluated again", async () => {

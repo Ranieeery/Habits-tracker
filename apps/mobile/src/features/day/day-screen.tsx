@@ -1,9 +1,23 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { CalendarDate, Habit } from "@habits/contracts";
-import { completionRatio, isCalendarDate } from "@habits/core";
+import {
+	BACKFILL_DAYS,
+	completionRatio,
+	type DayEditState,
+	getDayEditState,
+	isCalendarDate,
+	isDayEditable,
+} from "@habits/core";
 import { colors } from "@habits/design-tokens";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { Pressable, Text, View } from "react-native";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
 import {
@@ -25,7 +39,8 @@ import { ProgressBar } from "@/ui/progress-bar.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
-import { useToast } from "@/ui/toast.tsx";
+import { useDismissToast, useToast } from "@/ui/toast.tsx";
+import { EditDayFooter } from "./edit-day-sheet.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
 
@@ -47,26 +62,88 @@ export function DayScreen() {
 			</Screen>
 		);
 	}
-	return <DayView date={date} today={today} />;
+	// Keyed by date: another day starts locked again.
+	return <DayView key={date} date={date} today={today} />;
 }
 
 /**
- * The habits possible on `date` and their completion. Only today can be
- * edited, like the legacy app; other days are read-only. Today also has
- * "Novo hábito" in a fixed footer: one-handed reach, and since the list
- * scrolls above it, it never covers the last habit or its checkbox.
+ * The habits possible on `date` and their completion. Today is editable; a
+ * past day inside the backfill window opens read-only and can be unlocked
+ * with a confirmation ("Editar este dia" in the fixed footer); older and
+ * future days stay read-only (core's `getDayEditState`). The unlock is
+ * this component's state only, never stored: leaving the screen or changing
+ * the day locks it again, while going to the background keeps it. Today has
+ * "Novo hábito" in the same fixed footer: one-handed reach, and since the
+ * list scrolls above it, it never covers the last habit or its checkbox.
+ * Every change shows "Desfazer" (the inverse change, through the outbox).
  */
 function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 	const router = useRouter();
 	const toast = useToast();
+	const dismissToast = useDismissToast();
 	const day = useDay(date);
 	const toggle = useToggleCompletion(date, (error) => {
 		if (!isUnauthorized(error)) {
 			toast("error", "Não foi possível salvar", errorMessage(error));
 		}
 	});
-	const editable = date === today;
+	const editState = getDayEditState(date, today);
+	const [unlocked, setUnlocked] = useState(false);
+	const isToday = editState === "today";
+	const editable = isDayEditable(editState, unlocked);
+	const hasHabits = (day.data?.possible_habits.length ?? 0) > 0;
 	useHideSplashWhen(isSettled(day));
+
+	// The "Desfazer" toast of this visit: gone when the day locks or the
+	// screen closes, so it never changes a day that is not editable.
+	const undoToast = useRef<number | null>(null);
+	const dismissUndo = useCallback(() => {
+		if (undoToast.current !== null) dismissToast(undoToast.current);
+		undoToast.current = null;
+	}, [dismissToast]);
+	useEffect(() => dismissUndo, [dismissUndo]);
+
+	const change = (habit: Habit, completed: boolean, undo = false) => {
+		void Haptics.selectionAsync();
+		toggle.mutate(
+			{ habitId: habit.id, completed },
+			{
+				onSuccess: () => {
+					if (undo) {
+						undoToast.current = toast("info", "Alteração desfeita");
+						return;
+					}
+					undoToast.current = toast(
+						"info",
+						`${completed ? "Marcado" : "Desmarcado"}: ${habit.name}`,
+						undefined,
+						{
+							action: {
+								label: "Desfazer",
+								onPress: () => change(habit, !completed, true),
+							},
+						}
+					);
+				},
+			}
+		);
+	};
+
+	let footer: ReactNode;
+	if (isToday) footer = <NewHabitSheet today={today} />;
+	else if (editState === "past_editable" && hasHabits) {
+		footer = (
+			<EditDayFooter
+				date={date}
+				unlocked={unlocked}
+				onUnlock={() => setUnlocked(true)}
+				onLock={() => {
+					dismissUndo();
+					setUnlocked(false);
+				}}
+			/>
+		);
+	}
 
 	const [weekday = "", ...rest] = formatLongDate(date).split(", ");
 
@@ -75,14 +152,14 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 			edges={[]}
 			onRefresh={() => void day.refetch()}
 			refreshing={day.isRefetching}
-			footer={editable ? <NewHabitSheet today={today} /> : undefined}
+			footer={footer}
 		>
 			<Stack.Screen
-				options={{ title: editable ? "Hoje" : formatShortDate(date) }}
+				options={{ title: isToday ? "Hoje" : formatShortDate(date) }}
 			/>
 			<View className="gap-1">
 				<Text className="font-semibold text-muted capitalize">
-					{editable ? "Hoje" : rest.join(", ")}
+					{isToday ? "Hoje" : rest.join(", ")}
 				</Text>
 				<Text
 					accessibilityRole="header"
@@ -95,7 +172,7 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 
 			<QueryState query={day} loadingLabel="Carregando o dia…">
 				{(data) =>
-					data.possible_habits.length === 0 && editable ? (
+					data.possible_habits.length === 0 && isToday ? (
 						<TodayEmptyState />
 					) : data.possible_habits.length === 0 ? (
 						<EmptyState
@@ -114,15 +191,14 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 							possible={data.possible_habits}
 							completedIds={new Set(data.completed_habit_ids)}
 							editable={editable}
-							onToggle={(habitId, completed) => {
-								void Haptics.selectionAsync();
-								toggle.mutate({ habitId, completed });
-							}}
+							editState={editState}
+							unlocked={unlocked}
+							onToggle={(habit, completed) => change(habit, completed)}
 						/>
 					)
 				}
 			</QueryState>
-			{editable ? <UpcomingSection today={today} /> : null}
+			{isToday ? <UpcomingSection today={today} /> : null}
 		</Screen>
 	);
 }
@@ -157,12 +233,16 @@ function DayContent({
 	possible,
 	completedIds,
 	editable,
+	editState,
+	unlocked,
 	onToggle,
 }: {
 	possible: Habit[];
 	completedIds: Set<string>;
 	editable: boolean;
-	onToggle: (habitId: string, completed: boolean) => void;
+	editState: DayEditState;
+	unlocked: boolean;
+	onToggle: (habit: Habit, completed: boolean) => void;
 }) {
 	const completed = possible.filter((habit) => completedIds.has(habit.id));
 	const ratio = completionRatio(completed.length, possible.length);
@@ -179,7 +259,21 @@ function DayContent({
 				<Text className="text-sm text-muted">{summary}</Text>
 			</View>
 
-			{!editable ? (
+			{editState === "past_editable" && unlocked ? (
+				<View
+					accessibilityLiveRegion="polite"
+					className="flex-row items-center gap-3 rounded-xl border border-warning/60 bg-warning-surface px-4 py-3"
+				>
+					<MaterialCommunityIcons
+						name="alert-outline"
+						size={22}
+						color={colors.warning.DEFAULT}
+					/>
+					<Text className="flex-1 font-semibold text-warning">
+						Editando dia passado
+					</Text>
+				</View>
+			) : !editable ? (
 				<View className="flex-row items-center gap-2">
 					<MaterialCommunityIcons
 						name="lock-outline"
@@ -187,7 +281,7 @@ function DayContent({
 						color={colors.muted}
 					/>
 					<Text className="flex-1 text-sm text-muted">
-						Somente leitura: só é possível marcar os hábitos de hoje.
+						{READ_ONLY[editState]}
 					</Text>
 				</View>
 			) : null}
@@ -202,7 +296,7 @@ function DayContent({
 							accessibilityLabel={habit.name}
 							accessibilityState={{ checked, disabled: !editable }}
 							disabled={!editable}
-							onPress={() => onToggle(habit.id, !checked)}
+							onPress={() => onToggle(habit, !checked)}
 							className="min-h-14 flex-row items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 active:bg-border"
 						>
 							<CheckboxBox checked={checked} />
@@ -218,3 +312,11 @@ function DayContent({
 		</>
 	);
 }
+
+const READ_ONLY: Record<DayEditState, string> = {
+	today: "",
+	past_editable:
+		"Somente leitura. Toque em Editar este dia, aqui embaixo, para alterar.",
+	past_locked: `Fora do período de edição de ${BACKFILL_DAYS} dias`,
+	future: "Somente leitura: este dia ainda não chegou.",
+};

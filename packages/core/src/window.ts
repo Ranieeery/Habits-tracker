@@ -1,7 +1,11 @@
 import { addDays, type CalendarDate, localDateAt } from "./dates.ts";
 
-/** How many days back a client may write completions (allows offline sync). */
-export const BACKFILL_DAYS = 7;
+/**
+ * How many days back a completion may be written: the past days a client can
+ * edit (after a confirmation, since 2.3.0) and how old a queued offline change
+ * may be when it syncs. The server, both clients and the sync rules share it.
+ */
+export const BACKFILL_DAYS = 30;
 
 /**
  * The user's local "today". `nowMs` is passed in by the caller (the only place

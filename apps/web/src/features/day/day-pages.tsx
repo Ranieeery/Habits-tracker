@@ -11,7 +11,10 @@ export function TodayPage() {
 	return <DayView date={today} today={today} />;
 }
 
-/** A specific day, opened from the heatmap. */
+/**
+ * A specific day, opened from the heatmap. Keyed by date: another day starts
+ * locked again (the past-day unlock is state of one visit only).
+ */
 export function DayPage({ date }: { date: CalendarDate }) {
 	const today = useToday();
 	return (
@@ -26,7 +29,7 @@ export function DayPage({ date }: { date: CalendarDate }) {
 				<ArrowLeftIcon aria-hidden="true" />
 				Voltar ao histórico
 			</Link>
-			<DayView date={date} today={today} />
+			<DayView key={date} date={date} today={today} />
 		</div>
 	);
 }

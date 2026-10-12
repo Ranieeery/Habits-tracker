@@ -5,6 +5,7 @@
 
 export * from "./calendar.ts";
 export * from "./dates.ts";
+export * from "./day-edit.ts";
 export * from "./digest.ts";
 export * from "./grid.ts";
 export * from "./habit-draft.ts";

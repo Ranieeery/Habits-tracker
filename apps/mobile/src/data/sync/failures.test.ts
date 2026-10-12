@@ -2,7 +2,12 @@ import type { Mutation } from "@habits/contracts";
 import { describe, expect, it } from "vitest";
 import type { OutboxEntry } from "../local/store.ts";
 import { DEPENDENCY_FAILED_CODE } from "./engine.ts";
-import { describeFailures, describeMutation, habitNames } from "./failures.ts";
+import {
+	describeFailures,
+	describeMutation,
+	failureReason,
+	habitNames,
+} from "./failures.ts";
 
 const HABIT = "00000000-0000-7000-8000-000000000001";
 const NEW_HABIT = "00000000-0000-7000-8000-000000000002";
@@ -100,7 +105,7 @@ describe("describeFailures", () => {
 			{
 				mutationId: base.mutation_id,
 				action: "Criar o hábito “Correr”",
-				reason: "Fora do período editável (até 7 dias atrás).",
+				reason: "Fora do período editável (até 30 dias atrás).",
 				dependents: [dependent.mutation.mutation_id],
 			},
 			{
@@ -110,5 +115,37 @@ describe("describeFailures", () => {
 				dependents: [],
 			},
 		]);
+	});
+});
+
+describe("failureReason", () => {
+	it("names the earliest date the server accepted", () => {
+		// A completion refused by an API with a 7-day window (before 2.3.0).
+		expect(
+			failureReason({
+				code: "date_out_of_range",
+				details: { from: "2026-10-02", to: "2026-10-10" },
+			})
+		).toBe("Fora do período editável (a partir de 02/10).");
+		// A habit creation refused for its start date.
+		expect(
+			failureReason({
+				code: "date_out_of_range",
+				details: { earliest: "2026-09-09" },
+			})
+		).toBe("Fora do período editável (a partir de 09/09).");
+	});
+
+	it("falls back to the window size or a generic message", () => {
+		expect(failureReason({ code: "date_out_of_range" })).toBe(
+			"Fora do período editável (até 30 dias atrás)."
+		);
+		expect(
+			failureReason({ code: "date_out_of_range", details: { from: "x" } })
+		).toBe("Fora do período editável (até 30 dias atrás).");
+		expect(failureReason({ code: "not_found" })).toBe(
+			"O hábito não existe mais."
+		);
+		expect(failureReason(null)).toBe("O servidor recusou a alteração.");
 	});
 });

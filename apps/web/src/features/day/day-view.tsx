@@ -1,8 +1,13 @@
 import type { CalendarDate } from "@habits/contracts";
-import { completionRatio } from "@habits/core";
+import {
+	BACKFILL_DAYS,
+	completionRatio,
+	getDayEditState,
+	isDayEditable,
+} from "@habits/core";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { LockIcon } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { EmptyState, ErrorState } from "@/components/states.tsx";
 import { buttonVariants } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
@@ -16,13 +21,18 @@ import { dayQuery, habitsQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
 import { DayHabitItem } from "./day-habit-item.tsx";
 import { NewHabitDialog } from "./new-habit-dialog.tsx";
+import { PastDayBar } from "./past-day-bar.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
 import { useToggleCompletion } from "./use-toggle-completion.ts";
 
 /**
- * The habits possible on `date` and their completion. Only today can be
- * edited, like the legacy app; other days are read-only. Today also offers
- * "Novo hábito": in the header, or as the empty state's action.
+ * The habits possible on `date` and their completion. Today is editable; a
+ * past day inside the backfill window opens read-only and can be unlocked
+ * with a confirmation ("Editar este dia"); older and future days stay
+ * read-only (core's `getDayEditState`). The unlock is this component's
+ * state only: `DayPage` keys it by date, so changing days or leaving the
+ * screen locks the day again. Today also offers "Novo hábito": in the
+ * header, or as the empty state's action.
  */
 export function DayView({
 	date,
@@ -34,7 +44,10 @@ export function DayView({
 	const { api } = useServices();
 	const day = useQuery(dayQuery(api, date));
 	const toggle = useToggleCompletion(date);
-	const editable = date === today;
+	const editState = getDayEditState(date, today);
+	const [unlocked, setUnlocked] = useState(false);
+	const isToday = editState === "today";
+	const editable = isDayEditable(editState, unlocked);
 	const hasHabits = (day.data?.possible_habits.length ?? 0) > 0;
 
 	const [weekday = "", ...rest] = formatLongDate(date).split(", ");
@@ -44,14 +57,14 @@ export function DayView({
 			<header className="flex flex-wrap items-end justify-between gap-4">
 				<div className="flex flex-col gap-1">
 					<p className="font-semibold text-muted capitalize">
-						{editable ? "Hoje" : rest.join(", ")}
+						{isToday ? "Hoje" : rest.join(", ")}
 					</p>
 					<h1 id="day-title" className="text-3xl font-extrabold capitalize">
 						{weekday}{" "}
 						<span className="text-muted">{formatShortDate(date)}</span>
 					</h1>
 				</div>
-				{editable && hasHabits && <NewHabitDialog today={today} />}
+				{isToday && hasHabits && <NewHabitDialog today={today} />}
 			</header>
 
 			{day.isPending ? (
@@ -62,7 +75,7 @@ export function DayView({
 				</div>
 			) : day.isError ? (
 				<ErrorState error={day.error} onRetry={() => day.refetch()} />
-			) : day.data.possible_habits.length === 0 && editable ? (
+			) : day.data.possible_habits.length === 0 && isToday ? (
 				<TodayEmptyState today={today} />
 			) : day.data.possible_habits.length === 0 ? (
 				<EmptyState
@@ -82,13 +95,32 @@ export function DayView({
 					possible={day.data.possible_habits}
 					completedIds={new Set(day.data.completed_habit_ids)}
 					editable={editable}
-					onToggle={(habitId, completed) =>
-						toggle.mutate({ habitId, completed })
+					onToggle={(habit, completed) =>
+						toggle.mutate({
+							habitId: habit.id,
+							habitName: habit.name,
+							completed,
+						})
+					}
+					bar={
+						isToday ? null : (
+							<PastDayBar
+								date={date}
+								state={editState}
+								backfillDays={BACKFILL_DAYS}
+								unlocked={unlocked}
+								onUnlock={() => setUnlocked(true)}
+								onLock={() => {
+									toggle.dismissUndo();
+									setUnlocked(false);
+								}}
+							/>
+						)
 					}
 				/>
 			)}
 
-			{editable && <UpcomingSection today={today} />}
+			{isToday && <UpcomingSection today={today} />}
 		</section>
 	);
 }
@@ -126,11 +158,14 @@ function DayContent({
 	completedIds,
 	editable,
 	onToggle,
+	bar,
 }: {
 	possible: { id: string; name: string }[];
 	completedIds: Set<string>;
 	editable: boolean;
-	onToggle: (habitId: string, completed: boolean) => void;
+	onToggle: (habit: { id: string; name: string }, completed: boolean) => void;
+	/** Read-only notice or past-day editing controls, above the list. */
+	bar: ReactNode;
 }) {
 	const completed = possible.filter((habit) => completedIds.has(habit.id));
 	const ratio = completionRatio(completed.length, possible.length);
@@ -149,12 +184,7 @@ function DayContent({
 				</p>
 			</div>
 
-			{!editable && (
-				<p className="flex items-center gap-2 text-sm text-muted">
-					<LockIcon className="size-4" aria-hidden="true" />
-					Somente leitura: só é possível marcar os hábitos de hoje.
-				</p>
-			)}
+			{bar}
 
 			<ul className="flex flex-col gap-1">
 				{possible.map((habit) => (
@@ -163,7 +193,7 @@ function DayContent({
 						habit={habit}
 						completed={completedIds.has(habit.id)}
 						editable={editable}
-						onToggle={(value) => onToggle(habit.id, value)}
+						onToggle={(value) => onToggle(habit, value)}
 					/>
 				))}
 			</ul>

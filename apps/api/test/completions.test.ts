@@ -15,12 +15,12 @@ beforeEach(resetDb);
 const EVERY_DAY = { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] };
 
 async function setup(now: string) {
-	const api = makeApi(now);
+	const api = makeApi(now, { ALLOW_SIGNUP: "true" });
 	const owner = await createUser(api, "owner@example.com");
 	const response = await api.request(
 		"/v1/habits",
 		json(
-			{ name: "Beber água", schedule: EVERY_DAY, start_date: "2026-10-02" },
+			{ name: "Beber água", schedule: EVERY_DAY, start_date: "2026-09-09" },
 			{ method: "POST", headers: owner.auth() }
 		)
 	);
@@ -54,9 +54,9 @@ describe("write window (America/Sao_Paulo)", () => {
 	it.each([
 		["today", "2026-10-09", 200],
 		["tomorrow (upper limit)", "2026-10-10", 200],
-		[`today - ${BACKFILL_DAYS} (lower limit)`, "2026-10-02", 200],
+		[`today - ${BACKFILL_DAYS} (lower limit)`, "2026-09-09", 200],
 		["two days ahead", "2026-10-11", 422],
-		[`today - ${BACKFILL_DAYS + 1}`, "2026-10-01", 422],
+		[`today - ${BACKFILL_DAYS + 1}`, "2026-09-08", 422],
 	])("with today = 2026-10-09, %s (%s) -> %i", async (_, date, status) => {
 		const { api, owner, habit } = await setup(LAST_SECOND_OF_OCT_9);
 
@@ -69,7 +69,7 @@ describe("write window (America/Sao_Paulo)", () => {
 			expect(await response.json()).toMatchObject({
 				error: {
 					code: "date_out_of_range",
-					details: { from: "2026-10-02", to: "2026-10-10" },
+					details: { from: "2026-09-09", to: "2026-10-10" },
 				},
 			});
 		}
@@ -80,14 +80,15 @@ describe("write window (America/Sao_Paulo)", () => {
 		const put = (date: string) =>
 			setCompletion(api, owner, habit.id, date, { completed: true });
 
-		// Still the 9th locally: the 11th is two days ahead, the 2nd is in range.
+		// Still the 9th locally: the 11th is two days ahead, 09/09 is -30.
 		expect((await put("2026-10-11")).status).toBe(422);
-		expect((await put("2026-10-02")).status).toBe(200);
+		expect((await put("2026-09-09")).status).toBe(200);
 
+		// One second later it is the 10th in São Paulo: 09/09 is now -31.
 		api.setNow(FIRST_SECOND_OF_OCT_10);
 		expect((await put("2026-10-11")).status).toBe(200);
-		expect((await put("2026-10-02")).status).toBe(422);
-		expect((await put("2026-10-03")).status).toBe(200);
+		expect((await put("2026-09-09")).status).toBe(422);
+		expect((await put("2026-09-10")).status).toBe(200);
 	});
 
 	it("follows the time zone in the user's settings", async () => {
@@ -202,6 +203,60 @@ describe("PUT /v1/habits/{habit_id}/completions/{date}", () => {
 			headers: owner.auth(),
 		});
 		expect(await day.json()).toMatchObject({ completed_habit_ids: [] });
+	});
+
+	it("un-checks a past day with a tombstone, only for that date", async () => {
+		const { api, owner, habit } = await setup(NOW);
+		const pastDay = "2026-09-19"; // 20 days ago
+		const done = await completionOf(
+			await setCompletion(api, owner, habit.id, pastDay, { completed: true })
+		);
+		await setCompletion(api, owner, habit.id, "2026-09-20", {
+			completed: true,
+		});
+
+		api.setNow("2026-10-09T16:00:00Z");
+		const undone = await completionOf(
+			await setCompletion(api, owner, habit.id, pastDay, { completed: false })
+		);
+		expect(undone).toMatchObject({
+			id: done.id,
+			date: pastDay,
+			deleted_at: Date.parse("2026-10-09T16:00:00Z"),
+		});
+
+		const day = (date: string) =>
+			api
+				.request(`/v1/day?date=${date}`, { headers: owner.auth() })
+				.then((response) => response.json());
+		expect(await day(pastDay)).toMatchObject({ completed_habit_ids: [] });
+		expect(await day("2026-09-20")).toMatchObject({
+			completed_habit_ids: [habit.id],
+		});
+	});
+
+	it("never writes a past day of another user's habit", async () => {
+		const { api, owner, habit } = await setup(NOW);
+		await setCompletion(api, owner, habit.id, "2026-09-19", {
+			completed: true,
+		});
+		const intruder = await createUser(api, "intruder@example.com");
+
+		const response = await setCompletion(
+			api,
+			intruder,
+			habit.id,
+			"2026-09-19",
+			{
+				completed: false,
+			}
+		);
+		expect(response.status).toBe(404);
+
+		const day = await api.request("/v1/day?date=2026-09-19", {
+			headers: owner.auth(),
+		});
+		expect(await day.json()).toMatchObject({ completed_habit_ids: [habit.id] });
 	});
 
 	it("answers 404 for an unknown habit and 422 for invalid input", async () => {

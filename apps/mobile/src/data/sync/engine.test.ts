@@ -21,6 +21,7 @@ import { TransportError } from "./transport.ts";
 
 const NOW = Date.parse("2026-10-09T15:00:00Z"); // 12:00 in São Paulo
 const TODAY = "2026-10-09";
+const DAY_MS = 24 * 60 * 60_000;
 const EVERY_DAY = { type: "weekdays" as const, days: [0, 1, 2, 3, 4, 5, 6] };
 
 function fakeTimers() {
@@ -320,11 +321,11 @@ describe("sync engine", () => {
 		const habitId = serverHabit(server);
 		const { engine, repository, store, setNow } = await setup({ server });
 		await engine.sync("launch");
-		// Marked "today" offline, synced 9 days later: out of the window.
+		// Marked "today" offline, synced 31 days later: out of the window.
 		engine.setOnline(false);
 		await repository.setCompletion(habitId, TODAY, true);
-		setNow(NOW + 9 * 24 * 60 * 60_000);
-		await repository.setCompletion(habitId, "2026-10-18", true);
+		setNow(NOW + 31 * DAY_MS);
+		await repository.setCompletion(habitId, "2026-11-09", true);
 		engine.setOnline(true);
 		await engine.sync("manual");
 
@@ -333,12 +334,48 @@ describe("sync engine", () => {
 			(e) => e.state === "failed"
 		);
 		expect(failed?.lastError?.code).toBe("date_out_of_range");
-		expect(serverCompletion(server, habitId, "2026-10-18")).toBeDefined();
+		expect(serverCompletion(server, habitId, "2026-11-09")).toBeDefined();
 		// The rejected change no longer shows; the data is kept until discarded.
 		expect((await repository.getDay(TODAY)).completed_habit_ids).toEqual([]);
 
 		await engine.discard([failed!.mutation.mutation_id]);
 		expect(engine.getStatus().failed).toBe(0);
+	});
+
+	it("syncs a past day edited up to 30 days back, refuses older ones, loses nothing", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = serverHabit(server);
+		const { engine, repository, store, setNow } = await setup({ server });
+		await engine.sync("launch");
+		engine.setOnline(false);
+		// Past days edited offline today: 30 days back (the limit) and 25.
+		await repository.setCompletion(habitId, "2026-09-09", true);
+		await repository.setCompletion(habitId, "2026-09-14", true);
+		// Older than the window: refused before it reaches the outbox.
+		await expect(
+			repository.setCompletion(habitId, "2026-09-08", true)
+		).rejects.toMatchObject({ kind: "out_of_range" });
+		// The phone stays offline 5 more days: 09/09 is now 35 days back.
+		setNow(NOW + 5 * DAY_MS);
+		engine.setOnline(true);
+		await engine.sync("manual");
+
+		expect(serverCompletion(server, habitId, "2026-09-14")).toBeDefined();
+		expect(serverCompletion(server, habitId, "2026-09-09")).toBeUndefined();
+		const outbox = await store.readOutbox();
+		const failed = outbox.filter((e) => e.state === "failed");
+		expect(failed.map((e) => [e.mutation.type, e.lastError?.code])).toEqual([
+			["completion.set", "date_out_of_range"],
+		]);
+		// Kept for "Tentar de novo"/"Descartar", no longer shown on the day.
+		expect(failed[0]?.mutation).toMatchObject({ date: "2026-09-09" });
+		expect((await repository.getDay("2026-09-09")).completed_habit_ids).toEqual(
+			[]
+		);
+		expect((await repository.getDay("2026-09-14")).completed_habit_ids).toEqual(
+			[habitId]
+		);
+		expect(engine.getStatus()).toMatchObject({ pending: 0, failed: 1 });
 	});
 
 	it("ties the changes of a habit whose creation failed to that failure", async () => {
@@ -351,8 +388,8 @@ describe("sync engine", () => {
 			start_date: TODAY,
 		});
 		await repository.setCompletion(habit.id, TODAY, true);
-		// Synced 10 days later: start_date is now too old for the server.
-		setNow(NOW + 10 * 24 * 60 * 60_000);
+		// Synced 31 days later: start_date is now too old for the server.
+		setNow(NOW + 31 * DAY_MS);
 		engine.setOnline(true);
 		await engine.sync("manual");
 

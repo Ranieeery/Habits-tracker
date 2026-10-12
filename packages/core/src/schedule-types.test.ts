@@ -271,14 +271,14 @@ describe("habit date rules", () => {
 
 	it("weekday habits keep the backfill window; others start today", () => {
 		expect(earliestStartDate({ type: "weekdays", days: [1] }, today)).toBe(
-			"2026-10-04"
+			"2026-09-11"
 		);
 		expect(earliestStartDate({ type: "monthly_days", days: [20] }, today)).toBe(
 			today
 		);
 		expect(
 			earliestStartDate({ type: "once", date: today }, today, { offline: true })
-		).toBe("2026-10-04");
+		).toBe("2026-09-11");
 	});
 
 	it("refuses a single date in the past", () => {

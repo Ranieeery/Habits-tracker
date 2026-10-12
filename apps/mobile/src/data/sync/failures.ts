@@ -1,5 +1,6 @@
 // How a mutation the server refused is shown in the failures list (pt-BR).
-import type { Mutation } from "@habits/contracts";
+import type { ApiErrorBody, Mutation } from "@habits/contracts";
+import { BACKFILL_DAYS, isCalendarDate } from "@habits/core";
 import { formatShortDate } from "@/lib/format.ts";
 import type { OutboxEntry } from "../local/store.ts";
 import { DEPENDENCY_FAILED_CODE } from "./engine.ts";
@@ -15,15 +16,37 @@ export interface FailureView {
 }
 
 const REASONS: Record<string, string> = {
-	date_out_of_range: "Fora do período editável (até 7 dias atrás).",
+	date_out_of_range: `Fora do período editável (até ${BACKFILL_DAYS} dias atrás).`,
 	not_found: "O hábito não existe mais.",
 	conflict: "Já existe outro registro com o mesmo identificador.",
 	validation_error: "Os dados da alteração são inválidos.",
 	[DEPENDENCY_FAILED_CODE]: "Depende de um hábito que não foi salvo.",
 };
 
-export function failureReason(code: string | undefined): string {
+/**
+ * Why the server refused a change. A date out of range names the earliest
+ * date the server accepted (`from` for completions, `earliest` for new
+ * habits), so the message stays right whatever window that API version
+ * has (an older API may still accept fewer days than this app).
+ */
+export function failureReason(
+	error: Pick<ApiErrorBody, "code" | "details"> | null | undefined
+): string {
+	const code = error?.code;
+	if (code === "date_out_of_range") {
+		const earliest = earliestOf(error?.details);
+		if (earliest) {
+			return `Fora do período editável (a partir de ${formatShortDate(earliest)}).`;
+		}
+	}
 	return (code && REASONS[code]) ?? "O servidor recusou a alteração.";
+}
+
+function earliestOf(details: unknown): string | null {
+	if (typeof details !== "object" || details === null) return null;
+	const { from, earliest } = details as { from?: unknown; earliest?: unknown };
+	const value = from ?? earliest;
+	return typeof value === "string" && isCalendarDate(value) ? value : null;
 }
 
 /** Names of every habit the failures may mention, failed creations included. */
@@ -75,7 +98,7 @@ export function describeFailures(
 	return failed.map((entry) => ({
 		mutationId: entry.mutation.mutation_id,
 		action: describeMutation(entry.mutation, names),
-		reason: failureReason(entry.lastError?.code),
+		reason: failureReason(entry.lastError),
 		dependents: failed
 			.filter((other) => {
 				const details = other.lastError?.details as

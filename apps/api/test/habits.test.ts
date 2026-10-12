@@ -82,11 +82,11 @@ describe("POST /v1/habits", () => {
 		const response = await post({
 			name: "Ler",
 			schedule: WEEKDAYS,
-			start_date: "2026-10-01",
+			start_date: "2026-09-08",
 		});
 		expect(response.status).toBe(422);
 		expect(await response.json()).toMatchObject({
-			error: { code: "date_out_of_range", details: { earliest: "2026-10-02" } },
+			error: { code: "date_out_of_range", details: { earliest: "2026-09-09" } },
 		});
 	});
 

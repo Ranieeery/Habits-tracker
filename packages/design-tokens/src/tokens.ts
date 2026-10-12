@@ -33,6 +33,13 @@ export const colors = {
 		DEFAULT: "#f87171",
 		surface: "#450a0a",
 	},
+	// Alerts that are not errors (2.3.0: "Editando dia passado"). amber-400 on
+	// amber-950 (about 9:1) and on the dark background; always paired with
+	// text and an icon, never color alone.
+	warning: {
+		DEFAULT: "#fbbf24",
+		surface: "#451a03",
+	},
 	// Heatmap levels 0 (nothing done) to 5 (>= 80%). Like GitHub's dark theme,
 	// more done is brighter: violet-900 up to violet-400 on the dark surface.
 	heatmap: {

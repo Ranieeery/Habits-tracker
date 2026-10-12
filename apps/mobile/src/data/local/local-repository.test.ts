@@ -128,7 +128,7 @@ describe("local repository", () => {
 			start_date: TODAY,
 		});
 		expect(
-			await kindOf(repository.setCompletion(habit.id, "2026-10-01", true))
+			await kindOf(repository.setCompletion(habit.id, "2026-09-08", true))
 		).toBe("out_of_range");
 		expect(
 			await kindOf(
@@ -144,7 +144,7 @@ describe("local repository", () => {
 				repository.createHabit({
 					name: "Velho",
 					schedule: EVERY_DAY,
-					start_date: "2026-10-01",
+					start_date: "2026-09-08",
 				})
 			)
 		).toBe("out_of_range");

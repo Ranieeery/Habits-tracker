@@ -231,19 +231,19 @@ describe("applyMutation on the server", () => {
 
 	it("rejects completions outside the date window", () => {
 		const state = syncState([habit()], []);
-		for (const date of ["2026-10-01", "2026-10-11"]) {
+		for (const date of ["2026-09-08", "2026-10-11"]) {
 			expect(applyMutation(state, set(true, { date }), server())).toEqual({
 				status: "rejected",
 				error: {
 					code: "date_out_of_range",
 					message: "Date is outside the editable window",
-					details: { from: "2026-10-02", to: "2026-10-10" },
+					details: { from: "2026-09-09", to: "2026-10-10" },
 				},
 			});
 		}
 		// The window edges are accepted.
 		expect(
-			applyMutation(state, set(true, { date: "2026-10-02" }), server()).status
+			applyMutation(state, set(true, { date: "2026-09-09" }), server()).status
 		).toBe("applied");
 		expect(
 			applyMutation(state, set(true, { date: "2026-10-10" }), server()).status
@@ -252,15 +252,15 @@ describe("applyMutation on the server", () => {
 
 	it("device clock ahead or behind: only the server's today matters", () => {
 		const state = syncState([habit()], []);
-		// The phone thinks it is 2026-10-12 (ahead) or 2026-09-30 (behind).
+		// The phone thinks it is 2026-10-12 (ahead) or 2026-09-01 (behind).
 		const ahead = set(true, {
 			date: "2026-10-12",
 			created_at: Date.UTC(2026, 9, 12),
 			updated_at: Date.UTC(2026, 9, 12),
 		});
 		const behind = set(true, {
-			date: "2026-09-30",
-			created_at: Date.UTC(2026, 8, 30),
+			date: "2026-09-01",
+			created_at: Date.UTC(2026, 8, 1),
 		});
 		expect(applyMutation(state, ahead, server()).status).toBe("rejected");
 		expect(applyMutation(state, behind, server()).status).toBe("rejected");
@@ -325,10 +325,10 @@ describe("applyMutation on the server", () => {
 			})
 		).toMatchObject({ status: "rejected", error: { code: "conflict" } });
 		expect(
-			applyMutation(state, create({ start_date: "2026-10-01" }), server())
+			applyMutation(state, create({ start_date: "2026-09-08" }), server())
 		).toMatchObject({
 			status: "rejected",
-			error: { code: "date_out_of_range", details: { earliest: "2026-10-02" } },
+			error: { code: "date_out_of_range", details: { earliest: "2026-09-09" } },
 		});
 	});
 
@@ -349,14 +349,14 @@ describe("applyMutation on the server", () => {
 			applyMutation(
 				state,
 				create({
-					schedule: { type: "once", date: "2026-10-01" },
-					start_date: "2026-10-01",
+					schedule: { type: "once", date: "2026-09-08" },
+					start_date: "2026-09-08",
 				}),
 				server()
 			)
 		).toMatchObject({
 			status: "rejected",
-			error: { code: "date_out_of_range", details: { earliest: "2026-10-02" } },
+			error: { code: "date_out_of_range", details: { earliest: "2026-09-09" } },
 		});
 		expect(
 			applyMutation(
