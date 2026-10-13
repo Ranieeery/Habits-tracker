@@ -2,7 +2,7 @@
 	"expo": {
 		"name": "Habits",
 		"slug": "habits",
-		"version": "2.8.1",
+		"version": "2.9.0",
 		"runtimeVersion": {
 			"policy": "fingerprint"
 		},
@@ -10,11 +10,11 @@
 		"icon": "./assets/images/icon.png",
 		"scheme": "habits",
 		"userInterfaceStyle": "dark",
-		"backgroundColor": "#09090A",
+		"backgroundColor": "#0a0911",
 		"android": {
 			"package": "com.rxniery.habits",
 			"adaptiveIcon": {
-				"backgroundColor": "#4C1D95",
+				"backgroundColor": "#0a0911",
 				"foregroundImage": "./assets/images/android-icon-foreground.png",
 				"monochromeImage": "./assets/images/android-icon-monochrome.png"
 			},
@@ -30,7 +30,7 @@
 			[
 				"expo-splash-screen",
 				{
-					"backgroundColor": "#09090A",
+					"backgroundColor": "#0a0911",
 					"image": "./assets/images/splash-icon.png",
 					"imageWidth": 200
 				}
@@ -43,7 +43,7 @@
 				"expo-notifications",
 				{
 					"icon": "./assets/images/notification-icon.png",
-					"color": "#7C3AED",
+					"color": "#8456e8",
 					"defaultChannel": "reminders"
 				}
 			]

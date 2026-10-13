@@ -89,6 +89,14 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 - _Vazio_: convite com a próxima ação ("Criar primeiro hábito"), nunca só "nada aqui".
 - _Erro_: `night-danger-surface` + ícone + o que houve + "Tentar de novo".
 
+## Ícone e abertura (2.9.0)
+
+- **Marca**: os quatro quadrados do heatmap (`night-heat-4` e `-5` em cima, `-2` e `-3` embaixo), a mesma do `Wordmark`. Fonte única em `packages/design-tokens/src/brand.ts`; os PNGs são gerados (`pnpm --filter @habits/design-tokens brand`), nunca editados à mão.
+- **Ícone do app**: marca sobre `night-bg`, sem texto. Android: ícone adaptativo com fundo `night-bg` e a marca dentro da zona segura (cabe em máscaras redondas); ícone temático com a marca em branco.
+- **Abertura**: só a marca, centralizada sobre `night-bg`, sem texto (nada troca de fonte); no Android 12+ cabe no círculo da splash.
+- **Notificação**: marca branca na barra de status, acento `night-accent`.
+- **Web**: favicon com a marca num quadrado arredondado `night-bg` (visível em abas claras e escuras), ícones da PWA e do iPhone sobre `night-bg`, e um ícone "maskable" para o Android.
+
 ## Movimento
 
 - Só `transform` e `opacity`; preferencialmente CSS; nenhuma biblioteca de animação.

@@ -62,8 +62,20 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 
 - Add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK; check with `pnpm dlx expo-doctor`.
 - Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins. `@babel/plugin-transform-react-jsx` is a devDependency only because the NativeWind/css-interop preset loads it by name without declaring it (a clean install cannot resolve it otherwise); keep it.
-- Version (`2.8.1`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
+- Version (`2.9.0`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
+- Native colors in `app.json` (window, splash, adaptive icon background, notification color) must equal `nightColors` (`src/app-config.test.ts`); the icon and splash PNGs come from `pnpm --filter @habits/design-tokens brand` (2.9.0), never edited by hand, and any change to them needs a new build.
 - `*.config.js` files are CommonJS (ESLint override in `eslint.config.mjs`); the Vitest config is `vitest.config.mts` because the package is CommonJS.
+
+## Manual checks (2.9.0: app icon and splash)
+
+Pending, on a **new production build** (the fingerprint changed; an OTA cannot bring native icons). After the deploy: `gh workflow run mobile-build -f profile=production`, install the APK over the current one (same package: data kept), confirm in Ajustes that it runs 2.9.0.
+
+1. Launcher: the icon is the four squares on the dark background (no "habits" text), whole in round, squircle and square shapes (change the icon shape in the launcher settings if available).
+2. Themed icons on (Android 13+, Wallpaper & style > Themed icons): the four squares in the system tint.
+3. Cold start (swipe the app away, open it): the splash shows only the mark on the dark background, then the app fades in; no white flash, no old "habits" text.
+4. "Enviar notificação de teste" in Ajustes: the status bar shows the white squares; the notification accent is violet.
+5. Recent apps and app info show the new icon.
+6. Web: the tab shows the new favicon (light and dark browser themes); install the PWA on Android (new icon, no white border) and "Adicionar à Tela de Início" on the iPhone.
 
 ## Manual checks (2.8.0: overdue habits)
 

@@ -61,6 +61,14 @@ export default defineConfig(({ command, mode }) => {
 							sizes: "512x512",
 							type: "image/png",
 						},
+						// Full-bleed background with the mark inside the 80% safe
+						// circle: installed on Android, it gets no white border.
+						{
+							src: "/maskable-512x512.png",
+							sizes: "512x512",
+							type: "image/png",
+							purpose: "maskable",
+						},
 					],
 				},
 			}),

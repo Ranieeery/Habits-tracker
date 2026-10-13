@@ -10,12 +10,14 @@
 	},
 	"scripts": {
 		"generate": "node scripts/generate.ts",
+		"brand": "node scripts/generate-brand.ts",
 		"typecheck": "tsc --noEmit",
 		"lint": "eslint .",
 		"test": "vitest run"
 	},
 	"devDependencies": {
 		"@types/node": "^24.19.2",
+		"sharp": "0.35.5",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}
