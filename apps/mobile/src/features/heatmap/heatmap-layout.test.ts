@@ -2,8 +2,10 @@ import { nightColors } from "@habits/design-tokens";
 import { buildYearGrid, type GridCell, type GridWeek } from "@habits/core";
 import { describe, expect, it } from "vitest";
 import {
+	bubbleLeft,
 	CELL_PITCH,
 	canOpen,
+	cellAt,
 	cellLabel,
 	dayIndexAt,
 	dayValue,
@@ -12,6 +14,7 @@ import {
 	initialWeekIndex,
 	levelFill,
 	MONTH_ROW_HEIGHT,
+	previewLines,
 	stepDay,
 	SWEEP_CELL_MS,
 	sweepDelay,
@@ -206,5 +209,104 @@ describe("entrance sweep", () => {
 		expect(sweepDuration(53, 40)).toBe(40 * 6 + SWEEP_CELL_MS);
 		expect(sweepDuration(53, 52)).toBeLessThanOrEqual(540);
 		expect(sweepDuration(1, 0)).toBe(SWEEP_CELL_MS);
+	});
+});
+
+describe("day preview (2.10.0)", () => {
+	const grid = buildYearGrid({
+		year: 2026,
+		today: "2026-10-09",
+		summary: [
+			{ date: "2026-10-05", completed: 1, possible: 2 },
+			{ date: "2026-10-09", completed: 3, possible: 5 },
+		],
+	});
+	const todayWeek = grid.today_week_index!;
+	/** The middle of a slot, in list coordinates without scrolling. */
+	const xOf = (weekIndex: number) => weekIndex * CELL_PITCH + CELL_PITCH / 2;
+	const yOf = (dayIndex: number) =>
+		MONTH_ROW_HEIGHT + dayIndex * CELL_PITCH + CELL_PITCH / 2;
+
+	describe("cellAt", () => {
+		it("finds the day under the finger, with the list scrolled", () => {
+			const scrollX = (todayWeek - 3) * CELL_PITCH + 10;
+			const x = xOf(todayWeek) - scrollX;
+			expect(cellAt(x, yOf(1), scrollX, grid.weeks)).toEqual({
+				weekIndex: todayWeek,
+				dayIndex: 1,
+			});
+		});
+
+		it("counts the gap between squares as part of the slot", () => {
+			const edge = todayWeek * CELL_PITCH + CELL_PITCH - 1;
+			expect(cellAt(edge, yOf(0), 0, grid.weeks)?.weekIndex).toBe(todayWeek);
+			expect(cellAt(edge + 1, yOf(0), 0, grid.weeks)?.weekIndex).not.toBe(
+				todayWeek
+			);
+		});
+
+		it("ignores the month labels, the future and outside the weeks", () => {
+			expect(
+				cellAt(xOf(todayWeek), MONTH_ROW_HEIGHT - 1, 0, grid.weeks)
+			).toBeNull();
+			// Saturday 2026-10-10 is after today.
+			expect(cellAt(xOf(todayWeek), yOf(6), 0, grid.weeks)).toBeNull();
+			expect(cellAt(-1, yOf(1), 0, grid.weeks)).toBeNull();
+			expect(cellAt(xOf(grid.weeks.length), yOf(1), 0, grid.weeks)).toBeNull();
+			expect(cellAt(xOf(0), yOf(7), 0, grid.weeks)).toBeNull();
+		});
+
+		it("ignores the padding days before January 1", () => {
+			// 2026-01-01 is a Thursday: Sunday to Wednesday of week 0 are 2025.
+			expect(cellAt(xOf(0), yOf(0), 0, grid.weeks)).toBeNull();
+			expect(cellAt(xOf(0), yOf(4), 0, grid.weeks)).toEqual({
+				weekIndex: 0,
+				dayIndex: 4,
+			});
+		});
+	});
+
+	describe("previewLines", () => {
+		const day = (date: string) =>
+			grid.weeks
+				.flatMap((week) => week.days)
+				.find((cell) => cell.date === date)!;
+
+		it("shows the date and the share done", () => {
+			expect(previewLines(day("2026-10-05"), { filtered: false })).toEqual({
+				title: "seg, 5 de out",
+				detail: "1 de 2 · 50%",
+			});
+			expect(previewLines(day("2026-10-09"), { filtered: false })).toEqual({
+				title: "sex, 9 de out (hoje)",
+				detail: "3 de 5 · 60%",
+			});
+		});
+
+		it("says when nothing was due", () => {
+			expect(previewLines(day("2026-10-06"), { filtered: false }).detail).toBe(
+				"Nenhum hábito previsto"
+			);
+		});
+
+		it("speaks of one habit when the history is filtered", () => {
+			const one = (completed: number, possible: number) =>
+				previewLines(
+					{ ...day("2026-10-05"), completed, possible },
+					{ filtered: true }
+				).detail;
+			expect(one(1, 1)).toBe("Feito");
+			expect(one(0, 1)).toBe("Não feito");
+			expect(one(0, 0)).toBe("Sem previsão");
+		});
+	});
+
+	describe("bubbleLeft", () => {
+		it("centers on the column and stays inside the container", () => {
+			expect(bubbleLeft(150, 100, 300)).toBe(100);
+			expect(bubbleLeft(20, 100, 300)).toBe(0);
+			expect(bubbleLeft(290, 100, 300)).toBe(200);
+			expect(bubbleLeft(50, 400, 300)).toBe(0);
+		});
 	});
 });

@@ -3,6 +3,7 @@
 import { nightColors } from "@habits/design-tokens";
 import type { GridCell, GridWeek, HeatmapLevel } from "@habits/core";
 import {
+	formatCompactDate,
 	formatDayMonth,
 	formatFullDate,
 	formatPercent,
@@ -169,4 +170,63 @@ export function sweepDelay(weekIndex: number, startIndex: number): number {
 export function sweepDuration(weekCount: number, startIndex: number): number {
 	const farthest = Math.max(startIndex, weekCount - 1 - startIndex, 0);
 	return farthest * SWEEP_COLUMN_DELAY_MS + SWEEP_CELL_MS;
+}
+
+/** A day of the grid by position: week column and weekday row. */
+export interface GridPoint {
+	weekIndex: number;
+	dayIndex: number;
+}
+
+/**
+ * The day under a point of the scrolling list (2.10.0 day preview): `x` and
+ * `y` from the list's top-left corner, `scrollX` its horizontal offset.
+ * Null over the month labels, outside the weeks, or on a day that cannot be
+ * opened (outside the year, or in the future).
+ */
+export function cellAt(
+	x: number,
+	y: number,
+	scrollX: number,
+	weeks: readonly GridWeek[]
+): GridPoint | null {
+	const dayIndex = dayIndexAt(y);
+	if (dayIndex === null || x < 0) return null;
+	const weekIndex = Math.floor((x + scrollX) / CELL_PITCH);
+	const cell = weeks[weekIndex]?.days[dayIndex];
+	return canOpen(cell) ? { weekIndex, dayIndex } : null;
+}
+
+/** The two lines of the day preview: "qui, 8 de out" and "3 de 5 · 60%". */
+export function previewLines(
+	cell: Pick<
+		GridCell,
+		"date" | "relation" | "completed" | "possible" | "ratio"
+	>,
+	{ filtered }: { filtered: boolean }
+): { title: string; detail: string } {
+	const title = `${formatCompactDate(cell.date)}${cell.relation === "today" ? " (hoje)" : ""}`;
+	if (filtered) {
+		// One habit (the history filter): it was due that day or not.
+		if (cell.possible === 0) return { title, detail: "Sem previsão" };
+		return { title, detail: cell.completed > 0 ? "Feito" : "Não feito" };
+	}
+	if (cell.possible === 0) return { title, detail: "Nenhum hábito previsto" };
+	return {
+		title,
+		detail: `${cell.completed} de ${cell.possible} · ${formatPercent(cell.ratio)}`,
+	};
+}
+
+/**
+ * Left edge of a box `width` wide centered on `centerX`, kept inside
+ * `[0, containerWidth]` (a narrower container keeps it at 0).
+ */
+export function bubbleLeft(
+	centerX: number,
+	width: number,
+	containerWidth: number
+): number {
+	const max = Math.max(0, containerWidth - width);
+	return Math.min(max, Math.max(0, centerX - width / 2));
 }

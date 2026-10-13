@@ -25,6 +25,11 @@ export function formatLongDate(date: CalendarDate): string {
 	return fmt(date, "dddd, D [de] MMMM");
 }
 
+/** "qui, 8 de out" (the heatmap's day preview, 2.10.0) */
+export function formatCompactDate(date: CalendarDate): string {
+	return fmt(date, "ddd, D [de] MMM");
+}
+
 /** "9 de outubro" */
 export function formatDayMonth(date: CalendarDate): string {
 	return fmt(date, "D [de] MMMM");

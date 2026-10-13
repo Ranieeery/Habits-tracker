@@ -4,6 +4,9 @@ import { monthLabels } from "@habits/core";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type AccessibilityActionEvent,
+	type LayoutChangeEvent,
+	type NativeScrollEvent,
+	type NativeSyntheticEvent,
 	FlatList,
 	type GestureResponderEvent,
 	Pressable,
@@ -12,6 +15,7 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	cancelAnimation,
 	Easing,
@@ -24,18 +28,23 @@ import { withAlpha } from "@/lib/color.ts";
 import { monthShortName, weekdayInitial } from "@/lib/format.ts";
 import { pulse, release } from "@/ui/motion.ts";
 import { useReducedMotion } from "@/ui/use-reduced-motion.ts";
+import { BUBBLE_WIDTH, DayPreviewBubble } from "./day-preview-bubble.tsx";
 import {
+	bubbleLeft,
 	CELL_PITCH,
 	CELL_SIZE,
 	canOpen,
+	cellAt,
 	dayIndexAt,
 	dayValue,
 	defaultDayIndex,
 	GRID_HEIGHT,
+	type GridPoint,
 	hasGlow,
 	initialWeekIndex,
 	levelFill,
 	MONTH_ROW_HEIGHT,
+	previewLines,
 	stepDay,
 	SWEEP_CELL_MS,
 	sweepDelay,
@@ -50,6 +59,8 @@ import {
 const SCREEN_PADDING = 16;
 /** Tiny grid labels may grow with the system font, but not past the slot. */
 const LABEL_MAX_SCALE = 1.25;
+/** How long a finger holds a square before its preview shows (2.10.0). */
+const PREVIEW_HOLD_MS = 300;
 
 /**
  * GitHub-style year grid for one hand: one column per week (Sunday on top),
@@ -57,13 +68,19 @@ const LABEL_MAX_SCALE = 1.25;
  * current week. Each week is one touch target and one accessibility element
  * (53, not 365): a tap opens the day under the finger (highlighted while
  * pressed); TalkBack reads the week, swipes up/down pick a day and a double
- * tap opens it.
+ * tap opens it. Holding a square (2.10.0) shows its date and result in a
+ * bubble, like the web's hover tooltip; sliding the finger moves it to
+ * other days (the list does not scroll meanwhile) and lifting it only
+ * closes the bubble.
  */
 export function HeatmapGrid({
 	grid,
+	filtered = false,
 	onOpenDay,
 }: {
 	grid: YearGrid;
+	/** The history shows one habit: the preview says "Feito"/"Não feito". */
+	filtered?: boolean;
 	onOpenDay: (cell: GridCell) => void;
 }) {
 	const { width } = useWindowDimensions();
@@ -85,40 +102,145 @@ export function HeatmapGrid({
 		return byWeek;
 	}, [grid]);
 
+	// Day preview: the day under a holding finger, from the list's offset.
+	const scrollX = useSharedValue(0);
+	const [preview, setPreview] = useState<Preview | null>(null);
+	// The whole hold, also while the finger is over a day without a preview
+	// (future, outside the year): the list must not start scrolling then.
+	const [holding, setHolding] = useState(false);
+	const [rowWidth, setRowWidth] = useState(0);
+	const weeks = grid.weeks;
+	// Updates only when the finger reaches another day (or leaves the days).
+	const track = (x: number, y: number) => {
+		const point = cellAt(x, y, scrollX.get(), weeks);
+		setPreview((current) => {
+			if (point === null) return null;
+			if (
+				current?.weekIndex === point.weekIndex &&
+				current.dayIndex === point.dayIndex
+			) {
+				return current;
+			}
+			// The list cannot scroll while previewing: the offset stays valid.
+			return { ...point, scrollX: scrollX.get() };
+		});
+	};
+	const holdGesture = Gesture.Pan()
+		.runOnJS(true)
+		.activateAfterLongPress(PREVIEW_HOLD_MS)
+		.onStart((event) => {
+			sweep.finish();
+			setHolding(true);
+			track(event.x, event.y);
+		})
+		.onUpdate((event) => track(event.x, event.y))
+		.onFinalize(() => {
+			setHolding(false);
+			setPreview(null);
+		});
+	const previewCell = preview
+		? weeks[preview.weekIndex]?.days[preview.dayIndex]
+		: undefined;
+
 	return (
-		<View className="flex-row" style={{ height: GRID_HEIGHT }}>
+		<View
+			className="flex-row"
+			style={{ height: GRID_HEIGHT }}
+			onLayout={(event: LayoutChangeEvent) =>
+				setRowWidth(event.nativeEvent.layout.width)
+			}
+		>
 			<WeekdayLabels />
-			<FlatList
-				// A new list per year, so initialScrollIndex applies again.
-				key={grid.year}
-				horizontal
-				data={grid.weeks}
-				keyExtractor={(week) => week.start}
-				renderItem={({ item, index }) => (
-					<WeekColumn
-						week={item}
-						delay={sweepDelay(index, sweepFrom)}
-						monthLabel={labels.get(index)}
-						elapsed={sweep.elapsed}
-						reduced={reduced}
-						onTouch={sweep.finish}
-						onOpenDay={onOpenDay}
+			<GestureDetector gesture={holdGesture}>
+				<View style={styles.list}>
+					<FlatList
+						// A new list per year, so initialScrollIndex applies again.
+						key={grid.year}
+						horizontal
+						data={grid.weeks}
+						keyExtractor={(week) => week.start}
+						renderItem={({ item, index }) => (
+							<WeekColumn
+								week={item}
+								delay={sweepDelay(index, sweepFrom)}
+								monthLabel={labels.get(index)}
+								elapsed={sweep.elapsed}
+								reduced={reduced}
+								onTouch={sweep.finish}
+								onOpenDay={onOpenDay}
+								previewDay={
+									preview?.weekIndex === index ? preview.dayIndex : null
+								}
+							/>
+						)}
+						extraData={preview}
+						getItemLayout={(_, index) => ({
+							length: CELL_PITCH,
+							offset: CELL_PITCH * index,
+							index,
+						})}
+						initialScrollIndex={initialIndex}
+						initialNumToRender={visibleWeeks + 2}
+						maxToRenderPerBatch={8}
+						windowSize={5}
+						onScrollBeginDrag={sweep.finish}
+						onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+							scrollX.set(event.nativeEvent.contentOffset.x);
+						}}
+						scrollEventThrottle={16}
+						// Holding a square sweeps days instead of scrolling.
+						scrollEnabled={!holding}
+						showsHorizontalScrollIndicator={false}
+						accessibilityLabel={`Mapa de hábitos de ${grid.year}`}
 					/>
-				)}
-				getItemLayout={(_, index) => ({
-					length: CELL_PITCH,
-					offset: CELL_PITCH * index,
-					index,
-				})}
-				initialScrollIndex={initialIndex}
-				initialNumToRender={visibleWeeks + 2}
-				maxToRenderPerBatch={8}
-				windowSize={5}
-				onScrollBeginDrag={sweep.finish}
-				showsHorizontalScrollIndicator={false}
-				accessibilityLabel={`Mapa de hábitos de ${grid.year}`}
-			/>
+				</View>
+			</GestureDetector>
+			{preview && previewCell ? (
+				<PreviewOverlay
+					point={preview}
+					cell={previewCell}
+					filtered={filtered}
+					rowWidth={rowWidth}
+				/>
+			) : null}
 		</View>
+	);
+}
+
+/** The previewed day and the list's offset when it was found. */
+interface Preview extends GridPoint {
+	scrollX: number;
+}
+
+/** The bubble over the held square, in the grid row's coordinates. */
+function PreviewOverlay({
+	point,
+	cell,
+	filtered,
+	rowWidth,
+}: {
+	point: Preview;
+	cell: GridCell;
+	filtered: boolean;
+	rowWidth: number;
+}) {
+	const { title, detail } = previewLines(cell, { filtered });
+	const centerX =
+		WEEKDAY_COLUMN_WIDTH +
+		point.weekIndex * CELL_PITCH -
+		point.scrollX +
+		CELL_PITCH / 2;
+	const left = bubbleLeft(centerX, BUBBLE_WIDTH, rowWidth);
+	const squareTop = MONTH_ROW_HEIGHT + point.dayIndex * CELL_PITCH + SLOT_INSET;
+	return (
+		<DayPreviewBubble
+			title={title}
+			detail={detail}
+			left={left}
+			arrowX={centerX}
+			squareTop={squareTop}
+			containerHeight={GRID_HEIGHT}
+		/>
 	);
 }
 
@@ -186,6 +308,8 @@ interface WeekColumnProps {
 	reduced: boolean;
 	onTouch: () => void;
 	onOpenDay: (cell: GridCell) => void;
+	/** The day of this week under a holding finger (day preview), if any. */
+	previewDay: number | null;
 }
 
 const WeekColumn = memo(
@@ -197,6 +321,7 @@ const WeekColumn = memo(
 		reduced,
 		onTouch,
 		onOpenDay,
+		previewDay,
 	}: WeekColumnProps) {
 		const [pressed, setPressed] = useState<number | null>(null);
 		// The day a screen reader is on (swipe up/down changes it).
@@ -251,6 +376,9 @@ const WeekColumn = memo(
 				}}
 				onPressOut={() => setPressed(null)}
 				onPress={(event) => open(at(event))}
+				// A hold is a preview (the grid's gesture): lifting the finger
+				// after it never opens the day.
+				onLongPress={() => setPressed(null)}
 				style={styles.column}
 			>
 				<Animated.View style={[styles.columnInner, fade]}>
@@ -270,7 +398,7 @@ const WeekColumn = memo(
 						<DayCell
 							key={cell.date}
 							cell={cell}
-							pressed={pressed === index}
+							pressed={pressed === index || previewDay === index}
 							reduced={reduced}
 						/>
 					))}
@@ -286,6 +414,7 @@ const WeekColumn = memo(
 		prev.reduced === next.reduced &&
 		prev.elapsed === next.elapsed &&
 		prev.onOpenDay === next.onOpenDay &&
+		prev.previewDay === next.previewDay &&
 		weekSignature(prev.week) === weekSignature(next.week)
 );
 
@@ -359,6 +488,7 @@ function TodayCell({
 const SLOT_INSET = (CELL_PITCH - CELL_SIZE) / 2;
 
 const styles = StyleSheet.create({
+	list: { flex: 1 },
 	column: { width: CELL_PITCH, height: GRID_HEIGHT },
 	columnInner: { pointerEvents: "none" },
 	monthRow: { height: MONTH_ROW_HEIGHT },

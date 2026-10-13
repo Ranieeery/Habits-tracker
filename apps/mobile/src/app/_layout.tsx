@@ -8,6 +8,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -67,18 +68,21 @@ export default function RootLayout() {
 	useEffect(() => connectQueryManagers(), []);
 
 	return (
-		<SafeAreaProvider>
-			<KeyboardProvider>
-				<ServicesContext value={services}>
-					<QueryClientProvider client={queryClient}>
-						<ToastProvider>
-							<RootNavigator />
-						</ToastProvider>
-					</QueryClientProvider>
-				</ServicesContext>
-			</KeyboardProvider>
-			<StatusBar style="light" />
-		</SafeAreaProvider>
+		// Gesture Handler needs a root view (the heatmap's day preview, 2.10.0).
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<SafeAreaProvider>
+				<KeyboardProvider>
+					<ServicesContext value={services}>
+						<QueryClientProvider client={queryClient}>
+							<ToastProvider>
+								<RootNavigator />
+							</ToastProvider>
+						</QueryClientProvider>
+					</ServicesContext>
+				</KeyboardProvider>
+				<StatusBar style="light" />
+			</SafeAreaProvider>
+		</GestureHandlerRootView>
 	);
 }
 

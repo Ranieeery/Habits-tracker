@@ -2,7 +2,7 @@
 	"expo": {
 		"name": "Habits",
 		"slug": "habits",
-		"version": "2.9.0",
+		"version": "2.10.0",
 		"runtimeVersion": {
 			"policy": "fingerprint"
 		},

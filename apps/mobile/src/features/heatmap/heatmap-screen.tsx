@@ -203,7 +203,11 @@ export function HeatmapScreen() {
 					<HeatmapEmpty onCreate={() => router.push("/habit/new")} />
 				) : grid ? (
 					<Animated.View style={[gridFade, { gap: 12 }]}>
-						<HeatmapGrid grid={grid} onOpenDay={openDay} />
+						<HeatmapGrid
+							grid={grid}
+							filtered={habitId !== null}
+							onOpenDay={openDay}
+						/>
 						<View className="flex-row flex-wrap items-center justify-between gap-2">
 							<Text className="flex-1 text-xs text-night-subtle">
 								Sequência: dias com 80% ou mais.
