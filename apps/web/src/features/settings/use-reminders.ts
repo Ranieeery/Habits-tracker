@@ -20,6 +20,12 @@ import { ApiClientError } from "@habits/api-client";
 
 export const DEFAULT_REMINDER_TIME = "20:00";
 
+/**
+ * Errors the save hooks already showed a toast for: the "enable" flows call
+ * them and must not show a second one for the same failure.
+ */
+const reported = new WeakSet<Error>();
+
 /** Saves the account's reminder time; null turns reminders off. */
 export function useSaveReminderTime() {
 	const { api } = useServices();
@@ -30,6 +36,7 @@ export function useSaveReminderTime() {
 		onSuccess: (settings) =>
 			queryClient.setQueryData(queryKeys.settings, settings),
 		onError: (error) => {
+			reported.add(error);
 			if (!isUnauthorized(error)) {
 				toast.error("Não foi possível salvar o lembrete", {
 					description: errorMessage(error),
@@ -67,6 +74,7 @@ export function useSaveNotificationFlags() {
 			return { previous };
 		},
 		onError: (error, _changes, context) => {
+			reported.add(error);
 			if (context?.previous) {
 				queryClient.setQueryData(queryKeys.settings, context.previous);
 			}
@@ -86,7 +94,9 @@ export type EnableOutcome = "enabled" | "denied" | "unsupported";
 /**
  * Turns the morning digest on and makes sure this browser can receive it
  * (permission asked only now, from the click). The setting is saved even
- * when this browser refuses: other devices still get the digest.
+ * when this browser refuses: other devices still get the digest. A failure
+ * (subscribing, registering this browser or saving) says so (2.8.1: it used to
+ * fail silently).
  */
 export function useEnableDigest() {
 	const { api, push } = useServices();
@@ -101,6 +111,12 @@ export function useEnableDigest() {
 			}
 			await save.mutateAsync({ morning_digest_enabled: true });
 			return result.status === "subscribed" ? "enabled" : result.status;
+		},
+		onError: (error) => {
+			if (isUnauthorized(error) || reported.has(error)) return;
+			toast.error("Não foi possível ativar o resumo", {
+				description: errorMessage(error),
+			});
 		},
 	});
 }
@@ -124,7 +140,7 @@ export function useEnableReminders() {
 			return "enabled";
 		},
 		onError: (error) => {
-			if (!isUnauthorized(error)) {
+			if (!isUnauthorized(error) && !reported.has(error)) {
 				toast.error("Não foi possível ativar os lembretes", {
 					description: errorMessage(error),
 				});

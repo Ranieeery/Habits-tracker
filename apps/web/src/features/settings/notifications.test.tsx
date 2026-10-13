@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
 	apiError,
 	defaultRoutes,
+	fakePush,
 	json,
 	renderApp,
 	SETTINGS,
@@ -88,5 +89,93 @@ describe("notification settings", () => {
 				{ reminder_time: "21:45" },
 			])
 		);
+	});
+});
+
+// 2.8.1: turning the digest on used to fail silently when this browser could
+// not subscribe or register; now it says so, once.
+describe("turning the morning digest on", () => {
+	const SUBSCRIPTION = {
+		endpoint: "https://push.example.com/browser",
+		keys: { p256dh: "p256dh-key", auth: "auth-key" },
+	};
+	const digestOff = { ...SETTINGS, morning_digest_enabled: false };
+
+	function setup(
+		overrides: Parameters<typeof defaultRoutes>[0],
+		enable: () =>
+			| Promise<never>
+			| Promise<{
+					status: "subscribed";
+					subscription: typeof SUBSCRIPTION;
+			  }> = async () => ({ status: "subscribed", subscription: SUBSCRIPTION })
+	) {
+		return renderApp("/settings", {
+			push: fakePush({ support: () => "prompt", enable }),
+			routes: defaultRoutes({
+				"GET /v1/settings": () => json({ settings: digestOff }),
+				...overrides,
+			}),
+		});
+	}
+
+	const digestSwitch = () =>
+		screen.findByRole("switch", { name: /Resumo da manhã/ });
+
+	it("says so when this browser cannot subscribe", async () => {
+		let patched = false;
+		const { user } = setup(
+			{
+				"PATCH /v1/settings": () => {
+					patched = true;
+					return json({ settings: SETTINGS });
+				},
+			},
+			async () => {
+				throw new DOMException("Push service unavailable", "AbortError");
+			}
+		);
+		const digest = await digestSwitch();
+		await user.click(digest);
+
+		expect(
+			await screen.findByText("Não foi possível ativar o resumo")
+		).toBeInTheDocument();
+		expect(digest).not.toBeChecked();
+		expect(patched).toBe(false);
+	});
+
+	it("says so when registering this browser fails", async () => {
+		const { user } = setup({
+			"POST /v1/push/subscriptions": () => apiError(500, "internal_error"),
+		});
+		await user.click(await digestSwitch());
+
+		expect(
+			await screen.findByText("Não foi possível ativar o resumo")
+		).toBeInTheDocument();
+	});
+
+	it("shows one message when saving fails", async () => {
+		const { user } = setup({
+			"POST /v1/push/subscriptions": () =>
+				json({
+					subscription: {
+						id: "0199c9a0-3333-7000-8000-000000000001",
+						kind: "webpush",
+						device_label: null,
+						last_seen_at: 0,
+						created_at: 0,
+						updated_at: 0,
+					},
+				}),
+			"PATCH /v1/settings": () => apiError(500, "internal_error"),
+		});
+		await user.click(await digestSwitch());
+
+		expect(
+			await screen.findByText("Não foi possível salvar a preferência")
+		).toBeInTheDocument();
+		expect(screen.queryByText("Não foi possível ativar o resumo")).toBeNull();
 	});
 });

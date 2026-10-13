@@ -8,7 +8,7 @@ Habit tracker with a GitHub-contribution-style heatmap. Single real user (the ow
 
 This repository is a rewrite of a legacy app that lived as three independent npm projects (Fastify + Prisma/SQLite, React + Vite, Expo). The legacy code was removed from the tree after the v2 deploy; it remains in git history as a **read-only behavioral reference** at the tag `v2.0.0` (commit `5ce71d4`, the last one with `legacy/`): read it with `git show v2.0.0:legacy/<path>` or `git ls-tree -r --name-only v2.0.0 -- legacy/`. Never restore or import it.
 
-Version: api, web and mobile always share one version, currently **2.8.0** (policy and history in "Git and versioning").
+Version: api, web and mobile always share one version, currently **2.8.1** (policy and history in "Git and versioning").
 
 ### Product scope
 
@@ -351,6 +351,7 @@ Owner decisions taken before Phase 0. They override anything above that seems to
   - `2.7.0` (2026-10-12): a richer mobile history without clutter (habit filter, weekly trend, year highlights, per-habit rows), calendar-style pickers for days of the month and yearly habits, light motion (press scale, day fade, reorder slide, trend bars), the tab bar above the Android buttons, a shorter name placeholder. Same fingerprint: ships as an OTA update; API and web change only the version.
   - `2.7.1` (2026-10-13): the mobile month-day picker keeps each chosen day a separate rounded square (style instead of a changing `className`, and a background from mount so Android keeps the corners), and "Todo ano" is a month calendar with arrows instead of a month grid. Same fingerprint: OTA.
   - `2.8.0` (2026-10-13): overdue fixed-day habits: a habit on days of the month, a single date or yearly missed on its day shows first on today's list with "Atrasado desde DD/MM" for up to 15 days (web day view and "Hoje" panel, mobile day screen), marked with today's date and undoable; the missed day keeps its failure and a pending overdue habit never counts twice; the morning digest lists them and the reminder counts them; additive `overdue` on today's `GET /v1/day`. No migration, same fingerprint: OTA; deploy the API first.
+  - `2.8.1` (2026-10-13): the web says "Não foi possível ativar o resumo" when turning the morning digest on fails (subscribing or registering this browser used to fail silently), and a failed save shows one message instead of two. API and mobile change only the version (same fingerprint: OTA).
 
 ## Working agreements for Claude Code
 
