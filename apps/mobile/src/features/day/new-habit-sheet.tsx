@@ -12,7 +12,10 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import {
+	KeyboardAvoidingView,
+	useKeyboardState,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
 import { useCreateHabit, useNewId } from "@/data/hooks.ts";
@@ -31,12 +34,15 @@ import { useToast } from "@/ui/toast.tsx";
  * form. The habit starts today and is written to the device database (the
  * outbox), so this works offline and the list shows it at once. The sheet is
  * a Modal: on Android its own window, which keeps TalkBack inside it; the
- * keyboard pushes it up (react-native-keyboard-controller follows Modals),
- * and closing it gives the accessibility focus back to the button.
+ * keyboard pushes it up (react-native-keyboard-controller follows Modals) and
+ * the sheet shrinks to the space left above it, below the status bar, so the
+ * form scrolls inside it instead of leaving the screen (2.10.1). Closing it
+ * gives the accessibility focus back to the button.
  */
 export function NewHabitSheet({ today }: { today: CalendarDate }) {
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
+	const keyboardVisible = useKeyboardState((state) => state.isVisible);
 	const toast = useToast();
 	const newId = useNewId();
 	const timeZone = useUserTimeZone();
@@ -120,7 +126,7 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 				onShow={() => nameRef.current?.focus()}
 			>
 				<KeyboardAvoidingView behavior="padding" style={styles.fill}>
-					<View style={styles.bottom}>
+					<View style={[styles.bottom, { paddingTop: insets.top + 8 }]}>
 						{/* Tapping outside closes; screen readers use "Fechar". */}
 						<Pressable
 							accessible={false}
@@ -132,7 +138,11 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 						<View
 							accessibilityViewIsModal
 							className="gap-4 rounded-t-2xl border-t border-night-border bg-night-surface px-4 pt-2"
-							style={{ paddingBottom: insets.bottom + 16 }}
+							style={{
+								flexShrink: 1,
+								// The keyboard already covers the navigation bar.
+								paddingBottom: (keyboardVisible ? 0 : insets.bottom) + 16,
+							}}
 						>
 							<View className="items-center py-1">
 								<View className="h-1 w-10 rounded-full bg-night-surface-raised" />
@@ -151,9 +161,9 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 							</Text>
 							{habitId !== null ? (
 								// The form grows with the repetition fields: it scrolls
-								// inside the sheet, which never covers the status bar.
+								// inside the sheet, and shrinks with it above the keyboard.
 								<ScrollView
-									style={{ maxHeight: height * 0.6 }}
+									style={{ maxHeight: height * 0.6, flexShrink: 1 }}
 									keyboardShouldPersistTaps="handled"
 								>
 									<HabitForm

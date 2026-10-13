@@ -8,7 +8,7 @@ Habit tracker with a GitHub-contribution-style heatmap. Single real user (the ow
 
 This repository is a rewrite of a legacy app that lived as three independent npm projects (Fastify + Prisma/SQLite, React + Vite, Expo). The legacy code was removed from the tree after the v2 deploy; it remains in git history as a **read-only behavioral reference** at the tag `v2.0.0` (commit `5ce71d4`, the last one with `legacy/`): read it with `git show v2.0.0:legacy/<path>` or `git ls-tree -r --name-only v2.0.0 -- legacy/`. Never restore or import it.
 
-Version: api, web and mobile always share one version, currently **2.10.0** (policy and history in "Git and versioning").
+Version: api, web and mobile always share one version, currently **2.10.1** (policy and history in "Git and versioning").
 
 ### Product scope
 
@@ -367,6 +367,7 @@ Owner decisions taken before Phase 0. They override anything above that seems to
   - `2.8.1` (2026-10-13): the web says "Não foi possível ativar o resumo" when turning the morning digest on fails (subscribing or registering this browser used to fail silently), and a failed save shows one message instead of two. API and mobile change only the version (same fingerprint: OTA).
   - `2.9.0` (2026-10-13): app icon (also adaptive and themed), notification icon, splash and web icons (favicon, Apple touch, PWA and a new maskable icon) drawn from the mark, four heatmap squares on `night-bg`, generated from `packages/design-tokens` (`brand`); native colors in `app.json` on the night tokens. The fingerprint changed: **needs a new build** (no OTA); API and web change only the version and the web icons.
   - `2.10.0` (2026-10-13): mobile heatmap: hold a square to see its date and result in a bubble (like the web's hover), slide to sweep other days, lift to close; a quick tap still opens the day. JS only: same fingerprint as 2.9.0 (OTA once the 2.9.0 build is installed); API and web change only the version.
+  - `2.10.1` (2026-10-13): mobile "Novo hábito" sheet on today: with the keyboard open the sheet shrinks to the space above it (the form scrolls inside) instead of being pushed up whole, which hid the name field above the screen. JS only: same fingerprint (OTA); API and web change only the version.
 
 ## Working agreements for Claude Code
 

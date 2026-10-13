@@ -62,9 +62,14 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 
 - Add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK; check with `pnpm dlx expo-doctor`.
 - Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins. `@babel/plugin-transform-react-jsx` is a devDependency only because the NativeWind/css-interop preset loads it by name without declaring it (a clean install cannot resolve it otherwise); keep it.
-- Version (`2.10.0`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
+- Version (`2.10.1`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
 - Native colors in `app.json` (window, splash, adaptive icon background, notification color) must equal `nightColors` (`src/app-config.test.ts`); the icon and splash PNGs come from `pnpm --filter @habits/design-tokens brand` (2.9.0), never edited by hand, and any change to them needs a new build.
 - `*.config.js` files are CommonJS (ESLint override in `eslint.config.mjs`); the Vitest config is `vitest.config.mts` because the package is CommonJS.
+
+## Manual checks (2.10.1: new habit sheet and keyboard)
+
+1. Hoje > "Novo hábito", tap the name field: the keyboard opens, the sheet stays below the status bar with its title, and the name field is visible right above the form; the rest of the form scrolls inside the sheet above the keyboard (no gap the size of the navigation bar).
+2. Close the keyboard: the sheet goes back to its normal height, above the navigation bar. Hábitos > "Novo hábito" (a full screen) works as before.
 
 ## Manual checks (2.10.0: heatmap day preview)
 
