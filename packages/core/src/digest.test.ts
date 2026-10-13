@@ -49,6 +49,7 @@ describe("selectDigestContent", () => {
 				todayTotal: 2,
 				todayPending: 2,
 				highlights: ["Trocar filtro"],
+				overdue: [],
 				tomorrow: ["Consulta dermatologista"],
 			}
 		);
@@ -57,7 +58,11 @@ describe("selectDigestContent", () => {
 	it("shows the single date again on its day", () => {
 		expect(
 			selectDigestContent([ler, consulta], [], "2026-11-20", sp)
-		).toMatchObject({ highlights: ["Consulta dermatologista"], tomorrow: [] });
+		).toMatchObject({
+			highlights: ["Consulta dermatologista"],
+			overdue: [],
+			tomorrow: [],
+		});
 	});
 
 	it("leaves out completed habits from the highlights", () => {
@@ -66,6 +71,7 @@ describe("selectDigestContent", () => {
 			todayTotal: 2,
 			todayPending: 1,
 			highlights: [],
+			overdue: [],
 			tomorrow: [],
 		});
 	});
@@ -76,6 +82,7 @@ describe("selectDigestContent", () => {
 			todayTotal: 0,
 			todayPending: 0,
 			highlights: [],
+			overdue: [],
 			tomorrow: [],
 		});
 	});
@@ -85,6 +92,7 @@ const content: DigestContent = {
 	todayTotal: 3,
 	todayPending: 3,
 	highlights: ["Trocar filtro"],
+	overdue: [],
 	tomorrow: ["Consulta dermatologista"],
 };
 
@@ -172,7 +180,13 @@ describe("digestMessage", () => {
 	it("omits empty parts", () => {
 		expect(
 			digestMessage(
-				{ todayTotal: 1, todayPending: 1, highlights: [], tomorrow: [] },
+				{
+					todayTotal: 1,
+					todayPending: 1,
+					highlights: [],
+					overdue: [],
+					tomorrow: [],
+				},
 				true
 			).body
 		).toBe("1 hábito hoje.");
@@ -182,6 +196,7 @@ describe("digestMessage", () => {
 					todayTotal: 0,
 					todayPending: 0,
 					highlights: [],
+					overdue: [],
 					tomorrow: ["A", "B"],
 				},
 				true
@@ -212,10 +227,113 @@ describe("digestMessage", () => {
 			(_, i) => `Hábito ${i} ${"x".repeat(100)}`
 		);
 		const { body } = digestMessage(
-			{ todayTotal: 20, todayPending: 20, highlights: long, tomorrow: long },
+			{
+				todayTotal: 20,
+				todayPending: 20,
+				highlights: long,
+				overdue: [],
+				tomorrow: long,
+			},
 			true
 		);
 		expect(body.length).toBeLessThanOrEqual(240);
 		expect(body).toMatch(/mais 11/);
+	});
+});
+
+describe("overdue habits in the digest (2.8.0)", () => {
+	const conta = habit("Pagar condomínio", {
+		schedule: { type: "monthly_days", days: [15] },
+		start_date: "2026-10-01",
+	});
+
+	it("lists the overdue habits not completed yet", () => {
+		expect(selectDigestContent([ler, conta], [], TODAY, sp)).toEqual({
+			todayTotal: 1,
+			todayPending: 1,
+			highlights: [],
+			overdue: ["Pagar condomínio"],
+			tomorrow: [],
+		});
+		const lateDone = [{ habit_id: conta.id, date: TODAY, deleted_at: null }];
+		expect(
+			selectDigestContent([ler, conta], lateDone, TODAY, sp)
+		).toMatchObject({ todayTotal: 2, todayPending: 1, overdue: [] });
+	});
+
+	it("sends for an overdue habit alone", () => {
+		const onlyOverdue = {
+			todayTotal: 0,
+			todayPending: 0,
+			highlights: [],
+			overdue: ["Pagar condomínio"],
+			tomorrow: [],
+		};
+		expect(shouldSendMorningDigest({ ...base, content: onlyOverdue })).toBe(
+			true
+		);
+	});
+
+	it("counts and names them with titles", () => {
+		expect(
+			digestMessage({ ...content, overdue: ["Pagar condomínio"] }, true).body
+		).toBe(
+			"Hoje: Trocar filtro. 3 hábitos hoje. 1 atrasado: Pagar condomínio. Amanhã: Consulta dermatologista."
+		);
+		expect(
+			digestMessage(
+				{
+					todayTotal: 0,
+					todayPending: 0,
+					highlights: [],
+					overdue: ["A", "B"],
+					tomorrow: [],
+				},
+				true
+			).body
+		).toBe("2 atrasados: A e B.");
+	});
+
+	it("only counts them when titles are hidden", () => {
+		expect(
+			digestMessage({ ...content, overdue: ["Pagar condomínio"] }, false).body
+		).toBe(
+			"Você tem compromissos hoje, 1 hábito atrasado e um compromisso amanhã."
+		);
+		expect(
+			digestMessage({ ...content, tomorrow: [], overdue: ["A", "B"] }, false)
+				.body
+		).toBe("Você tem compromissos hoje e 2 hábitos atrasados.");
+		const { title, body } = digestMessage(
+			{
+				todayTotal: 0,
+				todayPending: 0,
+				highlights: [],
+				overdue: ["Pagar condomínio"],
+				tomorrow: [],
+			},
+			false
+		);
+		expect(body).toBe("Você tem 1 hábito atrasado.");
+		expect(`${title} ${body}`).not.toMatch(/condomínio/);
+	});
+
+	it("fits the payload limit with three long lists", () => {
+		const long = Array.from(
+			{ length: 12 },
+			(_, i) => `Hábito ${i} ${"x".repeat(100)}`
+		);
+		const { body } = digestMessage(
+			{
+				todayTotal: 20,
+				todayPending: 20,
+				highlights: long,
+				overdue: long,
+				tomorrow: long,
+			},
+			true
+		);
+		expect(body.length).toBeLessThanOrEqual(240);
+		expect(body).toMatch(/12 atrasados: /);
 	});
 });

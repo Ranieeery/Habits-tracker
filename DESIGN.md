@@ -77,6 +77,8 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 
 **Calendário**: dias em `tabular-nums`, selecionado em `night-accent`, indisponíveis em `night-subtle`; mês com só a primeira letra maiúscula.
 
+**Selo de atrasado** (2.8.0, só na lista de hoje): hábito de dia fixo que passou sem marcar fica no topo da lista com um selo "Atrasado desde 11/10": ícone de calendário com relógio + texto em `night-warning` sobre `night-warning-surface`, contorno `night-warning` a 60%, `rounded-md`, texto `xs`. Nunca só cor; lido como "Nome, atrasado desde 11 de outubro". No web fica ao lado do nome (quebra para baixo se faltar espaço); no celular, abaixo do nome. Marcado, continua no lugar com o selo (o nome riscado), para que desmarcar o devolva ao estado anterior. Sem ação "Dispensar". Quando só há atrasados pendentes, a barra de progresso dá lugar a "Nada previsto para hoje além dos atrasados."
+
 **Aviso de dia passado**: `night-warning` sobre `night-warning-surface`, sempre com ícone e texto.
 
 **Datas e títulos**: só a primeira letra em maiúscula (`first-letter:uppercase`), nunca `capitalize` em frases ("5 de outubro", não "5 De Outubro").

@@ -4,6 +4,7 @@ import {
 	BACKFILL_DAYS,
 	completionRatio,
 	type DayEditState,
+	type DayItems,
 	getDayEditState,
 	isCalendarDate,
 	isDayEditable,
@@ -13,7 +14,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { type ReactNode, useState } from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeIn, ReduceMotion } from "react-native-reanimated";
-import { isSettled, useDay, useHabits } from "@/data/hooks.ts";
+import { isSettled, useHabits } from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import {
 	capitalizeFirst,
@@ -29,10 +30,10 @@ import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { EditDayFooter } from "./edit-day-sheet.tsx";
-import { HabitRow } from "./habit-row.tsx";
+import { DayItemsList } from "./day-items-list.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
-import { useCompletionChange } from "./use-completion-change.ts";
+import { useDayItems } from "./use-day-items.ts";
 
 const DAY_ENTER = FadeIn.duration(150).reduceMotion(ReduceMotion.System);
 
@@ -70,7 +71,8 @@ export function DayScreen() {
  * Every change shows "Desfazer" (the inverse change, through the outbox).
  * Since 2.6.0 it is also the body of the Hoje tab (`inTabs`: under the
  * status bar instead of a native header, which it must not retitle, with the
- * tab's header and week strip in `header`).
+ * tab's header and week strip in `header`). Since 2.8.0 today lists the
+ * overdue fixed-day habits first, with their badge (`useDayItems`).
  */
 export function DayView({
 	date,
@@ -84,13 +86,12 @@ export function DayView({
 	header?: ReactNode;
 }) {
 	const router = useRouter();
-	const day = useDay(date);
-	const { change, dismissUndo } = useCompletionChange(date);
+	const { day, view, change, dismissUndo } = useDayItems(date);
 	const editState = getDayEditState(date, today);
 	const [unlocked, setUnlocked] = useState(false);
 	const isToday = editState === "today";
 	const editable = isDayEditable(editState, unlocked);
-	const hasHabits = (day.data?.possible_habits.length ?? 0) > 0;
+	const hasHabits = (view?.items.length ?? 0) > 0;
 	useHideSplashWhen(isSettled(day));
 
 	let footer: ReactNode;
@@ -142,10 +143,10 @@ export function DayView({
 			{/* Changing the day (Hoje's strip) fades the new list in (150 ms). */}
 			<Animated.View entering={DAY_ENTER} style={{ gap: 24 }}>
 				<QueryState query={day} loadingLabel="Carregando o dia…">
-					{(data) =>
-						data.possible_habits.length === 0 && isToday ? (
+					{() =>
+						view === null ? null : view.items.length === 0 && isToday ? (
 							<TodayEmptyState />
-						) : data.possible_habits.length === 0 ? (
+						) : view.items.length === 0 ? (
 							<EmptyState
 								title="Nenhum hábito para este dia"
 								description="Hábitos aparecem nos dias em que se repetem."
@@ -159,8 +160,8 @@ export function DayView({
 							/>
 						) : (
 							<DayContent
-								possible={data.possible_habits}
-								completedIds={new Set(data.completed_habit_ids)}
+								date={date}
+								view={view}
 								editable={editable}
 								editState={editState}
 								unlocked={unlocked}
@@ -202,34 +203,41 @@ function TodayEmptyState() {
 }
 
 function DayContent({
-	possible,
-	completedIds,
+	date,
+	view,
 	editable,
 	editState,
 	unlocked,
 	onToggle,
 }: {
-	possible: Habit[];
-	completedIds: Set<string>;
+	date: CalendarDate;
+	view: DayItems;
 	editable: boolean;
 	editState: DayEditState;
 	unlocked: boolean;
 	onToggle: (habit: Habit, completed: boolean) => void;
 }) {
-	const completed = possible.filter((habit) => completedIds.has(habit.id));
-	const ratio = completionRatio(completed.length, possible.length);
-	const summary = `${completed.length} de ${possible.length} concluídos (${formatPercent(ratio)})`;
+	const { completed, possible } = view.progress;
+	const ratio = completionRatio(completed, possible);
+	const summary = `${completed} de ${possible} concluídos (${formatPercent(ratio)})`;
 
 	return (
 		<>
-			<View className="gap-2">
-				<ProgressBar
-					ratio={ratio}
-					label="Progresso do dia"
-					valueText={summary}
-				/>
-				<Text className="text-sm text-night-muted">{summary}</Text>
-			</View>
+			{possible === 0 ? (
+				// Only overdue habits, none done yet: no "0 de 0" bar.
+				<Text className="text-sm text-night-muted">
+					Nada previsto para hoje além dos atrasados.
+				</Text>
+			) : (
+				<View className="gap-2">
+					<ProgressBar
+						ratio={ratio}
+						label="Progresso do dia"
+						valueText={summary}
+					/>
+					<Text className="text-sm text-night-muted">{summary}</Text>
+				</View>
+			)}
 
 			{editState === "past_editable" && unlocked ? (
 				<View
@@ -258,18 +266,12 @@ function DayContent({
 				</View>
 			) : null}
 
-			<View className="overflow-hidden rounded-xl border border-night-border bg-night-surface">
-				{possible.map((habit, index) => (
-					<HabitRow
-						key={habit.id}
-						name={habit.name}
-						checked={completedIds.has(habit.id)}
-						disabled={!editable}
-						divider={index > 0}
-						onToggle={(checked) => onToggle(habit, checked)}
-					/>
-				))}
-			</View>
+			<DayItemsList
+				date={date}
+				items={view.items}
+				disabled={!editable}
+				onToggle={onToggle}
+			/>
 		</>
 	);
 }

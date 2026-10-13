@@ -2,6 +2,8 @@ import type { CalendarDate } from "@habits/contracts";
 import {
 	BACKFILL_DAYS,
 	completionRatio,
+	type DayItem,
+	type DayProgress,
 	getDayEditState,
 	isDayEditable,
 } from "@habits/core";
@@ -17,13 +19,13 @@ import {
 	formatPercent,
 	formatShortDate,
 } from "@/lib/format.ts";
-import { dayQuery, habitsQuery } from "@/lib/queries.ts";
+import { habitsQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
-import { DayHabitItem } from "./day-habit-item.tsx";
+import { DayItemsList } from "./day-items-list.tsx";
 import { NewHabitDialog } from "./new-habit-dialog.tsx";
 import { PastDayBar } from "./past-day-bar.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
-import { useToggleCompletion } from "./use-toggle-completion.ts";
+import { useDayItems } from "./use-day-items.ts";
 
 /**
  * The habits possible on `date` and their completion. Today is editable; a
@@ -32,7 +34,8 @@ import { useToggleCompletion } from "./use-toggle-completion.ts";
  * read-only (core's `getDayEditState`). The unlock is this component's
  * state only: `DayPage` keys it by date, so changing days or leaving the
  * screen locks the day again. Today also offers "Novo hábito": in the
- * header, or as the empty state's action.
+ * header, or as the empty state's action, and lists the overdue fixed-day
+ * habits first (2.8.0, `useDayItems`).
  */
 export function DayView({
 	date,
@@ -41,14 +44,12 @@ export function DayView({
 	date: CalendarDate;
 	today: CalendarDate;
 }) {
-	const { api } = useServices();
-	const day = useQuery(dayQuery(api, date));
-	const toggle = useToggleCompletion(date);
+	const { day, view, toggle } = useDayItems(date);
 	const editState = getDayEditState(date, today);
 	const [unlocked, setUnlocked] = useState(false);
 	const isToday = editState === "today";
 	const editable = isDayEditable(editState, unlocked);
-	const hasHabits = (day.data?.possible_habits.length ?? 0) > 0;
+	const hasHabits = (view?.items.length ?? 0) > 0;
 
 	const [weekday = "", ...rest] = formatLongDate(date).split(", ");
 
@@ -84,9 +85,9 @@ export function DayView({
 				</div>
 			) : day.isError ? (
 				<ErrorState error={day.error} onRetry={() => day.refetch()} />
-			) : day.data.possible_habits.length === 0 && isToday ? (
+			) : view === null ? null : view.items.length === 0 && isToday ? (
 				<TodayEmptyState today={today} />
-			) : day.data.possible_habits.length === 0 ? (
+			) : view.items.length === 0 ? (
 				<EmptyState
 					title="Nenhum hábito para este dia"
 					description="Hábitos aparecem nos dias em que se repetem."
@@ -101,8 +102,9 @@ export function DayView({
 				/>
 			) : (
 				<DayContent
-					possible={day.data.possible_habits}
-					completedIds={new Set(day.data.completed_habit_ids)}
+					date={date}
+					items={view.items}
+					progress={view.progress}
 					editable={editable}
 					onToggle={(habit, completed) =>
 						toggle.mutate({
@@ -163,49 +165,52 @@ function TodayEmptyState({ today }: { today: CalendarDate }) {
 }
 
 function DayContent({
-	possible,
-	completedIds,
+	date,
+	items,
+	progress,
 	editable,
 	onToggle,
 	bar,
 }: {
-	possible: { id: string; name: string }[];
-	completedIds: Set<string>;
+	date: CalendarDate;
+	items: readonly DayItem[];
+	progress: DayProgress;
 	editable: boolean;
 	onToggle: (habit: { id: string; name: string }, completed: boolean) => void;
 	/** Read-only notice or past-day editing controls, above the list. */
 	bar: ReactNode;
 }) {
-	const completed = possible.filter((habit) => completedIds.has(habit.id));
-	const ratio = completionRatio(completed.length, possible.length);
+	const { completed, possible } = progress;
+	const ratio = completionRatio(completed, possible);
 
 	return (
 		<>
-			<div className="flex flex-col gap-2">
-				<Progress
-					value={ratio * 100}
-					aria-label="Progresso do dia"
-					aria-valuetext={`${completed.length} de ${possible.length} hábitos concluídos`}
-				/>
-				<p className="text-sm text-night-muted tabular-nums">
-					{completed.length} de {possible.length} concluídos (
-					{formatPercent(ratio)})
+			{possible === 0 ? (
+				// Only overdue habits, none done yet: no "0 de 0" bar.
+				<p className="text-sm text-night-muted">
+					Nada previsto para hoje além dos atrasados.
 				</p>
-			</div>
+			) : (
+				<div className="flex flex-col gap-2">
+					<Progress
+						value={ratio * 100}
+						aria-label="Progresso do dia"
+						aria-valuetext={`${completed} de ${possible} hábitos concluídos`}
+					/>
+					<p className="text-sm text-night-muted tabular-nums">
+						{completed} de {possible} concluídos ({formatPercent(ratio)})
+					</p>
+				</div>
+			)}
 
 			{bar}
 
-			<ul className="-mx-2 flex flex-col">
-				{possible.map((habit) => (
-					<DayHabitItem
-						key={habit.id}
-						habit={habit}
-						completed={completedIds.has(habit.id)}
-						editable={editable}
-						onToggle={(value) => onToggle(habit, value)}
-					/>
-				))}
-			</ul>
+			<DayItemsList
+				date={date}
+				items={items}
+				editable={editable}
+				onToggle={onToggle}
+			/>
 		</>
 	);
 }

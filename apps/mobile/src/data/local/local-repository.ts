@@ -21,9 +21,11 @@ import {
 	lastDayOfYear,
 	materialize,
 	newHabit,
+	overdueRange,
 	sortHabits,
 	summarizeYear,
 	todayIn,
+	todayView,
 } from "@habits/core";
 import { DataError } from "../errors.ts";
 import type { HabitsRepository } from "../repository.ts";
@@ -147,6 +149,14 @@ export function createLocalRepository({
 
 		async getDay(date) {
 			const { timezone } = await settings();
+			// Today also lists the overdue fixed-day habits (2.8.0), from the
+			// local completions of the last OVERDUE_DAYS, like the API does.
+			if (date === todayIn(timezone, now())) {
+				const { habits, completions } = await view(overdueRange(date));
+				return todayView(sortHabits(habits), completions, date, {
+					timeZone: timezone,
+				});
+			}
 			const { habits, completions } = await view({ from: date, to: date });
 			return dayView(sortHabits(habits), completions, date, {
 				timeZone: timezone,

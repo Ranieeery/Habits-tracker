@@ -88,3 +88,31 @@ describe("withSummaryDay", () => {
 		).toEqual([]);
 	});
 });
+
+describe("withSummaryDay with overdue habits (2.8.0)", () => {
+	const habit = (id: string) => ({
+		id,
+		name: id,
+		schedule: { type: "monthly_days" as const, days: [5] },
+		start_date: "2026-10-01",
+		archived_at: null,
+		sort_key: "a0",
+		created_at: 0,
+		updated_at: 0,
+		deleted_at: null,
+	});
+	const today: DayData = {
+		date: "2026-10-09",
+		possible_habits: [],
+		completed_habit_ids: [],
+		overdue: [{ habit: habit(A), since: "2026-10-05", completed_today: false }],
+	};
+
+	it("leaves a pending overdue habit out and counts it once marked", () => {
+		expect(withSummaryDay([], today)).toEqual([]);
+		const marked = withCompletion(today, { habitId: A, completed: true });
+		expect(withSummaryDay([], marked)).toEqual([
+			{ date: "2026-10-09", completed: 1, possible: 1 },
+		]);
+	});
+});

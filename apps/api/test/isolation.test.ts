@@ -127,6 +127,8 @@ describe.each(["bearer", "cookie"] as const)("as another user (%s)", (kind) => {
 			date: TODAY,
 			possible_habits: [],
 			completed_habit_ids: [],
+			// Today: no overdue habits either (2.8.0).
+			overdue: [],
 		});
 		const summary = (await (
 			await as("/v1/summary?year=2026")

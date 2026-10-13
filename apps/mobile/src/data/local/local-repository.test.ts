@@ -291,3 +291,90 @@ describe("habit order (2.4.0)", () => {
 		]);
 	});
 });
+
+describe("overdue habits on today (2.8.0)", () => {
+	const CONDO = "00000000-0000-7000-8000-000000000010";
+	const READ = "00000000-0000-7000-8000-000000000011";
+	const pulled = (id: string, name: string, schedule: unknown) => ({
+		id,
+		name,
+		schedule,
+		start_date: "2026-09-01",
+		archived_at: null,
+		sort_key: id === CONDO ? "a1" : "a0",
+		created_at: Date.parse("2026-09-01T12:00:00Z"),
+		updated_at: 1,
+		deleted_at: null,
+	});
+
+	async function seeded() {
+		const ctx = setup();
+		await ctx.store.applyPullPage({
+			changes: {
+				habits: [
+					pulled(READ, "Ler", EVERY_DAY),
+					pulled(CONDO, "Pagar condomínio", {
+						type: "monthly_days",
+						days: [5],
+					}),
+				] as never,
+				completions: [],
+			},
+			cursor: "1.2",
+			has_more: false,
+		});
+		return ctx;
+	}
+
+	it("lists them on today only, from the local data", async () => {
+		const { repository } = await seeded();
+		const today = await repository.getDay(TODAY);
+		expect(today.possible_habits.map((h) => h.name)).toEqual(["Ler"]);
+		expect(today.overdue).toEqual([
+			expect.objectContaining({
+				habit: expect.objectContaining({ id: CONDO }),
+				since: "2026-10-05",
+				completed_today: false,
+			}),
+		]);
+		expect(await repository.getDay("2026-10-08")).not.toHaveProperty("overdue");
+	});
+
+	it("marks them with today's date through the outbox (offline) and undoes it", async () => {
+		const { repository, store } = await seeded();
+		await repository.setCompletion(CONDO, TODAY, true);
+		const marked = await repository.getDay(TODAY);
+		expect(marked.overdue?.[0]?.completed_today).toBe(true);
+		expect(marked.completed_habit_ids).toContain(CONDO);
+		const [entry] = await store.readOutbox();
+		expect(entry?.mutation).toMatchObject({
+			type: "completion.set",
+			habit_id: CONDO,
+			date: TODAY,
+			completed: true,
+		});
+		// The missed day keeps its failure; today counts it as done.
+		const summary = await repository.getYearSummary(2026);
+		expect(summary).toContainEqual({
+			date: "2026-10-05",
+			possible: 2,
+			completed: 0,
+		});
+		expect(summary).toContainEqual({
+			date: TODAY,
+			possible: 2,
+			completed: 1,
+		});
+
+		await repository.setCompletion(CONDO, TODAY, false);
+		const undone = await repository.getDay(TODAY);
+		expect(undone.overdue?.[0]?.completed_today).toBe(false);
+		expect(undone.completed_habit_ids).toEqual([]);
+	});
+
+	it("drops a habit completed on a past day inside the window", async () => {
+		const { repository } = await seeded();
+		await repository.setCompletion(CONDO, "2026-10-07", true);
+		expect((await repository.getDay(TODAY)).overdue).toEqual([]);
+	});
+});

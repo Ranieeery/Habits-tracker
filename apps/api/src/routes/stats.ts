@@ -8,7 +8,9 @@ import {
 	dayView,
 	firstDayOfYear,
 	lastDayOfYear,
+	overdueRange,
 	summarizeYear,
+	todayView,
 } from "@habits/core";
 import { createRoute } from "@hono/zod-openapi";
 import { router } from "../http/context.ts";
@@ -23,7 +25,8 @@ const dayRoute = createRoute({
 	method: "get",
 	path: "/day",
 	tags,
-	summary: "Habits possible on a local date and which were completed",
+	summary:
+		"Habits possible on a local date and which were completed; on the user's today, also the overdue ones",
 	request: { query: DayQuery },
 	responses: { 200: jsonResponse(DayResponse, "Day"), ...commonErrors },
 });
@@ -43,12 +46,17 @@ export const statsRoutes = router()
 	.openapi(dayRoute, async (c) => {
 		const { date } = c.req.valid("query");
 		const { db, userId } = c.var;
-		const { timeZone } = await userToday(c);
+		const { timeZone, today } = await userToday(c);
+		// Today also lists the overdue fixed-day habits (2.8.0), which need the
+		// completions of the last OVERDUE_DAYS: same query, wider range.
+		const isToday = date === today;
+		const range = isToday ? overdueRange(today) : { from: date, to: date };
 		const [habits, completions] = await Promise.all([
 			listHabits(db, userId),
-			listLiveCompletions(db, userId, date, date),
+			listLiveCompletions(db, userId, range.from, range.to),
 		]);
-		return c.json(dayView(habits, completions, date, { timeZone }), 200);
+		const view = isToday ? todayView : dayView;
+		return c.json(view(habits, completions, date, { timeZone }), 200);
 	})
 	.openapi(summaryRoute, async (c) => {
 		const { year } = c.req.valid("query");

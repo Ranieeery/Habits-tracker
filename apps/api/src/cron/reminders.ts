@@ -8,11 +8,12 @@ import {
 	digestMessage,
 	isDigestDue,
 	isReminderDue,
+	overdueRange,
+	pendingTodayCount,
 	reminderMessage,
 	selectDigestContent,
 	shouldSendMorningDigest,
 	shouldSendReminder,
-	summarizeDay,
 } from "@habits/core";
 import type { AppConfig } from "../config.ts";
 import type { Db } from "../db/client.ts";
@@ -130,9 +131,11 @@ export async function runReminderJob(
 
 		// Decide with the data before claiming: a run with nothing to send leaves
 		// the day unclaimed (a single date added later today still gets in).
+		// The completions cover the overdue window (2.8.0): same query.
+		const range = overdueRange(today);
 		const [habits, completions] = await Promise.all([
 			listHabits(db, candidate.user_id),
-			listLiveCompletions(db, candidate.user_id, today, today),
+			listLiveCompletions(db, candidate.user_id, range.from, range.to),
 		]);
 		const outgoing: Outgoing[] = [];
 		if (digestDue.due) {
@@ -159,10 +162,10 @@ export async function runReminderJob(
 			}
 		}
 		if (reminderDue.due) {
-			const { possible, completed } = summarizeDay(habits, completions, today, {
+			// Today's pending habits plus the overdue ones not done yet.
+			const pendingCount = pendingTodayCount(habits, completions, today, {
 				timeZone,
 			});
-			const pendingCount = possible - completed;
 			const wanted = shouldSendReminder({
 				nowMs: now,
 				timeZone,

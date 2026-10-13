@@ -1,6 +1,6 @@
 // Morning digest: one push a day at the fixed MORNING_DIGEST_TIME in the
-// user's time zone, with today's non-weekday habits and tomorrow's single
-// dates. Pure: the instant, time zone, habits, completions, settings and the
+// user's time zone, with today's non-weekday habits, the overdue ones (2.8.0)
+// and tomorrow's single dates. Pure: the instant, time zone, habits, completions, settings and the
 // last sent date are parameters (the cron passes its scheduled time).
 import {
 	type Completion,
@@ -8,6 +8,7 @@ import {
 	isSupportedSchedule,
 } from "@habits/contracts";
 import { addDays, type CalendarDate } from "./dates.ts";
+import { overdueOn } from "./overdue.ts";
 import { isWithinSendWindow, type LocalTime } from "./reminders.ts";
 import {
 	isHabitCountedOn,
@@ -29,7 +30,8 @@ export const DIGEST_GRACE_MINUTES = 180;
 /** Body limit of `PushNotificationPayload`. */
 const MAX_BODY = 240;
 
-type DigestHabit = SchedulableHabit & Pick<Habit, "id" | "name">;
+type DigestHabit = SchedulableHabit &
+	Pick<Habit, "id" | "name" | "created_at" | "sort_key">;
 type CompletionFacts = Pick<Completion, "habit_id" | "date" | "deleted_at">;
 
 export interface DigestContent {
@@ -39,11 +41,16 @@ export interface DigestContent {
 	todayPending: number;
 	/** Names of today's pending habits whose schedule is not `weekdays`. */
 	highlights: string[];
+	/** Names of the overdue habits not completed yet (`overdueOn`, 2.8.0). */
+	overdue: string[];
 	/** Names of single-date habits happening tomorrow. */
 	tomorrow: string[];
 }
 
-/** What the digest of `today` would say. */
+/**
+ * What the digest of `today` would say. `completions` should cover
+ * `overdueRange(today)`, or overdue habits are judged on less history.
+ */
 export function selectDigestContent(
 	habits: readonly DigestHabit[],
 	completions: readonly CompletionFacts[],
@@ -60,6 +67,9 @@ export function selectDigestContent(
 		todayTotal: 0,
 		todayPending: 0,
 		highlights: [],
+		overdue: overdueOn(habits, completions, today, options)
+			.filter((item) => !item.completedToday)
+			.map((item) => item.habit.name),
 		tomorrow: [],
 	};
 	for (const habit of habits) {
@@ -136,11 +146,16 @@ export interface ShouldSendDigestInput extends DigestTimingInput {
 
 /**
  * At most one digest per local day, inside its window, only when something
- * is still pending today or a single-date habit happens tomorrow.
+ * is still pending today, a habit is overdue, or a single-date habit happens
+ * tomorrow.
  */
 export function shouldSendMorningDigest(input: ShouldSendDigestInput): boolean {
 	const { content } = input;
-	if (content.todayPending === 0 && content.tomorrow.length === 0) {
+	if (
+		content.todayPending === 0 &&
+		content.overdue.length === 0 &&
+		content.tomorrow.length === 0
+	) {
 		return false;
 	}
 	return isDigestDue(input).due;
@@ -171,8 +186,10 @@ export interface DigestMessage {
 
 /**
  * pt-BR text of the digest. With titles: "Hoje: Trocar filtro. 5 hábitos
- * hoje. Amanhã: Consulta dermatologista." Without titles (lock screen
- * privacy): "Você tem compromissos hoje e amanhã." and its variants.
+ * hoje. 1 atrasado: Pagar condomínio. Amanhã: Consulta dermatologista."
+ * Without titles (lock screen privacy): "Você tem compromissos hoje e
+ * amanhã.", "Você tem compromissos hoje e 2 hábitos atrasados." and their
+ * variants (counts, never names).
  */
 export function digestMessage(
 	content: DigestContent,
@@ -180,7 +197,25 @@ export function digestMessage(
 ): DigestMessage {
 	const title = "Resumo do dia";
 	const hasToday = content.todayPending > 0;
+	const overdueCount = content.overdue.length;
 	const hasTomorrow = content.tomorrow.length > 0;
+	if (!showTitles && overdueCount > 0) {
+		// Counts only, like the reminder: "Você tem compromissos hoje e 2
+		// hábitos atrasados."
+		const clauses: string[] = [];
+		if (hasToday) clauses.push("compromissos hoje");
+		clauses.push(
+			`${overdueCount} ${overdueCount === 1 ? "hábito atrasado" : "hábitos atrasados"}`
+		);
+		if (hasTomorrow) {
+			clauses.push(
+				content.tomorrow.length === 1
+					? "um compromisso amanhã"
+					: "compromissos amanhã"
+			);
+		}
+		return { title, body: `Você tem ${joinWithAnd(clauses)}.` };
+	}
 	if (!showTitles) {
 		let body: string;
 		if (hasToday && hasTomorrow) body = "Você tem compromissos hoje e amanhã.";
@@ -194,15 +229,30 @@ export function digestMessage(
 		content.todayTotal > 0
 			? `${content.todayTotal} ${content.todayTotal === 1 ? "hábito" : "hábitos"} hoje.`
 			: "";
-	// Room left for names, shared between today's and tomorrow's lists.
-	const fixed = total.length + "Hoje: . Amanhã: . ".length;
+	const overduePrefix =
+		overdueCount > 0
+			? `${overdueCount} ${overdueCount === 1 ? "atrasado" : "atrasados"}: `
+			: "";
+	// Room left for names, shared between today's, the overdue and
+	// tomorrow's lists (the last one takes what is left).
+	const fixed =
+		total.length +
+		"Hoje: . Amanhã: . ".length +
+		(overdueCount > 0 ? overduePrefix.length + ". ".length : 0);
 	const room = Math.max(20, MAX_BODY - fixed);
+	const lists = [content.highlights.length > 0, overdueCount > 0, hasTomorrow];
+	const share = Math.floor(room / lists.filter(Boolean).length);
 	const parts: string[] = [];
 	if (content.highlights.length > 0) {
-		const todayRoom = hasTomorrow ? Math.floor(room / 2) : room;
+		const todayRoom = lists[1] || hasTomorrow ? share : room;
 		parts.push(`Hoje: ${listNames(content.highlights, todayRoom)}.`);
 	}
 	if (total) parts.push(total);
+	if (overdueCount > 0) {
+		const used = parts.join(" ").length + ` ${overduePrefix}.`.length;
+		const overdueRoom = hasTomorrow ? share : MAX_BODY - used;
+		parts.push(`${overduePrefix}${listNames(content.overdue, overdueRoom)}.`);
+	}
 	if (hasTomorrow) {
 		const used = parts.join(" ").length + " Amanhã: .".length;
 		parts.push(`Amanhã: ${listNames(content.tomorrow, MAX_BODY - used)}.`);
