@@ -152,6 +152,30 @@ describe("Habit and Completion", () => {
 		).toBe(false);
 	});
 
+	it("read a missing description as empty (an API older than 2.12.0)", () => {
+		const { description: _, ...old } = Habit.parse(habit);
+		expect(Habit.parse(old).description).toBe("");
+	});
+
+	it("limit descriptions to 5000 characters and trim them on writes", () => {
+		expect(
+			UpdateHabitRequest.parse({ description: "  Livro: Duna \n" }).description
+		).toBe("Livro: Duna");
+		expect(
+			UpdateHabitRequest.safeParse({ description: "a".repeat(5000) }).success
+		).toBe(true);
+		expect(
+			UpdateHabitRequest.safeParse({ description: "a".repeat(5001) }).success
+		).toBe(false);
+		expect(
+			CreateHabitRequest.parse({
+				name: "Ler",
+				schedule: { type: "weekdays", days: [1] },
+				start_date: "2026-10-09",
+			}).description
+		).toBeUndefined();
+	});
+
 	it("require deleted_at to be present (null when live)", () => {
 		const { deleted_at: _, ...withoutDeletedAt } = habit;
 		expect(Habit.safeParse(withoutDeletedAt).success).toBe(false);

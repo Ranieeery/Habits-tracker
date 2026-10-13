@@ -40,11 +40,11 @@ export function NewHabitScreen() {
 				timeZone={timeZone}
 				submitLabel="Criar hábito"
 				pending={create.isPending}
-				onSubmit={({ name, schedule, start_date }) =>
+				onSubmit={({ name, description, schedule, start_date }) =>
 					schedule &&
 					create.mutate(
 						// Starts today or later ("Começa em"): never rewrites past days.
-						{ name, schedule, start_date },
+						{ name, description, schedule, start_date },
 						{
 							onSuccess: (habit) => {
 								toast("success", "Hábito criado", habit.name);
@@ -150,6 +150,7 @@ export function EditHabitScreen() {
 											habitId: habit.id,
 											changes: {
 												name: values.name,
+												description: values.description,
 												...(values.schedule && { schedule: values.schedule }),
 											},
 										},

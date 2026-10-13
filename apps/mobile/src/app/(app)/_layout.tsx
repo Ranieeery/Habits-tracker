@@ -32,6 +32,7 @@ export default function AppLayout() {
 						name="habit/[id]"
 						options={{ title: "Editar hábito", presentation: "modal" }}
 					/>
+					<Stack.Screen name="habit/about/[id]" options={{ title: "Hábito" }} />
 					<Stack.Screen name="settings" options={{ title: "Ajustes" }} />
 					<Stack.Screen
 						name="sync"

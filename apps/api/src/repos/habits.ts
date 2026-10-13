@@ -174,6 +174,9 @@ export function changedHabitFields(
 	return {
 		updated_at: row.updated_at,
 		...(changes.name !== undefined && { name: row.name }),
+		...(changes.description !== undefined && {
+			description: row.description,
+		}),
 		...(changes.schedule !== undefined && { schedule: row.schedule }),
 		...(changes.archived !== undefined && { archived_at: row.archived_at }),
 		...(changes.sort_key !== undefined && { sort_key: row.sort_key }),

@@ -23,6 +23,7 @@ const createdAt = 1_767_787_200_000;
 const habit: Habit = {
 	id: "0199c9a0-0001-7000-8000-000000000001",
 	name: "Ler",
+	description: "",
 	schedule: { type: "weekdays", days: [1, 3, 5] },
 	start_date: "2026-01-05",
 	archived_at: null,

@@ -54,7 +54,8 @@ function NavLinks({ variant }: { variant: "top" | "bottom" }) {
 		<Link
 			key={to}
 			to={to}
-			activeOptions={{ exact: true }}
+			// A habit's page (/habits/$habitId, 2.12.0) belongs to Hábitos.
+			activeOptions={{ exact: to !== "/habits" }}
 			className={cn(
 				"group relative flex min-h-touch items-center justify-center gap-2 rounded-md font-semibold text-night-muted transition-colors duration-150 hover:text-night-foreground data-[status=active]:text-night-accent-text",
 				variant === "top"

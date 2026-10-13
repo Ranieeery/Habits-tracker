@@ -80,13 +80,18 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 		if (!sending.current) setHabitId(null);
 	};
 
-	const submit = ({ name, schedule, start_date }: HabitFormValues) => {
+	const submit = ({
+		name,
+		description,
+		schedule,
+		start_date,
+	}: HabitFormValues) => {
 		if (habitId === null || sending.current || !schedule) return;
 		sending.current = true;
 		setError(undefined);
 		create.mutate(
 			// Starts today or later ("Começa em"): never rewrites past days.
-			{ id: habitId, name, schedule, start_date },
+			{ id: habitId, name, description, schedule, start_date },
 			{
 				onSuccess: (habit) => {
 					sending.current = false;

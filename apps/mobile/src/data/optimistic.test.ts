@@ -40,6 +40,7 @@ describe("withSummaryDay", () => {
 	const habit = (id: string) => ({
 		id,
 		name: id,
+		description: "",
 		schedule: { type: "weekdays" as const, days: [0, 1, 2, 3, 4, 5, 6] },
 		start_date: "2026-10-01",
 		archived_at: null,
@@ -93,6 +94,7 @@ describe("withSummaryDay with overdue habits (2.8.0)", () => {
 	const habit = (id: string) => ({
 		id,
 		name: id,
+		description: "",
 		schedule: { type: "monthly_days" as const, days: [5] },
 		start_date: "2026-10-01",
 		archived_at: null,

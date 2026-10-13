@@ -58,6 +58,11 @@ export const MIGRATIONS: readonly string[] = [
 	`
 	ALTER TABLE habits ADD COLUMN sort_key TEXT NOT NULL DEFAULT '';
 	`,
+	// 3 (2.12.0): the habit description. No habit had one before, so rows
+	// mirrored earlier are right with '' (no pull needed).
+	`
+	ALTER TABLE habits ADD COLUMN description TEXT NOT NULL DEFAULT '';
+	`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<number> {

@@ -129,13 +129,31 @@ const HABITS: HabitSpec[] = [
 
 /**
  * Habits with the schedules added in 2.2.0, created on the reference day
- * (start today), so they leave the past heatmap as it was: one of each type.
+ * (start today), so they leave the past heatmap as it was: one of each type,
+ * plus a daily one with a long description (2.12.0: the note icon, the line
+ * under the name, the quick look cut after 4 lines and the habit page).
  */
 const SCHEDULED_TODAY: readonly {
 	key: string;
 	name: string;
+	description?: string;
 	schedule: (today: CalendarDate) => Schedule;
 }[] = [
+	{
+		key: "described",
+		name: "Rotina da noite (teste)",
+		description: [
+			"Desligar as telas às **22h** e preparar o dia seguinte.",
+			"- separar a roupa",
+			"- *revisar* a agenda de amanhã",
+			"- encher a garrafa de água",
+			"- ler 10 páginas",
+			"",
+			"Guia: [higiene do sono](https://www.sleepfoundation.org/sleep-hygiene).",
+			"Literal, sem formatação: # título, <b>html</b> e `código`.",
+		].join("\n"),
+		schedule: () => ({ type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] }),
+	},
 	{
 		key: "dermatologist",
 		name: "Consulta no dermatologista",
@@ -255,6 +273,7 @@ export function buildSeed({
 		return {
 			id: uuidV7(created_at, `habit:${spec.key}`),
 			name: spec.name,
+			description: "",
 			schedule: { type: "weekdays", days: spec.days },
 			start_date,
 			archived_at,
@@ -332,6 +351,7 @@ export function buildSeed({
 		habits.push({
 			id: uuidV7(created_at, `habit:${spec.key}`),
 			name: spec.name,
+			description: spec.description ?? "",
 			schedule,
 			start_date: schedule.type === "once" ? schedule.date : today,
 			archived_at: null,

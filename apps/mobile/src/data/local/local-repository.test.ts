@@ -66,6 +66,7 @@ describe("local repository", () => {
 		const { repository, store, counts } = setup();
 		const habit = await repository.createHabit({
 			name: "  Ler  ",
+			description: "",
 			schedule: EVERY_DAY,
 			start_date: TODAY,
 		});
@@ -96,11 +97,13 @@ describe("local repository", () => {
 		const { repository } = setup();
 		const read = await repository.createHabit({
 			name: "Ler",
+			description: "",
 			schedule: EVERY_DAY,
 			start_date: TODAY,
 		});
 		const run = await repository.createHabit({
 			name: "Correr",
+			description: "",
 			schedule: EVERY_DAY,
 			start_date: TODAY,
 		});
@@ -122,6 +125,7 @@ describe("local repository", () => {
 		for (const name of ["A", "B", "C"]) {
 			const habit = await repository.createHabit({
 				name,
+				description: "",
 				schedule: EVERY_DAY,
 				start_date: TODAY,
 			});
@@ -144,6 +148,7 @@ describe("local repository", () => {
 		const { repository, store } = setup();
 		const habit = await repository.createHabit({
 			name: "Ler",
+			description: "",
 			schedule: EVERY_DAY,
 			start_date: TODAY,
 		});
@@ -157,6 +162,7 @@ describe("local repository", () => {
 		const { repository, store } = setup();
 		const habit = await repository.createHabit({
 			name: "Ler",
+			description: "",
 			schedule: EVERY_DAY,
 			start_date: TODAY,
 		});
@@ -172,6 +178,7 @@ describe("local repository", () => {
 		const { repository } = setup();
 		const habit = await repository.createHabit({
 			name: "Ler",
+			description: "",
 			schedule: EVERY_DAY,
 			start_date: TODAY,
 		});
@@ -191,6 +198,7 @@ describe("local repository", () => {
 			await kindOf(
 				repository.createHabit({
 					name: "Velho",
+					description: "",
 					schedule: EVERY_DAY,
 					start_date: "2026-09-08",
 				})
@@ -200,6 +208,7 @@ describe("local repository", () => {
 			await kindOf(
 				repository.createHabit({
 					name: " ",
+					description: "",
 					schedule: EVERY_DAY,
 					start_date: TODAY,
 				})
@@ -224,6 +233,7 @@ describe("habit order (2.4.0)", () => {
 	) => ({
 		id,
 		name,
+		description: "",
 		schedule: EVERY_DAY,
 		start_date: "2026-10-01",
 		archived_at: null,
@@ -255,6 +265,7 @@ describe("habit order (2.4.0)", () => {
 
 		const created = await repository.createHabit({
 			name: "Alongar",
+			description: "",
 			schedule: EVERY_DAY,
 			start_date: TODAY,
 		});
@@ -376,5 +387,41 @@ describe("overdue habits on today (2.8.0)", () => {
 		const { repository } = await seeded();
 		await repository.setCompletion(CONDO, "2026-10-07", true);
 		expect((await repository.getDay(TODAY)).overdue).toEqual([]);
+	});
+});
+
+describe("habit description (2.12.0)", () => {
+	it("is written offline, shows at once and survives a rename", async () => {
+		const { repository, store } = setup();
+		const habit = await repository.createHabit({
+			name: "Treinar",
+			description: "**Treino A**\n- agachamento",
+			schedule: EVERY_DAY,
+			start_date: TODAY,
+		});
+		expect(habit.description).toBe("**Treino A**\n- agachamento");
+
+		await repository.updateHabit(habit.id, { name: "Treinar pesado" });
+		const [listed] = await repository.listHabits();
+		expect(listed).toMatchObject({
+			name: "Treinar pesado",
+			description: "**Treino A**\n- agachamento",
+		});
+
+		await repository.updateHabit(habit.id, { description: "" });
+		expect((await repository.listHabits())[0]?.description).toBe("");
+		const types = (await store.readOutbox()).map((e) => e.mutation.type);
+		expect(types).toEqual(["habit.create", "habit.update", "habit.update"]);
+	});
+
+	it("starts empty when created without one", async () => {
+		const { repository } = setup();
+		const habit = await repository.createHabit({
+			name: "Ler",
+			schedule: EVERY_DAY,
+			start_date: TODAY,
+		});
+		expect(habit.description).toBe("");
+		expect((await repository.listHabits())[0]?.description).toBe("");
 	});
 });

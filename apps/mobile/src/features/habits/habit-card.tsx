@@ -32,7 +32,7 @@ const TYPE_ICONS: Record<string, IconName> = {
  * today; other kinds show their icon and summary. Decorative: the card reads
  * the schedule as a sentence.
  */
-function ScheduleStrip({
+export function ScheduleStrip({
 	habit,
 	today,
 	muted,
@@ -96,7 +96,7 @@ function ScheduleStrip({
 }
 
 /** "Hoje" when it happens today, otherwise when it happens next. */
-function nextBadge(habit: Habit, today: CalendarDate, timeZone: string) {
+export function nextBadge(habit: Habit, today: CalendarDate, timeZone: string) {
 	if (habit.archived_at !== null) return null;
 	const next = nextOccurrence(habit, today, { timeZone });
 	if (next === null) return null;

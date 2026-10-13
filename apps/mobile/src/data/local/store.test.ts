@@ -178,3 +178,48 @@ describe("local migration 2 (2.4.0)", () => {
 		expect(row?.sort_key).toBe("");
 	});
 });
+
+describe("local migration 3 (2.12.0)", () => {
+	it("adds description to a version 2 database, keeping its habits with none", async () => {
+		const db = openNodeDatabase();
+		await db.exec(
+			`BEGIN; ${MIGRATIONS[0]} ${MIGRATIONS[1]} PRAGMA user_version = 2; COMMIT;`
+		);
+		await db.run(
+			"INSERT INTO habits (id, name, schedule, start_date, archived_at, sort_key, created_at, updated_at, deleted_at) VALUES ('h1', 'Ler', '{\"type\":\"weekdays\",\"days\":[1]}', '2026-10-01', NULL, 'a0', 1, 1, NULL)"
+		);
+		expect(await migrate(db)).toBe(MIGRATIONS.length);
+		const row = await db.first<{ description: string; sort_key: string }>(
+			"SELECT description, sort_key FROM habits WHERE id = 'h1'"
+		);
+		expect(row).toEqual({ description: "", sort_key: "a0" });
+	});
+
+	it("keeps a pulled description through the mirror", async () => {
+		const store = createLocalStore(async () => openNodeDatabase());
+		await store.ensureUser("user-1");
+		await store.applyPullPage({
+			cursor: "1.1",
+			has_more: false,
+			changes: {
+				habits: [
+					{
+						id: "0199c9a0-6666-7000-8000-000000000001",
+						name: "Ler",
+						description: "**Duna**\n- cap 12",
+						schedule: { type: "weekdays", days: [1] },
+						start_date: "2026-10-01",
+						archived_at: null,
+						sort_key: "a0",
+						created_at: 1,
+						updated_at: 1,
+						deleted_at: null,
+					},
+				],
+				completions: [],
+			},
+		});
+		const [habit] = (await store.readMirror("habits")).habits;
+		expect(habit?.description).toBe("**Duna**\n- cap 12");
+	});
+});

@@ -38,6 +38,7 @@ function habit(overrides: Partial<Habit> = {}): Habit {
 		schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
 		start_date: "2026-01-01",
 		archived_at: null,
+		description: "",
 		sort_key: "a0",
 		created_at: 1,
 		updated_at: 1,
@@ -558,5 +559,44 @@ describe("habit order (2.4.0)", () => {
 		expect(
 			applyMutation(state, update({ sort_key: "a5" }), server(T0 + 3))
 		).toMatchObject({ changed: false });
+	});
+});
+
+describe("habit description (2.12.0)", () => {
+	it("starts empty, or with the description sent", () => {
+		const state = syncState([], []);
+		const plain = create();
+		const described = create({ description: "**Treino A**" });
+		applyMutation(state, plain, server());
+		applyMutation(state, described, server());
+		expect(state.habits.get(plain.id)?.description).toBe("");
+		expect(state.habits.get(described.id)?.description).toBe("**Treino A**");
+	});
+
+	it("changes on its own, and other fields keep it", () => {
+		const described = habit({ description: "Livro: Duna" });
+		const rename = applyHabitChanges(described, { name: "Ler mais" }, T0);
+		expect(rename.habit).toMatchObject({
+			name: "Ler mais",
+			description: "Livro: Duna",
+		});
+		const edit = applyHabitChanges(described, { description: "" }, T0);
+		expect(edit).toMatchObject({
+			changed: true,
+			habit: { name: "Ler", description: "", updated_at: T0 },
+		});
+		expect(
+			applyHabitChanges(described, { description: "Livro: Duna" }, T0).changed
+		).toBe(false);
+	});
+
+	it("merges per field with a concurrent rename from another device", () => {
+		const state = syncState([habit()], []);
+		applyMutation(state, update({ description: "Antes de dormir" }), server());
+		applyMutation(state, update({ name: "Ler 20 páginas" }), server(T0 + 1));
+		expect(state.habits.get(HABIT_ID)).toMatchObject({
+			name: "Ler 20 páginas",
+			description: "Antes de dormir",
+		});
 	});
 });

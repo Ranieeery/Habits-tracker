@@ -60,6 +60,12 @@ export const habits = sqliteTable(
 		user_id: userId(),
 		name: text().notNull(),
 		/**
+		 * Optional notes (2.12.0): plain text with a little Markdown, empty when
+		 * none. Not in the `server_seq` update trigger's column list: every
+		 * write of it also sets `updated_at` (`changedHabitFields`).
+		 */
+		description: text().notNull().default(""),
+		/**
 		 * Discriminated union validated with `Schedule` from contracts on every
 		 * write. The CHECK only guarantees JSON with a string `type`, so new
 		 * schedule types need no migration.

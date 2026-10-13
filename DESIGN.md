@@ -57,6 +57,8 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 
 **Ações destrutivas** (2.11.0): arquivar é o caminho padrão; "Apagar" (`danger` ou ícone de lixeira) só aparece para hábitos já arquivados, sempre depois de uma confirmação com "Cancelar" em foco que diz o que se perde (o histórico sai do mapa), e termina com "Desfazer" por 6 s.
 
+**Descrição de hábito** (2.12.0): opcional, texto com um pouco de Markdown (negrito, itálico, listas, links). Nas listas do dia, a primeira linha da descrição abaixo do nome (`night-muted`, uma linha com reticências) e um ícone de nota (`night-muted`, alvo próprio de 44 px, fora do checkbox), só quando há descrição; ele abre um resumo (popover no web, folha inferior no celular) com as primeiras linhas e, se o texto continuar, "Abrir descrição completa", que leva à página do hábito: painel de cabeçalho com o único brilho da página, nome na fonte de display, a faixa da semana e o selo do cartão, e "Descrição" em painel próprio (marcadores de lista em `night-accent-text`) ou um vazio tracejado com "Adicionar descrição"; os painéis entram com fade e subida de 200 ms, escalonados. Links em `night-accent-text` sublinhados; nada é renderizado como HTML.
+
 **Campos e toggles**: borda `night-border-strong`, fundo `night-bg`; marcado = `night-success` com ícone `night-bg`; erro = texto `night-danger` abaixo do campo, ligado por `aria-describedby`.
 
 **Linha de hábito** (dia e painel Hoje): a linha inteira é o alvo (44 px), checkbox à esquerda, nome riscado em `night-muted` quando feito, pulso ao marcar.

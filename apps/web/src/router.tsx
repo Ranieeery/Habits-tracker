@@ -22,6 +22,7 @@ import {
 import { LoginPage } from "@/features/auth/login-page.tsx";
 import { DayPage, TodayPage } from "@/features/day/day-pages.tsx";
 import { HabitsPage } from "@/features/habits/habits-page.tsx";
+import { HabitPage } from "@/features/habits/habit-page.tsx";
 import { HeatmapPage } from "@/features/heatmap/heatmap-page.tsx";
 import { SettingsPage } from "@/features/settings/settings-page.tsx";
 import { queryKeys, sessionQuery, settingsQuery } from "@/lib/queries.ts";
@@ -107,6 +108,15 @@ const habitsRoute = createRoute({
 	component: HabitsPage,
 });
 
+const habitRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/habits/$habitId",
+	component: function HabitRoute() {
+		const { habitId } = habitRoute.useParams();
+		return <HabitPage habitId={habitId} />;
+	},
+});
+
 const settingsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/settings",
@@ -120,6 +130,7 @@ const routeTree = rootRoute.addChildren([
 		todayRoute,
 		dayRoute,
 		habitsRoute,
+		habitRoute,
 		settingsRoute,
 	]),
 ]);

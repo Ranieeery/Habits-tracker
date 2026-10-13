@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils.ts";
 import { ScheduleStrip } from "./schedule-summary.tsx";
 
 /** "Hoje" when it happens today, otherwise when it happens next. */
-function NextBadge({
+export function NextBadge({
 	habit,
 	today,
 	timeZone,

@@ -3,6 +3,7 @@ import {
 	HabitName,
 	type Schedule,
 	type StoredSchedule,
+	DESCRIPTION_MAX_LENGTH,
 } from "@habits/contracts";
 import {
 	addMonths,
@@ -17,6 +18,8 @@ import {
 	previewHabit,
 	REPEAT_KINDS,
 	UNSUPPORTED_SCHEDULE_TEXT,
+	DESCRIPTION_COUNTER_FROM,
+	descriptionError,
 } from "@habits/core";
 import { type Ref, useState } from "react";
 import { Alert, Text, type TextInput, View } from "react-native";
@@ -31,6 +34,8 @@ const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 
 export interface HabitFormValues {
 	name: string;
+	/** Trimmed; empty = none (2.12.0). */
+	description: string;
 	/** Absent when editing a habit whose repetition this version cannot edit. */
 	schedule?: Schedule;
 	/** "Começa em" (used when creating). */
@@ -40,6 +45,7 @@ export interface HabitFormValues {
 /** An existing habit being edited. */
 export interface HabitFormInitial {
 	name: string;
+	description?: string;
 	schedule: StoredSchedule;
 	start_date: CalendarDate;
 }
@@ -146,7 +152,9 @@ export function HabitForm({
 	const [draft, setDraft] = useState<HabitDraft | null>(() =>
 		initial ? draftFromHabit(initial, today) : emptyDraft(today)
 	);
+	const [description, setDescription] = useState(initial?.description ?? "");
 	const [nameError, setNameError] = useState<string>();
+	const [descriptionProblem, setDescriptionProblem] = useState<string>();
 	const [errors, setErrors] = useState<DraftErrors>({});
 
 	const update = (changes: Partial<HabitDraft>) =>
@@ -168,16 +176,24 @@ export function HabitForm({
 		const parsedName = HabitName.safeParse(name);
 		setNameError(parsedName.success ? undefined : "Dê um nome ao hábito.");
 		setErrors(built && !built.ok ? built.errors : {});
-		if (!parsedName.success || (built && !built.ok)) return;
+		const describedBad = descriptionError(description);
+		setDescriptionProblem(describedBad ?? undefined);
+		if (!parsedName.success || (built && !built.ok) || describedBad) return;
+		const trimmed = description.trim();
 
 		const values: HabitFormValues =
 			built?.ok === true
 				? {
 						name: parsedName.data,
+						description: trimmed,
 						schedule: built.schedule,
 						start_date: built.start_date,
 					}
-				: { name: parsedName.data, start_date: initial?.start_date ?? today };
+				: {
+						name: parsedName.data,
+						description: trimmed,
+						start_date: initial?.start_date ?? today,
+					};
 		const reschedules =
 			initial !== undefined &&
 			values.schedule !== undefined &&
@@ -225,6 +241,27 @@ export function HabitForm({
 				onSubmitEditing={submit}
 				error={nameError}
 			/>
+			<View className="gap-1">
+				<TextField
+					label="Descrição (opcional)"
+					value={description}
+					onChangeText={setDescription}
+					multiline
+					textAlignVertical="top"
+					maxLength={DESCRIPTION_MAX_LENGTH + 200}
+					placeholder="Detalhes, passos, links…"
+					hint="Aceita **negrito**, *itálico*, listas com - e links."
+					error={descriptionProblem}
+					style={{ minHeight: 96 }}
+				/>
+				{description.length >= DESCRIPTION_COUNTER_FROM ? (
+					<Text
+						className={`self-end text-xs ${description.trim().length > DESCRIPTION_MAX_LENGTH ? "text-night-danger" : "text-night-muted"}`}
+					>
+						{description.trim().length} de {DESCRIPTION_MAX_LENGTH}
+					</Text>
+				) : null}
+			</View>
 
 			{draft === null ? (
 				<Text className="rounded-md border border-night-border p-3 text-sm text-night-muted">

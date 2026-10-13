@@ -34,6 +34,8 @@ export const PROCESSED_MUTATION_RETENTION_DAYS = 90;
 export interface HabitInput {
 	id: string;
 	name: string;
+	/** Absent = empty (2.12.0). */
+	description?: string;
 	schedule: Habit["schedule"];
 	start_date: CalendarDate;
 	/** Position in the list; callers put a new habit last (`keyAfterLast`). */
@@ -45,6 +47,7 @@ export function newHabit(input: HabitInput, now: number): Habit {
 	return {
 		id: input.id,
 		name: input.name,
+		description: input.description ?? "",
 		schedule: input.schedule,
 		start_date: input.start_date,
 		archived_at: null,
@@ -56,7 +59,7 @@ export function newHabit(input: HabitInput, now: number): Habit {
 }
 
 /**
- * Rename, reschedule, archive, unarchive or move (`sort_key`). Archiving an archived habit keeps
+ * Rename, describe (2.12.0), reschedule, archive, unarchive or move (`sort_key`). Archiving an archived habit keeps
  * its original `archived_at`. `changed` is false when nothing differs, and
  * then `habit` is the input unchanged.
  */
@@ -70,16 +73,26 @@ export function applyHabitChanges(
 	if (archived === true) archived_at ??= now;
 	if (archived === false) archived_at = null;
 	const name = fields.name ?? habit.name;
+	const description = fields.description ?? habit.description;
 	const schedule = fields.schedule ?? habit.schedule;
 	const sort_key = fields.sort_key ?? habit.sort_key;
 	const changed =
 		name !== habit.name ||
+		description !== habit.description ||
 		JSON.stringify(schedule) !== JSON.stringify(habit.schedule) ||
 		archived_at !== habit.archived_at ||
 		sort_key !== habit.sort_key;
 	if (!changed) return { habit, changed: false };
 	return {
-		habit: { ...habit, name, schedule, archived_at, sort_key, updated_at: now },
+		habit: {
+			...habit,
+			name,
+			description,
+			schedule,
+			archived_at,
+			sort_key,
+			updated_at: now,
+		},
 		changed: true,
 	};
 }

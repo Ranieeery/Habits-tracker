@@ -49,6 +49,7 @@ export function habit(
 	overrides: Partial<Habit> & Pick<Habit, "id" | "name">
 ): Habit {
 	return {
+		description: "",
 		schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
 		start_date: "2026-01-01",
 		archived_at: null,

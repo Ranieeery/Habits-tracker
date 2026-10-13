@@ -1,11 +1,14 @@
 import {
 	type CalendarDate,
+	DESCRIPTION_MAX_LENGTH,
 	HabitName,
 	type Schedule,
 	type StoredSchedule,
 } from "@habits/contracts";
 import {
 	buildFromDraft,
+	DESCRIPTION_COUNTER_FROM,
+	descriptionError,
 	type DraftErrors,
 	draftFromHabit,
 	emptyDraft,
@@ -20,6 +23,7 @@ import { type FormEvent, useId, useState } from "react";
 import { FieldError } from "@/components/states.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select } from "@/components/ui/select.tsx";
 import { weekdayInitial, weekdayName } from "@/lib/format.ts";
@@ -31,6 +35,8 @@ const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export interface HabitFormValues {
 	name: string;
+	/** Trimmed; empty = none (2.12.0). */
+	description: string;
 	/** Absent when editing a habit whose repetition this version cannot edit. */
 	schedule?: Schedule;
 	/** "Começa em" (used when creating). */
@@ -40,6 +46,7 @@ export interface HabitFormValues {
 /** An existing habit being edited. */
 export interface HabitFormInitial {
 	name: string;
+	description?: string;
 	schedule: StoredSchedule;
 	start_date: CalendarDate;
 }
@@ -208,6 +215,8 @@ export function HabitForm({
 	const ids = {
 		name: useId(),
 		nameError: useId(),
+		description: useId(),
+		descriptionHint: useId(),
 		kind: useId(),
 		field: useId(),
 		fieldError: useId(),
@@ -222,7 +231,9 @@ export function HabitForm({
 	const [draft, setDraft] = useState<HabitDraft | null>(() =>
 		initial ? draftFromHabit(initial, today) : emptyDraft(today)
 	);
+	const [description, setDescription] = useState(initial?.description ?? "");
 	const [nameError, setNameError] = useState<string>();
+	const [descriptionProblem, setDescriptionProblem] = useState<string>();
 	const [errors, setErrors] = useState<DraftErrors>({});
 	const [confirming, setConfirming] = useState<HabitFormValues | null>(null);
 
@@ -250,16 +261,24 @@ export function HabitForm({
 		const parsedName = HabitName.safeParse(name);
 		setNameError(parsedName.success ? undefined : "Dê um nome ao hábito.");
 		setErrors(built && !built.ok ? built.errors : {});
-		if (!parsedName.success || (built && !built.ok)) return;
+		const describedBad = descriptionError(description);
+		setDescriptionProblem(describedBad ?? undefined);
+		if (!parsedName.success || (built && !built.ok) || describedBad) return;
+		const trimmed = description.trim();
 
 		const values: HabitFormValues =
 			built?.ok === true
 				? {
 						name: parsedName.data,
+						description: trimmed,
 						schedule: built.schedule,
 						start_date: built.start_date,
 					}
-				: { name: parsedName.data, start_date: initial?.start_date ?? today };
+				: {
+						name: parsedName.data,
+						description: trimmed,
+						start_date: initial?.start_date ?? today,
+					};
 		const reschedules =
 			initial !== undefined &&
 			values.schedule !== undefined &&
@@ -300,6 +319,37 @@ export function HabitForm({
 					onChange={(event) => setName(event.target.value)}
 				/>
 				<FieldError id={ids.nameError}>{nameError}</FieldError>
+			</div>
+
+			<div className="flex flex-col gap-2">
+				<Label htmlFor={ids.description}>Descrição (opcional)</Label>
+				<Textarea
+					id={ids.description}
+					value={description}
+					rows={3}
+					placeholder="Detalhes, passos, links…"
+					aria-invalid={descriptionProblem ? true : undefined}
+					aria-describedby={ids.descriptionHint}
+					onChange={(event) => setDescription(event.target.value)}
+				/>
+				<div
+					id={ids.descriptionHint}
+					className="flex justify-between gap-3 text-sm text-night-muted"
+				>
+					<span>Aceita **negrito**, *itálico*, listas com - e links.</span>
+					{description.length >= DESCRIPTION_COUNTER_FROM && (
+						<span
+							className={cn(
+								"shrink-0 tabular-nums",
+								description.trim().length > DESCRIPTION_MAX_LENGTH &&
+									"text-night-danger"
+							)}
+						>
+							{description.trim().length} de {DESCRIPTION_MAX_LENGTH}
+						</span>
+					)}
+				</div>
+				<FieldError>{descriptionProblem}</FieldError>
 			</div>
 
 			{draft === null ? (

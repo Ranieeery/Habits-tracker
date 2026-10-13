@@ -31,6 +31,7 @@ function habit(id: string, overrides: Partial<Habit> = {}): Habit {
 		schedule: { type: "monthly_days", days: [15] },
 		start_date: "2026-01-01",
 		archived_at: null,
+		description: "",
 		sort_key: "a0",
 		created_at: spAt("2026-01-01", "08:00"),
 		updated_at: 1,

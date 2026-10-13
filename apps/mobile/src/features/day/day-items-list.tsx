@@ -1,6 +1,13 @@
 import type { CalendarDate, Habit } from "@habits/contracts";
-import { type DayItem, overdueLabel } from "@habits/core";
+import {
+	type DayItem,
+	descriptionFirstLine,
+	hasDescription,
+	overdueLabel,
+} from "@habits/core";
+import { useState } from "react";
 import { View } from "react-native";
+import { DescriptionSheet } from "@/features/habits/description-sheet.tsx";
 import { HabitRow } from "./habit-row.tsx";
 
 /**
@@ -18,8 +25,10 @@ export function DayItemsList({
 	disabled: boolean;
 	onToggle: (habit: Habit, completed: boolean) => void;
 }) {
+	const [described, setDescribed] = useState<Habit | null>(null);
 	return (
 		<View className="overflow-hidden rounded-xl border border-night-border bg-night-surface">
+			<DescriptionSheet habit={described} onClose={() => setDescribed(null)} />
 			{items.map((item, index) => (
 				<HabitRow
 					key={item.habit.id}
@@ -31,6 +40,12 @@ export function DayItemsList({
 						item.overdueSince === null
 							? null
 							: overdueLabel(item.overdueSince, date)
+					}
+					descriptionLine={descriptionFirstLine(item.habit.description)}
+					onShowDescription={
+						hasDescription(item.habit)
+							? () => setDescribed(item.habit)
+							: undefined
 					}
 					onToggle={(checked) => onToggle(item.habit, checked)}
 				/>

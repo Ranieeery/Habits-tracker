@@ -11,6 +11,8 @@ export interface NewHabitInput {
 	/** Generated once per opening of the form, so a retry never duplicates. */
 	id: string;
 	name: string;
+	/** Empty = none (2.12.0). */
+	description?: string;
 	schedule: Schedule;
 	/** "Começa em" from the form (today by default). */
 	start_date: CalendarDate;

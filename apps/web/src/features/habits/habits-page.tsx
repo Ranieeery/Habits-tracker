@@ -76,15 +76,27 @@ export function HabitsPage() {
 	const [editing, setEditing] = useState<Editing>(null);
 
 	const save = useMutation({
-		mutationFn: ({ name, schedule, start_date }: HabitFormValues) => {
+		mutationFn: ({
+			name,
+			description,
+			schedule,
+			start_date,
+		}: HabitFormValues) => {
 			if (editing?.mode === "edit") {
 				return updateHabit(api, editing.habit.id, {
 					name,
+					description,
 					...(schedule && { schedule }),
 				});
 			}
 			if (!schedule || !editing) throw new Error("Missing schedule");
-			return createHabit(api, { id: editing.id, name, schedule, start_date });
+			return createHabit(api, {
+				id: editing.id,
+				name,
+				description,
+				schedule,
+				start_date,
+			});
 		},
 		onSuccess: () => {
 			toast.success(

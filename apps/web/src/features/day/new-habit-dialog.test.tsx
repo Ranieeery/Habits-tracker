@@ -166,6 +166,7 @@ describe("new habit from today's view", () => {
 		expect(await post?.json()).toEqual({
 			id: NEW_ID,
 			name: "Meditar",
+			description: "",
 			schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
 			start_date: TODAY,
 		});

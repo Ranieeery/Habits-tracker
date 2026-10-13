@@ -81,6 +81,7 @@ describe("HabitForm: weekdays (default)", () => {
 
 		expect(onSubmit).toHaveBeenCalledWith({
 			name: "Meditar",
+			description: "",
 			schedule: { type: "weekdays", days: [0, 1, 3] },
 			start_date: TODAY,
 		});
@@ -136,6 +137,7 @@ describe("HabitForm: other repetitions", () => {
 		await user.click(submit());
 		expect(onSubmit).toHaveBeenCalledWith({
 			name: "Trocar filtro",
+			description: "",
 			schedule: { type: "interval", every: 8, anchor_date: "2026-10-22" },
 			start_date: "2026-10-22",
 		});
@@ -153,6 +155,7 @@ describe("HabitForm: other repetitions", () => {
 		await user.click(submit());
 		expect(onSubmit).toHaveBeenCalledWith({
 			name: "Pagar condomínio",
+			description: "",
 			schedule: { type: "monthly_days", days: [20] },
 			start_date: TODAY,
 		});
@@ -178,6 +181,7 @@ describe("HabitForm: other repetitions", () => {
 		await user.click(submit());
 		expect(onSubmit).toHaveBeenCalledWith({
 			name: "Consulta no dermatologista",
+			description: "",
 			schedule: { type: "once", date: "2026-11-20" },
 			start_date: "2026-11-20",
 		});
@@ -196,6 +200,7 @@ describe("HabitForm: other repetitions", () => {
 		await user.click(submit());
 		expect(onSubmit).toHaveBeenCalledWith({
 			name: "Aniversário",
+			description: "",
 			schedule: { type: "yearly", month: 2, day: 29 },
 			start_date: TODAY,
 		});
@@ -252,6 +257,7 @@ describe("HabitForm: editing", () => {
 		await user.click(submit());
 		expect(onSubmit).toHaveBeenCalledWith({
 			name: "Lua cheia",
+			description: "",
 			start_date: "2026-09-01",
 		});
 	});

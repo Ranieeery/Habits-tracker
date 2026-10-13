@@ -116,6 +116,7 @@ export function createLocalRepository({
 				type: "habit.create",
 				id: input.id ?? newId(),
 				name: input.name,
+				...(input.description && { description: input.description }),
 				schedule: input.schedule,
 				start_date: input.start_date,
 				sort_key: input.sort_key ?? keyAfterLast(habits),

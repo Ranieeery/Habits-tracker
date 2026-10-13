@@ -50,6 +50,7 @@ describe("POST /v1/habits", () => {
 		expect(habit).toEqual({
 			id,
 			name: "Ler",
+			description: "",
 			schedule: WEEKDAYS,
 			start_date: "2026-10-09",
 			archived_at: null,

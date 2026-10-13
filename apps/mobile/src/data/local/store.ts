@@ -69,7 +69,7 @@ interface OutboxRow {
 }
 
 const HABIT_COLUMNS =
-	"id, name, schedule, start_date, archived_at, sort_key, created_at, updated_at, deleted_at";
+	"id, name, description, schedule, start_date, archived_at, sort_key, created_at, updated_at, deleted_at";
 const COMPLETION_COLUMNS =
 	"id, habit_id, date, completed_at, created_at, updated_at, deleted_at";
 
@@ -112,10 +112,12 @@ async function setMetaIn(
 async function writeMirror(tx: SqlExecutor, changes: SyncChanges) {
 	for (const habit of changes.habits) {
 		await tx.run(
-			`INSERT OR REPLACE INTO habits (${HABIT_COLUMNS}) VALUES (${placeholders(9)})`,
+			`INSERT OR REPLACE INTO habits (${HABIT_COLUMNS}) VALUES (${placeholders(10)})`,
 			[
 				habit.id,
 				habit.name,
+				// Absent in records from an API older than 2.12.0.
+				habit.description ?? "",
 				JSON.stringify(habit.schedule),
 				habit.start_date,
 				habit.archived_at,
