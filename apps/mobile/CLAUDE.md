@@ -62,7 +62,7 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 
 - Add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK; check with `pnpm dlx expo-doctor`.
 - Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins. `@babel/plugin-transform-react-jsx` is a devDependency only because the NativeWind/css-interop preset loads it by name without declaring it (a clean install cannot resolve it otherwise); keep it.
-- Version (`2.7.0`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
+- Version (`2.7.1`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
 - `*.config.js` files are CommonJS (ESLint override in `eslint.config.mjs`); the Vitest config is `vitest.config.mts` because the package is CommonJS.
 
 ## Manual checks (2.7.0: history insights, pickers, motion)
@@ -70,7 +70,7 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 Pending, after the deploy (OTA, same fingerprint). Confirm in Ajustes that the phone runs 2.7.0.
 
 1. Tab bar: the labels are whole, with room above the Android buttons (also with gesture navigation).
-2. New habit: the name placeholder fits one line; "Dias do mês" shows the calendar-style grid (full width, several days), "Todo ano" the month grid and then only that month's days (February up to 29, 31 → 30 when switching to April).
+2. New habit: the name placeholder fits one line; "Dias do mês" shows the calendar-style grid (full width), and several neighbor days chosen side by side stay separate squares; "Todo ano" is a month calendar with arrows (December → January wraps), only that month's days (February up to 29), and the chosen day stays marked only in its month.
 3. Press a button, a chip, a strip day or a habit card: it sinks a little; with reduced motion nothing moves.
 4. Hoje: switching days on the strip fades the list in. Hábitos: "Reordenar" and move a habit: the cards slide (the order only sticks once the API with migration 0006 is deployed).
 5. Histórico: the filter row, then the grid; a chip makes the grid, the numbers and the sections about that habit (the title shows its name); leaving the tab resets it.

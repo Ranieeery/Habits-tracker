@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from "react-native";
+import { nightColors, TOUCH_TARGET_MIN } from "@habits/design-tokens";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { IconButton } from "./button.tsx";
 
 /**
@@ -88,6 +89,12 @@ export function MonthDayPicker({
 	);
 }
 
+/**
+ * One day. Its look is in `style`, not `className`: a class that changes
+ * after the first render lost its margin on the device (NativeWind), and a
+ * background added after mounting drew square corners (Android), so chosen
+ * neighbors merged into a band.
+ */
 function DayButton({
 	day,
 	role,
@@ -107,15 +114,17 @@ function DayButton({
 				role === "radio" ? { selected } : { checked: selected }
 			}
 			onPress={onPress}
-			className="min-h-touch flex-1 p-0.5"
+			style={styles.slot}
 		>
 			{({ pressed }) => (
 				<View
-					className={`flex-1 items-center justify-center rounded-md ${selected ? "bg-night-accent" : pressed ? "bg-night-surface-raised" : ""}`}
+					style={[
+						styles.day,
+						selected ? styles.selected : pressed ? styles.pressed : undefined,
+					]}
 				>
 					<Text
-						className={`text-base ${selected ? "font-bold text-night-accent-on" : "text-night-foreground"}`}
-						style={{ fontVariant: ["tabular-nums"] }}
+						style={[styles.label, selected ? styles.labelSelected : undefined]}
 					>
 						{day}
 					</Text>
@@ -124,3 +133,24 @@ function DayButton({
 		</Pressable>
 	);
 }
+
+const styles = StyleSheet.create({
+	slot: { flex: 1, minHeight: TOUCH_TARGET_MIN, padding: 2 },
+	day: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		borderRadius: 8,
+		// Always a background (the panel's own color): on Android a View that
+		// gets its first background after mounting drew square corners.
+		backgroundColor: nightColors.surface.DEFAULT,
+	},
+	selected: { backgroundColor: nightColors.accent.DEFAULT },
+	pressed: { backgroundColor: nightColors.surface.raised },
+	label: {
+		fontSize: 16,
+		color: nightColors.foreground,
+		fontVariant: ["tabular-nums"],
+	},
+	labelSelected: { fontWeight: "700", color: nightColors.accent.on },
+});
