@@ -1,41 +1,41 @@
 {
-  "version": 1,
-  "skills": {
-    "expo-animation": {
-      "source": "expo/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/expo/skills/expo-animation/SKILL.md",
-      "computedHash": "daf380553ca20b8c555f954e340b64dfa874d953a9e4e71891848562351e672f"
-    },
-    "expo-native-ui": {
-      "source": "expo/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/expo/skills/expo-native-ui/SKILL.md",
-      "computedHash": "3e7374ba3679e4e57cbe6aa97c8bcc17c977b7c526b00e0e67b9e0ccd119ba68"
-    },
-    "frontend-design": {
-      "source": "anthropics/claude-plugins-official",
-      "sourceType": "github",
-      "skillPath": "plugins/frontend-design/skills/frontend-design/SKILL.md",
-      "computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
-    },
-    "redesign-existing-projects": {
-      "source": "Leonxlnx/taste-skill",
-      "sourceType": "github",
-      "skillPath": "skills/redesign-skill/SKILL.md",
-      "computedHash": "52f2ade5449b7005942ebd221e53808a245b3e088ff096c44a374e1e481e9f6b"
-    },
-    "vercel-react-native-skills": {
-      "source": "vercel-labs/agent-skills",
-      "sourceType": "github",
-      "skillPath": "skills/react-native-skills/SKILL.md",
-      "computedHash": "2e9088a7333666d8c2833b8ff58bd51b955501c42b4c7244f72b4cbf22dafcc4"
-    },
-    "web-design-guidelines": {
-      "source": "vercel-labs/agent-skills",
-      "sourceType": "github",
-      "skillPath": "skills/web-design-guidelines/SKILL.md",
-      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
-    }
-  }
+	"version": 1,
+	"skills": {
+		"expo-animation": {
+			"source": "expo/skills",
+			"sourceType": "github",
+			"skillPath": "plugins/expo/skills/expo-animation/SKILL.md",
+			"computedHash": "daf380553ca20b8c555f954e340b64dfa874d953a9e4e71891848562351e672f"
+		},
+		"expo-native-ui": {
+			"source": "expo/skills",
+			"sourceType": "github",
+			"skillPath": "plugins/expo/skills/expo-native-ui/SKILL.md",
+			"computedHash": "3e7374ba3679e4e57cbe6aa97c8bcc17c977b7c526b00e0e67b9e0ccd119ba68"
+		},
+		"frontend-design": {
+			"source": "anthropics/claude-plugins-official",
+			"sourceType": "github",
+			"skillPath": "plugins/frontend-design/skills/frontend-design/SKILL.md",
+			"computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
+		},
+		"redesign-existing-projects": {
+			"source": "Leonxlnx/taste-skill",
+			"sourceType": "github",
+			"skillPath": "skills/redesign-skill/SKILL.md",
+			"computedHash": "52f2ade5449b7005942ebd221e53808a245b3e088ff096c44a374e1e481e9f6b"
+		},
+		"vercel-react-native-skills": {
+			"source": "vercel-labs/agent-skills",
+			"sourceType": "github",
+			"skillPath": "skills/react-native-skills/SKILL.md",
+			"computedHash": "2e9088a7333666d8c2833b8ff58bd51b955501c42b4c7244f72b4cbf22dafcc4"
+		},
+		"web-design-guidelines": {
+			"source": "vercel-labs/agent-skills",
+			"sourceType": "github",
+			"skillPath": "skills/web-design-guidelines/SKILL.md",
+			"computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+		}
+	}
 }
