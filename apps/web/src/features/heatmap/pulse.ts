@@ -14,3 +14,20 @@ export function pulse(element: Element | null | undefined) {
 		{ duration: 320, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)" }
 	);
 }
+
+/**
+ * The "undone" counterpart of `pulse`: a shorter dip (transform only), so
+ * unchecking answers too but reads differently from checking. Same rules:
+ * skipped with reduced motion, a no-op without the Web Animations API.
+ */
+export function release(element: Element | null | undefined) {
+	if (!element || typeof element.animate !== "function") return;
+	element.animate(
+		[
+			{ transform: "scale(1)" },
+			{ transform: "scale(0.88)" },
+			{ transform: "scale(1)" },
+		],
+		{ duration: 180, easing: "cubic-bezier(0.3, 0, 0.2, 1)" }
+	);
+}

@@ -1,9 +1,10 @@
-// Minimal toast: one message at a time above the tab bar, announced to
-// screen readers. Enough for mutation feedback without a toast library. A
+// Minimal toast: one message at a time above the tab bar, or above the
+// focused screen's fixed footer (2.6.0: never over "Novo hábito" or "Editar
+// este dia"; `useToastAnchor`), announced to screen readers. Enough for mutation feedback without a toast library. A
 // toast may carry one action ("Desfazer"): then it stays a little longer and
 // only its button takes touches (the rest lets them through).
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import {
 	createContext,
 	type ReactNode,
@@ -14,27 +15,34 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { AccessibilityInfo, Pressable, Text, View } from "react-native";
+import {
+	AccessibilityInfo,
+	Pressable,
+	Text,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { toastBottomOffset } from "@/lib/toast-position.ts";
 
 type Tone = "error" | "success" | "info";
 
 const TONE = {
 	error: {
-		border: "border-danger",
+		border: "border-night-danger",
 		icon: "alert-circle-outline",
-		color: colors.danger.DEFAULT,
+		color: nightColors.danger.DEFAULT,
 	},
 	success: {
-		border: "border-success",
+		border: "border-night-success",
 		icon: "check-circle-outline",
-		color: colors.success.hover,
+		color: nightColors.success.DEFAULT,
 	},
 	info: {
-		border: "border-border",
+		border: "border-night-border",
 		icon: "bell-outline",
-		color: colors.violet[400],
+		color: nightColors.accent.text,
 	},
 } as const;
 
@@ -65,21 +73,35 @@ type ShowToast = (
 	options?: ToastOptions
 ) => number;
 
+/** A screen's fixed footer: its top in window coordinates, by owner. */
+interface Anchor {
+	owner: symbol;
+	top: number;
+}
+
 const ToastContext = createContext<{
 	show: ShowToast;
 	dismiss: (id: number) => void;
+	setAnchor: (owner: symbol, top: number | null) => void;
 } | null>(null);
 
 const DURATION_MS = 4000;
 /** Toasts with an action stay longer, so there is time to reach it. */
 const ACTION_DURATION_MS = 6000;
-/** Clears the tab bar (about 64 dp) on tab screens. */
-const BOTTOM_OFFSET = 80;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
 	const [toast, setToast] = useState<ToastMessage | null>(null);
 	const nextId = useRef(0);
 	const insets = useSafeAreaInsets();
+	const { height: windowHeight } = useWindowDimensions();
+	const [anchor, setAnchorState] = useState<Anchor | null>(null);
+	const setAnchor = useCallback((owner: symbol, top: number | null) => {
+		setAnchorState((current) => {
+			if (top === null) return current?.owner === owner ? null : current;
+			if (current?.owner === owner && current.top === top) return current;
+			return { owner, top };
+		});
+	}, []);
 
 	const show = useCallback<ShowToast>(
 		(tone, title, description, options = {}) => {
@@ -108,7 +130,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		setToast((current) => (current?.id === id ? null : current));
 	}, []);
 
-	const value = useMemo(() => ({ show, dismiss }), [show, dismiss]);
+	const value = useMemo(
+		() => ({ show, dismiss, setAnchor }),
+		[show, dismiss, setAnchor]
+	);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -129,11 +154,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 						position: "absolute",
 						left: 16,
 						right: 16,
-						bottom: insets.bottom + BOTTOM_OFFSET,
+						bottom: toastBottomOffset({
+							windowHeight,
+							safeBottom: insets.bottom,
+							footerTop: anchor?.top ?? null,
+						}),
 					}}
 				>
 					<View
-						className={`flex-row items-start gap-3 rounded-xl border bg-surface p-4 ${TONE[toast.tone].border}`}
+						className={`flex-row items-start gap-3 rounded-xl border bg-night-surface-overlay p-4 ${TONE[toast.tone].border}`}
 					>
 						<MaterialCommunityIcons
 							name={TONE[toast.tone].icon}
@@ -141,11 +170,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							color={TONE[toast.tone].color}
 						/>
 						<View className="flex-1 gap-1">
-							<Text className="font-semibold text-foreground">
+							<Text className="font-semibold text-night-foreground">
 								{toast.title}
 							</Text>
 							{toast.description ? (
-								<Text className="text-sm text-muted">{toast.description}</Text>
+								<Text className="text-sm text-night-muted">
+									{toast.description}
+								</Text>
 							) : null}
 						</View>
 						{toast.action ? (
@@ -177,9 +208,11 @@ function ActionButton({
 				action.onPress();
 			}}
 			hitSlop={8}
-			className="-my-2 min-h-touch min-w-touch items-center justify-center rounded-md px-3 active:bg-border"
+			className="-my-2 min-h-touch min-w-touch items-center justify-center rounded-md px-3 active:bg-night-surface-raised"
 		>
-			<Text className="font-semibold text-violet-300">{action.label}</Text>
+			<Text className="font-semibold text-night-accent-text">
+				{action.label}
+			</Text>
 		</Pressable>
 	);
 }
@@ -197,4 +230,19 @@ export function useToast(): ShowToast {
 /** Removes the toast with that id, if it is still the one on screen. */
 export function useDismissToast(): (id: number) => void {
 	return useToastContext().dismiss;
+}
+
+/**
+ * For a screen with a fixed footer: `report(top)` with the footer's top in
+ * window coordinates while the screen is focused, `report(null)` when it is
+ * not. Only the owner's own report is cleared, so screens never clear each
+ * other's.
+ */
+export function useToastAnchor(): (top: number | null) => void {
+	const { setAnchor } = useToastContext();
+	const owner = useRef(Symbol("toast-anchor")).current;
+	return useCallback(
+		(top: number | null) => setAnchor(owner, top),
+		[setAnchor, owner]
+	);
 }

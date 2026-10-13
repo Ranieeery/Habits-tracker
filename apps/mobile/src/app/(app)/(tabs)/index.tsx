@@ -1,3 +1,3 @@
-import { HeatmapScreen } from "@/features/heatmap/heatmap-screen.tsx";
+import { TodayScreen } from "@/features/today/today-screen.tsx";
 
-export default HeatmapScreen;
+export default TodayScreen;

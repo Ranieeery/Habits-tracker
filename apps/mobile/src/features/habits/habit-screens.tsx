@@ -131,8 +131,8 @@ export function EditHabitScreen() {
 									)
 								}
 							/>
-							<View className="gap-3 border-t border-border pt-6">
-								<Text className="text-sm text-muted">
+							<View className="gap-3 border-t border-night-border pt-6">
+								<Text className="text-sm text-night-muted">
 									{archived
 										? "Arquivado: não aparece nos dias a partir do arquivamento. Restaurar o traz de volta."
 										: "Arquivar tira o hábito dos próximos dias e mantém o histórico."}

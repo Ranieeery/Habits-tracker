@@ -219,14 +219,14 @@ export function HabitForm({
 			/>
 
 			{draft === null ? (
-				<Text className="rounded-md border border-border p-3 text-sm text-muted">
+				<Text className="rounded-md border border-night-border p-3 text-sm text-night-muted">
 					{UNSUPPORTED_SCHEDULE_TEXT}. Atualize o app para mudar a repetição;
 					aqui você pode renomear ou arquivar o hábito.
 				</Text>
 			) : (
 				<>
 					<View className="gap-2">
-						<Text className="text-sm font-semibold text-foreground">
+						<Text className="text-sm font-semibold text-night-foreground">
 							Repetição
 						</Text>
 						<View
@@ -248,7 +248,7 @@ export function HabitForm({
 					<View className="gap-2">
 						{draft.kind === "weekdays" && (
 							<>
-								<Text className="text-sm font-semibold text-foreground">
+								<Text className="text-sm font-semibold text-night-foreground">
 									Em quais dias da semana?
 								</Text>
 								<WeekdayPicker
@@ -269,7 +269,7 @@ export function HabitForm({
 						)}
 						{draft.kind === "monthly_days" && (
 							<>
-								<Text className="text-sm font-semibold text-foreground">
+								<Text className="text-sm font-semibold text-night-foreground">
 									Em quais dias do mês?
 								</Text>
 								<MonthDayGrid
@@ -279,7 +279,7 @@ export function HabitForm({
 										update({ monthDays: toggled(draft.monthDays, day) })
 									}
 								/>
-								<Text className="text-xs text-muted">
+								<Text className="text-xs text-night-muted">
 									Em meses sem o dia escolhido (como 31 ou 30 em fevereiro),
 									vale o último dia do mês.
 								</Text>
@@ -300,7 +300,7 @@ export function HabitForm({
 						)}
 						{draft.kind === "yearly" && (
 							<>
-								<Text className="text-sm font-semibold text-foreground">
+								<Text className="text-sm font-semibold text-night-foreground">
 									Em qual mês?
 								</Text>
 								<View
@@ -319,7 +319,7 @@ export function HabitForm({
 										/>
 									))}
 								</View>
-								<Text className="text-sm font-semibold text-foreground">
+								<Text className="text-sm font-semibold text-night-foreground">
 									Em qual dia?
 								</Text>
 								<MonthDayGrid
@@ -328,7 +328,7 @@ export function HabitForm({
 									onPress={(day) => update({ day })}
 								/>
 								{draft.month === 2 && draft.day === 29 ? (
-									<Text className="text-xs text-muted">
+									<Text className="text-xs text-night-muted">
 										Em anos não bissextos, vale 28/02.
 									</Text>
 								) : null}
@@ -351,19 +351,23 @@ export function HabitForm({
 
 					<View
 						accessibilityLiveRegion="polite"
-						className="rounded-md border border-border bg-background px-3 py-2"
+						className="rounded-md border border-night-border bg-night-bg px-3 py-2"
 					>
 						{preview ? (
 							<>
-								<Text className="text-sm text-foreground">
+								<Text className="text-sm text-night-foreground">
 									{preview.summary}
 								</Text>
 								{preview.next ? (
-									<Text className="text-sm text-muted">{preview.next}</Text>
+									<Text className="text-sm text-night-muted">
+										{preview.next}
+									</Text>
 								) : null}
 							</>
 						) : (
-							<Text className="text-sm text-muted">Complete a repetição.</Text>
+							<Text className="text-sm text-night-muted">
+								Complete a repetição.
+							</Text>
 						)}
 					</View>
 				</>

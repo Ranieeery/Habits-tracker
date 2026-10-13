@@ -17,10 +17,10 @@ export function ProgressBar({
 			accessibilityRole="progressbar"
 			accessibilityLabel={label}
 			accessibilityValue={{ min: 0, max: 100, now: percent, text: valueText }}
-			className="h-3 w-full overflow-hidden rounded-lg bg-track"
+			className="h-3 w-full overflow-hidden rounded-lg bg-night-border-strong"
 		>
 			<View
-				className="h-full rounded-lg bg-violet-600"
+				className="h-full rounded-lg bg-night-accent"
 				style={{ width: `${percent}%` }}
 			/>
 		</View>

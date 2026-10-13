@@ -17,8 +17,8 @@ describe("renderThemeCss", () => {
 		expect(css).toContain("--color-night-accent-text: #bba7ff;");
 		expect(css).toContain("--color-night-heat-1: #392863;");
 		expect(css).toContain("--color-night-heat-5: #bba7ff;");
-		// Deprecated aliases carry night values.
-		expect(css).toContain("--color-accent: #8456e8;");
+		// The older palette is gone (2.6.0).
+		expect(css).not.toContain("--color-accent:");
 		expect(css).not.toContain("--color-heatmap-");
 	});
 });

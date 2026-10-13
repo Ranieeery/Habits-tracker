@@ -18,11 +18,11 @@ import Animated, {
 	type SharedValue,
 	useAnimatedStyle,
 	useSharedValue,
-	withSequence,
 	withTiming,
 } from "react-native-reanimated";
 import { withAlpha } from "@/lib/color.ts";
 import { monthShortName, weekdayInitial } from "@/lib/format.ts";
+import { pulse, release } from "@/ui/motion.ts";
 import { useReducedMotion } from "@/ui/use-reduced-motion.ts";
 import {
 	CELL_PITCH,
@@ -318,7 +318,7 @@ function DayCell({
 	);
 }
 
-/** Today: a ring, and a short scale pulse when a habit gets done. */
+/** Today: a ring; pulses when a habit gets done, dips when one is undone. */
 function TodayCell({
 	cell,
 	pressed,
@@ -331,17 +331,12 @@ function TodayCell({
 	const scale = useSharedValue(1);
 	const previous = useRef(cell.completed);
 	useEffect(() => {
-		const grew = cell.completed > previous.current;
+		const before = previous.current;
 		previous.current = cell.completed;
-		if (!grew || reduced) return;
-		scale.set(
-			withSequence(
-				withTiming(1.18, { duration: 120, easing: Easing.out(Easing.quad) }),
-				withTiming(1, { duration: 180, easing: Easing.inOut(Easing.quad) })
-			)
-		);
+		if (reduced || cell.completed === before) return;
+		(cell.completed > before ? pulse : release)(scale);
 	}, [cell.completed, reduced, scale]);
-	const pulse = useAnimatedStyle(() => ({
+	const pulseStyle = useAnimatedStyle(() => ({
 		transform: [{ scale: scale.get() }],
 	}));
 
@@ -354,7 +349,7 @@ function TodayCell({
 					hasGlow(cell.level) && styles.glow,
 					styles.today,
 					pressed && styles.pressed,
-					pulse,
+					pulseStyle,
 				]}
 			/>
 		</View>

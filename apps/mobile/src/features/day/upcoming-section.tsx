@@ -20,11 +20,11 @@ export function UpcomingSection({ today }: { today: CalendarDate }) {
 		<View className="gap-2">
 			<Text
 				accessibilityRole="header"
-				className="text-lg font-bold text-foreground"
+				className="text-lg font-bold text-night-foreground"
 			>
 				Próximos
 			</Text>
-			<Text className="text-xs text-muted">
+			<Text className="text-xs text-night-muted">
 				Nos próximos {UPCOMING_DAYS} dias.
 			</Text>
 			<View className="gap-1">
@@ -33,14 +33,14 @@ export function UpcomingSection({ today }: { today: CalendarDate }) {
 						key={`${habit.id}:${date}`}
 						accessible
 						accessibilityLabel={`${formatRelativeDate(date, today)}: ${habit.name}`}
-						className="min-h-touch flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4"
+						className="min-h-touch flex-row items-center gap-3 rounded-xl border border-night-border bg-night-surface px-4"
 					>
-						<Text className="w-24 text-sm font-semibold text-muted">
+						<Text className="w-24 text-sm font-semibold text-night-muted">
 							{formatRelativeDate(date, today)}
 						</Text>
 						<Text
 							numberOfLines={1}
-							className="flex-1 text-base text-foreground"
+							className="flex-1 text-base text-night-foreground"
 						>
 							{habit.name}
 						</Text>

@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ReminderTime } from "@habits/contracts";
 import { MORNING_DIGEST_TIME } from "@habits/core";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import { type ComponentProps, useRef, useState } from "react";
 import { Linking, Pressable, Switch, Text, View } from "react-native";
 import { errorMessage, isUnauthorized, toDataError } from "@/data/errors.ts";
@@ -55,20 +55,23 @@ function SwitchRow({
 			accessibilityState={{ checked: value, disabled }}
 			disabled={disabled}
 			onPress={() => onChange(!value)}
-			className="min-h-touch flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3"
+			className="min-h-touch flex-row items-center gap-3 rounded-xl border border-night-border bg-night-surface px-4 py-3"
 		>
-			<MaterialCommunityIcons name={icon} size={22} color={colors.muted} />
+			<MaterialCommunityIcons name={icon} size={22} color={nightColors.muted} />
 			<View className="flex-1">
-				<Text className="font-semibold text-foreground">{title}</Text>
-				<Text className="text-sm text-muted">{description}</Text>
+				<Text className="font-semibold text-night-foreground">{title}</Text>
+				<Text className="text-sm text-night-muted">{description}</Text>
 			</View>
 			<Switch
 				value={value}
 				disabled={disabled}
 				onValueChange={onChange}
 				importantForAccessibility="no-hide-descendants"
-				trackColor={{ false: colors.border, true: colors.violet[600] }}
-				thumbColor={colors.foreground}
+				trackColor={{
+					false: nightColors.border.DEFAULT,
+					true: nightColors.accent.DEFAULT,
+				}}
+				thumbColor={nightColors.foreground}
 			/>
 		</Pressable>
 	);
@@ -154,10 +157,10 @@ export function RemindersSection() {
 	};
 
 	return (
-		<View className="gap-4 border-t border-border pt-6">
+		<View className="gap-4 border-t border-night-border pt-6">
 			<Text
 				accessibilityRole="header"
-				className="text-lg font-bold text-foreground"
+				className="text-lg font-bold text-night-foreground"
 			>
 				Notificações
 			</Text>
@@ -185,11 +188,11 @@ export function RemindersSection() {
 					<MaterialCommunityIcons
 						name="information-outline"
 						size={18}
-						color={colors.muted}
+						color={nightColors.muted}
 					/>
 					<Text
 						accessibilityLiveRegion="polite"
-						className="flex-1 text-sm text-muted"
+						className="flex-1 text-sm text-night-muted"
 					>
 						{status}
 					</Text>
@@ -211,12 +214,12 @@ export function RemindersSection() {
 					disabled={busy}
 					onChange={saveTime}
 				/>
-				<Text className="text-sm text-muted">
+				<Text className="text-sm text-night-muted">
 					No seu fuso horário, em passos de 15 minutos. Sem hábitos pendentes,
 					nenhum lembrete é enviado.
 				</Text>
 				{timeError ? (
-					<Text className="text-sm text-danger">{timeError}</Text>
+					<Text className="text-sm text-night-danger">{timeError}</Text>
 				) : null}
 			</View>
 

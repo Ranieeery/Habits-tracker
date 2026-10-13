@@ -1,4 +1,4 @@
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,7 +26,7 @@ export function SettingsGate({ children }: { children: ReactNode }) {
 	}
 	if (settings.isPending && settings.fetchStatus !== "paused") return null;
 	return (
-		<SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+		<SafeAreaView style={{ flex: 1, backgroundColor: nightColors.bg }}>
 			<View className="flex-1 justify-center px-4">
 				<QueryState query={settings}>{() => null}</QueryState>
 			</View>

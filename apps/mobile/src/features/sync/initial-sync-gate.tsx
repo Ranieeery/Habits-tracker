@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import type { ReactNode } from "react";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,7 +22,7 @@ export function InitialSyncGate({ children }: { children: ReactNode }) {
 
 	if (status.initialSyncDone) return children;
 	return (
-		<SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+		<SafeAreaView style={{ flex: 1, backgroundColor: nightColors.bg }}>
 			<View className="flex-1 justify-center gap-6 px-6">
 				<InitialSyncState />
 			</View>
@@ -68,7 +68,7 @@ function InitialSyncState() {
 	const total = remaining === null ? null : received + remaining;
 	return (
 		<View className="gap-4">
-			<Text className="text-center text-lg font-bold text-foreground">
+			<Text className="text-center text-lg font-bold text-night-foreground">
 				Baixando seus dados…
 			</Text>
 			<ProgressBar
@@ -76,7 +76,7 @@ function InitialSyncState() {
 				label="Progresso do download"
 				valueText={total ? `${received} de ${total}` : "Iniciando"}
 			/>
-			<Text className="text-center text-sm text-muted">
+			<Text className="text-center text-sm text-night-muted">
 				{total ? `${received} de ${total} registros` : "Conectando ao servidor"}
 			</Text>
 		</View>
@@ -95,10 +95,12 @@ function Notice({
 	return (
 		<View
 			accessibilityRole="alert"
-			className="items-center gap-4 rounded-xl border border-border bg-surface p-6"
+			className="items-center gap-4 rounded-xl border border-night-border bg-night-surface p-6"
 		>
-			<MaterialCommunityIcons name={icon} size={32} color={colors.muted} />
-			<Text className="text-center text-base text-foreground">{text}</Text>
+			<MaterialCommunityIcons name={icon} size={32} color={nightColors.muted} />
+			<Text className="text-center text-base text-night-foreground">
+				{text}
+			</Text>
 			{children}
 		</View>
 	);

@@ -1,5 +1,4 @@
 import {
-	colors,
 	fontFamily,
 	nightColors,
 	nightFonts,
@@ -10,12 +9,12 @@ import {
 /**
  * Tailwind v3 preset for NativeWind v4 (mobile). Since 2.5.0 it carries the
  * same tokens as the web's v4 theme (`presets-parity.test.ts`): the `night`
- * set (`bg-night-surface`, `font-display`…) plus the deprecated aliases.
+ * set (`bg-night-surface`, `font-display`…), the only colors since 2.6.0.
  */
 export const tailwindV3Preset = {
 	theme: {
 		extend: {
-			colors: { ...colors, night: nightColors },
+			colors: { night: nightColors },
 			borderRadius: radius,
 			spacing,
 			fontFamily: { ...fontFamily, display: nightFonts.display },

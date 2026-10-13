@@ -8,25 +8,27 @@ import {
 	isCalendarDate,
 	isDayEditable,
 } from "@habits/core";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { type ReactNode, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { isSettled, useDay, useHabits } from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import {
+	capitalizeFirst,
 	formatFullDate,
 	formatLongDate,
 	formatPercent,
 	formatShortDate,
 } from "@/lib/format.ts";
 import { Button } from "@/ui/button.tsx";
-import { CheckboxBox } from "@/ui/checkbox.tsx";
+import { DisplayText } from "@/ui/display-text.tsx";
 import { ProgressBar } from "@/ui/progress-bar.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { EditDayFooter } from "./edit-day-sheet.tsx";
+import { HabitRow } from "./habit-row.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
 import { useCompletionChange } from "./use-completion-change.ts";
@@ -63,8 +65,21 @@ export function DayScreen() {
  * "Novo hábito" in the same fixed footer: one-handed reach, and since the
  * list scrolls above it, it never covers the last habit or its checkbox.
  * Every change shows "Desfazer" (the inverse change, through the outbox).
+ * Since 2.6.0 it is also the body of the Hoje tab (`inTabs`: under the
+ * status bar instead of a native header, which it must not retitle, with the
+ * tab's header and week strip in `header`).
  */
-function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
+export function DayView({
+	date,
+	today,
+	inTabs = false,
+	header,
+}: {
+	date: CalendarDate;
+	today: CalendarDate;
+	inTabs?: boolean;
+	header?: ReactNode;
+}) {
 	const router = useRouter();
 	const day = useDay(date);
 	const { change, dismissUndo } = useCompletionChange(date);
@@ -95,25 +110,30 @@ function DayView({ date, today }: { date: CalendarDate; today: CalendarDate }) {
 
 	return (
 		<Screen
-			edges={[]}
+			edges={inTabs ? ["top"] : []}
+			inTabs={inTabs}
 			onRefresh={() => void day.refetch()}
 			refreshing={day.isRefetching}
 			footer={footer}
 		>
-			<Stack.Screen
-				options={{ title: isToday ? "Hoje" : formatShortDate(date) }}
-			/>
+			{inTabs ? null : (
+				<Stack.Screen
+					options={{ title: isToday ? "Hoje" : formatShortDate(date) }}
+				/>
+			)}
+			{header}
 			<View className="gap-1">
-				<Text className="font-semibold text-muted capitalize">
-					{isToday ? "Hoje" : rest.join(", ")}
+				<Text className="text-sm font-semibold text-night-muted">
+					{isToday ? "Hoje" : capitalizeFirst(rest.join(", "))}
 				</Text>
-				<Text
+				<DisplayText
 					accessibilityRole="header"
 					accessibilityLabel={formatFullDate(date)}
-					className="text-3xl font-extrabold text-foreground capitalize"
+					className="text-3xl tracking-tight text-night-foreground"
 				>
-					{weekday} <Text className="text-muted">{formatShortDate(date)}</Text>
-				</Text>
+					{capitalizeFirst(weekday)}{" "}
+					<Text className="text-night-muted">{formatShortDate(date)}</Text>
+				</DisplayText>
 			</View>
 
 			<QueryState query={day} loadingLabel="Carregando o dia…">
@@ -202,20 +222,20 @@ function DayContent({
 					label="Progresso do dia"
 					valueText={summary}
 				/>
-				<Text className="text-sm text-muted">{summary}</Text>
+				<Text className="text-sm text-night-muted">{summary}</Text>
 			</View>
 
 			{editState === "past_editable" && unlocked ? (
 				<View
 					accessibilityLiveRegion="polite"
-					className="flex-row items-center gap-3 rounded-xl border border-warning/60 bg-warning-surface px-4 py-3"
+					className="flex-row items-center gap-3 rounded-xl border border-night-warning/60 bg-night-warning-surface px-4 py-3"
 				>
 					<MaterialCommunityIcons
 						name="alert-outline"
 						size={22}
-						color={colors.warning.DEFAULT}
+						color={nightColors.warning.DEFAULT}
 					/>
-					<Text className="flex-1 font-semibold text-warning">
+					<Text className="flex-1 font-semibold text-night-warning">
 						Editando dia passado
 					</Text>
 				</View>
@@ -224,36 +244,25 @@ function DayContent({
 					<MaterialCommunityIcons
 						name="lock-outline"
 						size={16}
-						color={colors.muted}
+						color={nightColors.muted}
 					/>
-					<Text className="flex-1 text-sm text-muted">
+					<Text className="flex-1 text-sm text-night-muted">
 						{READ_ONLY[editState]}
 					</Text>
 				</View>
 			) : null}
 
-			<View className="gap-2">
-				{possible.map((habit) => {
-					const checked = completedIds.has(habit.id);
-					return (
-						<Pressable
-							key={habit.id}
-							accessibilityRole="checkbox"
-							accessibilityLabel={habit.name}
-							accessibilityState={{ checked, disabled: !editable }}
-							disabled={!editable}
-							onPress={() => onToggle(habit, !checked)}
-							className="min-h-14 flex-row items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 active:bg-border"
-						>
-							<CheckboxBox checked={checked} />
-							<Text
-								className={`flex-1 text-lg font-semibold ${checked ? "text-muted line-through" : "text-foreground"}`}
-							>
-								{habit.name}
-							</Text>
-						</Pressable>
-					);
-				})}
+			<View className="overflow-hidden rounded-xl border border-night-border bg-night-surface">
+				{possible.map((habit, index) => (
+					<HabitRow
+						key={habit.id}
+						name={habit.name}
+						checked={completedIds.has(habit.id)}
+						disabled={!editable}
+						divider={index > 0}
+						onToggle={(checked) => onToggle(habit, checked)}
+					/>
+				))}
 			</View>
 		</>
 	);

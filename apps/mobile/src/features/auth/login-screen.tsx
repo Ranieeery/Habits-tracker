@@ -1,10 +1,13 @@
 import { Email, PASSWORD_MAX_LENGTH } from "@habits/contracts";
 import { useRef, useState } from "react";
-import { Text, type TextInput, View } from "react-native";
+import { type TextInput, View } from "react-native";
 import { AuthError, type AuthErrorReason } from "@/data/auth.ts";
 import { useSignIn } from "@/data/hooks.ts";
 import { Button } from "@/ui/button.tsx";
 import { Screen } from "@/ui/screen.tsx";
+import { DisplayText } from "@/ui/display-text.tsx";
+import { Wordmark } from "@/ui/wordmark.tsx";
+import { Backdrop } from "@/ui/backdrop.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { FieldError, TextField } from "@/ui/text-field.tsx";
 
@@ -50,17 +53,15 @@ export function LoginScreen() {
 	};
 
 	return (
-		<Screen edges={["top", "bottom"]}>
-			<View className="gap-2 pt-16">
-				<Text className="text-sm font-bold tracking-widest text-violet-400 uppercase">
-					Habits
-				</Text>
-				<Text
+		<Screen edges={["top", "bottom"]} background={<Backdrop />}>
+			<View className="gap-4 pt-16">
+				<Wordmark />
+				<DisplayText
 					accessibilityRole="header"
-					className="text-3xl font-extrabold text-foreground"
+					className="text-3xl tracking-tight text-night-foreground"
 				>
 					Entrar
-				</Text>
+				</DisplayText>
 			</View>
 
 			<View className="gap-5">

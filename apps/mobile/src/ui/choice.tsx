@@ -32,10 +32,10 @@ export function Choice({
 			}
 			disabled={disabled}
 			onPress={onPress}
-			className={`min-h-touch min-w-touch items-center justify-center rounded-md border-2 px-3 ${selected ? "border-violet-500 bg-violet-600" : "border-border bg-surface active:bg-border"} ${disabled ? "opacity-40" : ""} ${className}`}
+			className={`min-h-touch min-w-touch items-center justify-center rounded-md border-2 px-3 ${selected ? "border-night-accent-hover bg-night-accent" : "border-night-border bg-night-surface active:bg-night-surface-raised"} ${disabled ? "opacity-40" : ""} ${className}`}
 		>
 			<Text
-				className={`text-base font-bold ${selected ? "text-night-accent-on" : "text-muted"}`}
+				className={`text-base font-bold ${selected ? "text-night-accent-on" : "text-night-muted"}`}
 			>
 				{label}
 			</Text>

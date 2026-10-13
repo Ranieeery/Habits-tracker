@@ -21,7 +21,7 @@ import {
 	scrollLeftFor,
 	WEEKDAY_COLUMN,
 } from "./heatmap-utils.ts";
-import { pulse } from "./pulse.ts";
+import { pulse, release } from "./pulse.ts";
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 
@@ -107,7 +107,8 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 			: scroller.scrollWidth;
 	}, [grid.year, currentWeek]);
 
-	// Pulse today's square when its completed count goes up.
+	// Pulse today's square when its completed count goes up, dip it when it
+	// goes down.
 	const todayCompleted = todayCell?.completed;
 	const previousCompleted = useRef(todayCompleted);
 	useEffect(() => {
@@ -115,9 +116,9 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 		previousCompleted.current = todayCompleted;
 		if (reducedMotion || before === undefined || todayCompleted === undefined)
 			return;
-		if (todayCompleted > before) {
-			pulse(scrollerRef.current?.querySelector('[aria-current="date"]'));
-		}
+		if (todayCompleted === before) return;
+		const cell = scrollerRef.current?.querySelector('[aria-current="date"]');
+		(todayCompleted > before ? pulse : release)(cell);
 	}, [todayCompleted, reducedMotion]);
 
 	const linkOf = (date: string | undefined) =>

@@ -1,6 +1,6 @@
 # DESIGN.md
 
-Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/design-tokens/src/tokens.ts` (fonte única); aqui só aparecem os **nomes** dos tokens. Vale em **todo o web** (etapas 1 e 2, 2.4.0) e na **tela principal do mobile** (etapa 3, 2.5.0); as demais telas do mobile adotam na etapa 4 (ver "Visual redesign" no `CLAUDE.md`). Regras próprias do celular em "Mobile".
+Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/design-tokens/src/tokens.ts` (fonte única); aqui só aparecem os **nomes** dos tokens. Vale em **todo o web** (2.4.0) e em **todo o mobile** (tela principal na 2.5.0, demais telas na 2.6.0). Regras próprias do celular em "Mobile".
 
 ## Identidade e tom
 
@@ -26,7 +26,7 @@ Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/de
 | Heatmap         | `night-heat-0` … `night-heat-5` (mais feito = mais claro; passos iguais de luminosidade)                                                                                       |
 | Estados         | `night-success`/`-surface`, `night-danger`/`-surface`, `night-warning`/`-surface`                                                                                              |
 
-Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por modificador (`/40`) ou `color-mix` sobre um token. Texto sempre ≥ 4,5:1 sobre o fundo onde aparece; componentes de UI ≥ 3:1. Desde a 2.5.0 web e mobile recebem exatamente os mesmos tokens. Os nomes antigos (`background`, `surface`, `violet-*`…) são apelidos obsoletos que apontam para valores `night`: servem só às telas do mobile ainda não migradas e somem na etapa 4. Código novo usa só `night-*`.
+Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por modificador (`/40`) ou `color-mix` sobre um token. Texto sempre ≥ 4,5:1 sobre o fundo onde aparece; componentes de UI ≥ 3:1. Web e mobile recebem exatamente os mesmos tokens; desde a 2.6.0 só existe o conjunto `night` (a paleta antiga e seus nomes foram removidos, e um teste em cada app falha com classes antigas).
 
 ## Tipografia
 
@@ -109,8 +109,12 @@ Contraste AA no mínimo; foco sempre visível; nada só por cor (rótulos e tool
 
 O celular é o uso principal, quase sempre com **uma mão**. Mesma identidade, mesmos tokens; o que muda é a mão no lugar do mouse.
 
-- **Zona do polegar**: o que só se lê fica no alto (marca, data, sincronização, números); a ação do dia fica no terço de baixo (painel "Hoje", rodapés fixos como "Novo hábito" e "Editar este dia"). Nada de ação frequente no canto superior.
+- **Zona do polegar**: o que só se lê ou se usa pouco fica no alto (marca, sincronização, engrenagem de Ajustes, números); a ação do dia fica no terço de baixo (lista de Hoje, rodapés fixos como "Novo hábito" e "Editar este dia"). Nada de ação frequente no canto superior.
 - **Alvos de toque**: ≥ 44 dp (`min-h-touch`, `size-touch`); a linha inteira é o alvo. Quando o desenho precisa ser menor (célula de 28 dp do heatmap), a área de toque é o espaço inteiro sem vãos entre vizinhos e um **realce no toque** (anel `night-accent-text`) mostra o que vai abrir antes de soltar; arrastar para fora cancela.
+- **Navegação** (2.6.0, igual ao web): abas **Hoje** (abre primeiro), **Histórico** (o heatmap) e **Hábitos**; Ajustes é a engrenagem no topo de cada aba, uma tela empilhada com voltar. Aba ativa: pílula `night-accent` em 20% atrás do ícone, ícone e rótulo `night-accent-text` e uma barrinha no topo (nunca só cor). Abas nunca deslizam.
+- **Hoje**: faixa dos últimos 7 dias no topo (pílulas com inicial, dia na fonte de exibição, quadradinho do nível e ponto em hoje; a escolhida em `night-accent` com texto `night-accent-on`), depois o dia escolhido com as regras de sempre (dia passado só leitura até "Editar este dia"). A escolha fica só em memória e volta para hoje ao sair da aba.
+- **Avisos** ("Desfazer"): ficam logo acima do rodapé fixo da tela em foco; sem rodapé, acima da barra de abas. Nunca cobrem uma ação fixa.
+- **Hábitos**: cartões como no web (faixa D S T Q Q S S ou ícone do tipo, selo "Hoje"/"Próxima"), "Novo hábito" no rodapé fixo e um modo "Reordenar" com setas subir/descer de 44 dp (arrastar fica para depois).
 - **Heatmap**: colunas = semanas, células de 28 dp em passo de 32, rolagem horizontal abrindo na semana atual. Para leitor de tela, **um elemento por semana** ("Semana de 4 a 10 de outubro"): deslizar para cima/baixo escolhe o dia, toque duplo abre.
 - **Safe areas**: Android é edge-to-edge; telas usam `Screen` (safe area em cima nas abas, teclado empurra o conteúdo). O brilho do fundo passa por baixo da barra de status.
 - **Háptico**: `selection` ao marcar/desmarcar um hábito; nunca em rolagem, navegação ou carregamento.

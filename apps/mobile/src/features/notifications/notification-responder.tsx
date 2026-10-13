@@ -41,7 +41,8 @@ export function NotificationResponder() {
 			}
 			const path = notificationPath(response.notification.request.content.data);
 			// Typed routes cannot check a path that arrives at runtime.
-			router.push(path as Parameters<typeof router.push>[0]);
+			// navigate: "/" switches to the Hoje tab instead of stacking a copy.
+			router.navigate(path as Parameters<typeof router.navigate>[0]);
 		};
 
 		void Notifications.getLastNotificationResponseAsync().then((response) => {

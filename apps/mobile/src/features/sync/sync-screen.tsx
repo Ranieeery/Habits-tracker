@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import { Alert, Text, View } from "react-native";
 import {
 	useDiscardFailures,
@@ -27,8 +27,8 @@ export function SyncScreen() {
 	return (
 		<Screen>
 			<View className="gap-2">
-				<Text className="text-lg font-bold text-foreground">{label}</Text>
-				<Text className="text-sm text-muted">
+				<Text className="text-lg font-bold text-night-foreground">{label}</Text>
+				<Text className="text-sm text-night-muted">
 					Suas alterações ficam salvas neste aparelho e são enviadas quando
 					houver conexão.
 					{status.pending > 0
@@ -47,24 +47,24 @@ export function SyncScreen() {
 			{isClockSkewed(status.clockSkewMs) ? (
 				<View
 					accessibilityRole="alert"
-					className="flex-row gap-3 rounded-xl border border-border bg-surface p-4"
+					className="flex-row gap-3 rounded-xl border border-night-border bg-night-surface p-4"
 				>
 					<MaterialCommunityIcons
 						name="clock-alert-outline"
 						size={20}
-						color={colors.danger.DEFAULT}
+						color={nightColors.danger.DEFAULT}
 					/>
-					<Text className="flex-1 text-sm text-foreground">
+					<Text className="flex-1 text-sm text-night-foreground">
 						O relógio do aparelho parece errado. Ajuste a data e a hora
 						automáticas: hábitos marcados podem cair no dia errado.
 					</Text>
 				</View>
 			) : null}
 
-			<View className="gap-3 border-t border-border pt-6">
+			<View className="gap-3 border-t border-night-border pt-6">
 				<Text
 					accessibilityRole="header"
-					className="text-lg font-bold text-foreground"
+					className="text-lg font-bold text-night-foreground"
 				>
 					Falhas
 				</Text>
@@ -77,7 +77,7 @@ export function SyncScreen() {
 							/>
 						) : (
 							<View className="gap-3">
-								<Text className="text-sm text-muted">
+								<Text className="text-sm text-night-muted">
 									O servidor recusou estas alterações. Elas não aparecem nos
 									seus dados até você tentar de novo; descartar apaga de vez.
 								</Text>
@@ -131,12 +131,12 @@ function FailureRow({ failure }: { failure: FailureView }) {
 	};
 
 	return (
-		<View className="gap-3 rounded-xl border border-danger bg-danger-surface p-4">
+		<View className="gap-3 rounded-xl border border-night-danger bg-night-danger-surface p-4">
 			<View className="gap-1">
-				<Text className="text-base font-semibold text-foreground">
+				<Text className="text-base font-semibold text-night-foreground">
 					{failure.action}
 				</Text>
-				<Text className="text-sm text-danger">{failure.reason}</Text>
+				<Text className="text-sm text-night-danger">{failure.reason}</Text>
 			</View>
 			<View className="flex-row flex-wrap gap-2">
 				<Button

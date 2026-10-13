@@ -76,28 +76,23 @@ export function SettingsScreen() {
 		]);
 	};
 
+	// A stack screen since 2.6.0 (the gear on the tabs' headers): the native
+	// header says "Ajustes" and goes back.
 	return (
-		<Screen>
-			<Text
-				accessibilityRole="header"
-				className="text-3xl font-extrabold text-foreground"
-			>
-				Ajustes
-			</Text>
-
+		<Screen edges={["bottom"]}>
 			<TimezoneBanner />
 			{/* Remounts with the saved value when the banner changes it. */}
 			<TimeZoneSection key={timezone} />
 			<RemindersSection />
 
-			<View className="gap-3 border-t border-border pt-6">
+			<View className="gap-3 border-t border-night-border pt-6">
 				<Text
 					accessibilityRole="header"
-					className="text-lg font-bold text-foreground"
+					className="text-lg font-bold text-night-foreground"
 				>
 					Sincronização
 				</Text>
-				<Text className="text-sm text-muted">
+				<Text className="text-sm text-night-muted">
 					Seus hábitos ficam salvos neste aparelho e funcionam sem internet.
 				</Text>
 				<SyncIndicator />
@@ -109,17 +104,19 @@ export function SettingsScreen() {
 				/>
 			</View>
 
-			<View className="gap-3 border-t border-border pt-6">
+			<View className="gap-3 border-t border-night-border pt-6">
 				<Text
 					accessibilityRole="header"
-					className="text-lg font-bold text-foreground"
+					className="text-lg font-bold text-night-foreground"
 				>
 					Conta
 				</Text>
 				{user ? (
-					<Text className="text-muted">
+					<Text className="text-night-muted">
 						Conectado como{" "}
-						<Text className="font-semibold text-foreground">{user.email}</Text>
+						<Text className="font-semibold text-night-foreground">
+							{user.email}
+						</Text>
 					</Text>
 				) : null}
 				<Button
@@ -169,13 +166,13 @@ function TimeZoneSection() {
 		<View className="gap-4">
 			<Text
 				accessibilityRole="header"
-				className="text-lg font-bold text-foreground"
+				className="text-lg font-bold text-night-foreground"
 			>
 				Fuso horário
 			</Text>
-			<Text className="text-sm text-muted">
+			<Text className="text-sm text-night-muted">
 				Seus dias são contados neste fuso. Hoje é{" "}
-				<Text className="font-semibold text-foreground">
+				<Text className="font-semibold text-night-foreground">
 					{formatLongDate(today)}
 				</Text>
 				.

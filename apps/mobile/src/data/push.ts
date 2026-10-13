@@ -2,7 +2,7 @@
 // Expo push token and the id the API gave this device. Asking for permission
 // happens only from `requestPermission` (the reminders switch), never on
 // launch.
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
@@ -44,7 +44,7 @@ async function ensureChannel() {
 		name: "Lembretes",
 		description: "Lembrete diário dos hábitos pendentes",
 		importance: Notifications.AndroidImportance.HIGH,
-		lightColor: colors.violet[600],
+		lightColor: nightColors.accent.DEFAULT,
 	});
 }
 

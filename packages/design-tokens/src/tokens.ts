@@ -2,8 +2,9 @@
 // theme, theme-css.ts) and the mobile (Tailwind v3 preset for NativeWind).
 // Keys named DEFAULT map to the bare name (e.g. `bg-night-accent`).
 
-// Visual identity since 2.4.0 ("night": dark only, calm, violet), on the web
-// since 2.4.0 and on the mobile since 2.5.0 (DESIGN.md). Values are
+// Visual identity ("night": dark only, calm, violet): the web since 2.4.0,
+// the whole mobile since 2.6.0 (DESIGN.md). The older palette and its names
+// were removed in 2.6.0 (git history, tag v2.5.0 or earlier). Values are
 // OKLCH (hue 293) converted to hex; the heatmap levels climb in equal steps
 // of OKLCH lightness (0.22 to 0.78), so each level looks one step brighter
 // (1.4 to 1.6:1 between neighbors). WCAG contrasts are noted per value.
@@ -47,48 +48,6 @@ export const nightColors = {
 	warning: {
 		DEFAULT: "#fabb41",
 		surface: "#311d03",
-	},
-} as const;
-
-/**
- * @deprecated Older token names, kept only for the mobile screens not
- * migrated yet (visual redesign stage 4). Since 2.5.0 every name points at a
- * `night` value, so those screens already show the new palette; new code
- * uses the `night-*` names. Removed in stage 4, when `night-*` becomes the
- * plain names. (The legacy values and the old heatmap levels are in git
- * history, tag v2.4.0 or earlier.)
- */
-export const colors = {
-	background: nightColors.bg,
-	surface: nightColors.surface.DEFAULT,
-	border: nightColors.border.DEFAULT,
-	track: nightColors.border.strong,
-	foreground: nightColors.foreground,
-	muted: nightColors.muted,
-	accent: {
-		DEFAULT: nightColors.accent.DEFAULT,
-		hover: nightColors.accent.hover,
-	},
-	violet: {
-		300: nightColors.accent.text,
-		400: nightColors.accent.text,
-		500: nightColors.accent.hover,
-		600: nightColors.accent.DEFAULT,
-		700: nightColors.accent.hover,
-		800: nightColors.heat[2],
-		900: nightColors.heat[1],
-	},
-	success: {
-		DEFAULT: nightColors.success.DEFAULT,
-		hover: nightColors.success.DEFAULT,
-	},
-	danger: {
-		DEFAULT: nightColors.danger.DEFAULT,
-		surface: nightColors.danger.surface,
-	},
-	warning: {
-		DEFAULT: nightColors.warning.DEFAULT,
-		surface: nightColors.warning.surface,
 	},
 } as const;
 

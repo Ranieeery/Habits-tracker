@@ -20,13 +20,17 @@ export function permissionFrom(status: {
 	return "undetermined";
 }
 
+/** Today: the first tab since 2.6.0. */
+export const TODAY_PATH = "/";
+/** What the API (and apps before 2.6.0) send for "today". */
+const LEGACY_TODAY_PATH = "/day/hoje";
+
 /** The app route a notification opens: its own path, or today. */
 export function notificationPath(data: unknown): string {
 	const url =
 		typeof data === "object" && data !== null && "url" in data
 			? (data as { url: unknown }).url
 			: undefined;
-	return typeof url === "string" && /^\/(?![/\\])/.test(url)
-		? url
-		: "/day/hoje";
+	if (typeof url !== "string" || !/^\/(?![/\\])/.test(url)) return TODAY_PATH;
+	return url === LEGACY_TODAY_PATH ? TODAY_PATH : url;
 }

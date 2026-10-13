@@ -24,13 +24,14 @@ describe("permissionFrom", () => {
 });
 
 describe("notificationPath", () => {
-	it("opens the path a reminder carries, or today", () => {
-		expect(notificationPath({ url: "/day/hoje", kind: "reminder" })).toBe(
-			"/day/hoje"
-		);
+	it("opens the path a notification carries, or today", () => {
 		expect(notificationPath({ url: "/habits" })).toBe("/habits");
-		expect(notificationPath({ url: "//evil.example" })).toBe("/day/hoje");
-		expect(notificationPath({ url: "https://evil.example" })).toBe("/day/hoje");
-		expect(notificationPath(null)).toBe("/day/hoje");
+		expect(notificationPath({ url: "//evil.example" })).toBe("/");
+		expect(notificationPath({ url: "https://evil.example" })).toBe("/");
+		expect(notificationPath(null)).toBe("/");
+	});
+
+	it("opens the today tab for the old /day/hoje the API still sends", () => {
+		expect(notificationPath({ url: "/day/hoje", kind: "reminder" })).toBe("/");
 	});
 });

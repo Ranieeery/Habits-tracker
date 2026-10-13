@@ -22,6 +22,7 @@ import {
 	type HabitFormValues,
 } from "@/features/habits/habit-form.tsx";
 import { Button, IconButton } from "@/ui/button.tsx";
+import { DisplayText } from "@/ui/display-text.tsx";
 import { useToast } from "@/ui/toast.tsx";
 
 /**
@@ -126,26 +127,26 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 							importantForAccessibility="no"
 							onPress={close}
 							style={StyleSheet.absoluteFill}
-							className="bg-background/70"
+							className="bg-night-bg/70"
 						/>
 						<View
 							accessibilityViewIsModal
-							className="gap-4 rounded-t-2xl border-t border-border bg-surface px-4 pt-2"
+							className="gap-4 rounded-t-2xl border-t border-night-border bg-night-surface px-4 pt-2"
 							style={{ paddingBottom: insets.bottom + 16 }}
 						>
 							<View className="items-center py-1">
-								<View className="h-1 w-10 rounded-full bg-border" />
+								<View className="h-1 w-10 rounded-full bg-night-surface-raised" />
 							</View>
 							<View className="flex-row items-center justify-between gap-2">
-								<Text
+								<DisplayText
 									accessibilityRole="header"
-									className="flex-1 text-2xl font-extrabold text-foreground"
+									className="flex-1 text-2xl tracking-tight text-night-foreground"
 								>
 									Novo hábito
-								</Text>
+								</DisplayText>
 								<IconButton icon="close" label="Fechar" onPress={close} />
 							</View>
-							<Text className="text-sm text-muted">
+							<Text className="text-sm text-night-muted">
 								Começa a contar na data escolhida e não muda os dias anteriores.
 							</Text>
 							{habitId !== null ? (

@@ -1,5 +1,6 @@
-import { colors } from "@habits/design-tokens";
-import type { ReactNode } from "react";
+import { nightColors } from "@habits/design-tokens";
+import { useFocusEffect } from "expo-router";
+import { type ReactNode, useCallback, useRef } from "react";
 import { RefreshControl, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
@@ -7,6 +8,7 @@ import {
 	SafeAreaView,
 	useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { useToastAnchor } from "./toast.tsx";
 
 /**
  * Scrolling page with safe-area padding. Focused inputs scroll above the
@@ -14,11 +16,13 @@ import {
  * Tab screens pass `edges={["top"]}`; screens under a native header pass none.
  * `footer` stays fixed below the scroll area (never over the content), in
  * reach of the thumb. `background` is drawn behind everything (the heatmap's
- * glow) and never takes touches.
+ * glow) and never takes touches. While the screen is focused, its footer's
+ * top is reported to the toast, which then sits above it (2.6.0).
  */
 export function Screen({
 	children,
 	edges = ["top"],
+	inTabs = false,
 	onRefresh,
 	refreshing = false,
 	footer,
@@ -26,16 +30,39 @@ export function Screen({
 }: {
 	children: ReactNode;
 	edges?: Edge[];
+	/** A tab screen: the tab bar already clears the bottom safe area. */
+	inTabs?: boolean;
 	onRefresh?: () => void;
 	refreshing?: boolean;
 	footer?: ReactNode;
 	background?: ReactNode;
 }) {
 	const insets = useSafeAreaInsets();
+	const reportFooter = useToastAnchor();
+	const footerRef = useRef<View>(null);
+	const focused = useRef(false);
+	// Window coordinates (not onLayout's): the footer sits above the tab bar
+	// on tabs and at the very bottom on stack screens, and the toast lives
+	// at the root.
+	const measureFooter = useCallback(() => {
+		if (!focused.current) return;
+		footerRef.current?.measureInWindow((_x, y) => reportFooter(y));
+	}, [reportFooter]);
+	useFocusEffect(
+		useCallback(() => {
+			focused.current = true;
+			measureFooter();
+			return () => {
+				focused.current = false;
+				reportFooter(null);
+			};
+		}, [measureFooter, reportFooter])
+	);
+
 	return (
 		<SafeAreaView
 			edges={edges}
-			style={{ flex: 1, backgroundColor: colors.background }}
+			style={{ flex: 1, backgroundColor: nightColors.bg }}
 		>
 			{background}
 			<KeyboardAwareScrollView
@@ -46,9 +73,9 @@ export function Screen({
 						<RefreshControl
 							refreshing={refreshing}
 							onRefresh={onRefresh}
-							colors={[colors.violet[600]]}
-							progressBackgroundColor={colors.surface}
-							tintColor={colors.violet[400]}
+							colors={[nightColors.accent.DEFAULT]}
+							progressBackgroundColor={nightColors.surface.DEFAULT}
+							tintColor={nightColors.accent.text}
 						/>
 					) : undefined
 				}
@@ -57,9 +84,12 @@ export function Screen({
 			</KeyboardAwareScrollView>
 			{footer ? (
 				<View
-					className="border-t border-border bg-background px-4 pt-3"
+					ref={footerRef}
+					onLayout={measureFooter}
+					className="border-t border-night-border bg-night-bg px-4 pt-3"
 					style={{
-						paddingBottom: (edges.includes("bottom") ? 0 : insets.bottom) + 12,
+						paddingBottom:
+							(inTabs || edges.includes("bottom") ? 0 : insets.bottom) + 12,
 					}}
 				>
 					{footer}

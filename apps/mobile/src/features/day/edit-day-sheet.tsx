@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatShortDate } from "@/lib/format.ts";
 import { Button } from "@/ui/button.tsx";
+import { DisplayText } from "@/ui/display-text.tsx";
 
 /** Waits for the Modal's slide before moving the screen reader's focus. */
 const FOCUS_DELAY_MS = 350;
@@ -100,23 +101,23 @@ export function EditDayFooter({
 						importantForAccessibility="no"
 						onPress={cancel}
 						style={StyleSheet.absoluteFill}
-						className="bg-background/70"
+						className="bg-night-bg/70"
 					/>
 					<View
 						accessibilityViewIsModal
-						className="gap-4 rounded-t-2xl border-t border-border bg-surface px-4 pt-2"
+						className="gap-4 rounded-t-2xl border-t border-night-border bg-night-surface px-4 pt-2"
 						style={{ paddingBottom: insets.bottom + 16 }}
 					>
 						<View className="items-center py-1">
-							<View className="h-1 w-10 rounded-full bg-border" />
+							<View className="h-1 w-10 rounded-full bg-night-surface-raised" />
 						</View>
-						<Text
+						<DisplayText
 							accessibilityRole="header"
-							className="text-2xl font-extrabold text-foreground"
+							className="text-2xl tracking-tight text-night-foreground"
 						>
 							Editar o dia {formatShortDate(date)}?
-						</Text>
-						<Text className="text-base text-muted">
+						</DisplayText>
+						<Text className="text-base text-night-muted">
 							Este dia já passou. Ao alterar, o mapa de hábitos e as sequências
 							serão recalculados.
 						</Text>

@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import type { ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { DataError, errorMessage } from "@/data/errors.ts";
 import { Button } from "./button.tsx";
+import { DisplayText } from "./display-text.tsx";
 
 export function LoadingState({ label = "Carregando…" }: { label?: string }) {
 	return (
@@ -13,8 +14,8 @@ export function LoadingState({ label = "Carregando…" }: { label?: string }) {
 			accessibilityLabel={label}
 			className="min-h-40 flex-row items-center justify-center gap-3"
 		>
-			<ActivityIndicator color={colors.violet[600]} />
-			<Text className="text-muted">{label}</Text>
+			<ActivityIndicator color={nightColors.accent.DEFAULT} />
+			<Text className="text-night-muted">{label}</Text>
 		</View>
 	);
 }
@@ -31,14 +32,14 @@ export function ErrorState({
 	return (
 		<View
 			accessibilityRole="alert"
-			className="items-center gap-4 rounded-xl border border-danger bg-danger-surface p-6"
+			className="items-center gap-4 rounded-xl border border-night-danger bg-night-danger-surface p-6"
 		>
 			<MaterialCommunityIcons
 				name={offline ? "cloud-off-outline" : "alert-circle-outline"}
 				size={32}
-				color={colors.danger.DEFAULT}
+				color={nightColors.danger.DEFAULT}
 			/>
-			<Text className="text-center text-base text-foreground">
+			<Text className="text-center text-base text-night-foreground">
 				{errorMessage(error)}
 			</Text>
 			{onRetry ? (
@@ -57,10 +58,14 @@ export function OfflineState() {
 	return (
 		<View
 			accessibilityRole="alert"
-			className="items-center gap-3 rounded-xl border border-border bg-surface p-6"
+			className="items-center gap-3 rounded-xl border border-night-border bg-night-surface p-6"
 		>
-			<MaterialCommunityIcons name="wifi-off" size={32} color={colors.muted} />
-			<Text className="text-center text-base text-foreground">
+			<MaterialCommunityIcons
+				name="wifi-off"
+				size={32}
+				color={nightColors.muted}
+			/>
+			<Text className="text-center text-base text-night-foreground">
 				Sem conexão. Os dados aparecem assim que a internet voltar.
 			</Text>
 		</View>
@@ -77,12 +82,17 @@ export function EmptyState({
 	action?: ReactNode;
 }) {
 	return (
-		<View className="items-center gap-3 rounded-xl border border-dashed border-border p-8">
-			<Text className="text-center text-lg font-bold text-foreground">
+		<View className="items-center gap-3 rounded-xl border border-dashed border-night-border p-8">
+			<DisplayText
+				weight="semibold"
+				className="text-center text-xl text-night-foreground"
+			>
 				{title}
-			</Text>
+			</DisplayText>
 			{description ? (
-				<Text className="text-center text-sm text-muted">{description}</Text>
+				<Text className="text-center text-sm text-night-muted">
+					{description}
+				</Text>
 			) : null}
 			{action}
 		</View>

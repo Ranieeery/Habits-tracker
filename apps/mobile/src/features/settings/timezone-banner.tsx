@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
@@ -31,15 +31,19 @@ export function TimezoneBanner() {
 	return (
 		<View
 			accessibilityRole="summary"
-			className="gap-3 rounded-xl border border-border bg-surface p-4"
+			className="gap-3 rounded-xl border border-night-border bg-night-surface p-4"
 		>
 			<View className="flex-row gap-3">
-				<MaterialCommunityIcons name="earth" size={20} color={colors.muted} />
-				<Text className="flex-1 text-sm text-muted">
+				<MaterialCommunityIcons
+					name="earth"
+					size={20}
+					color={nightColors.muted}
+				/>
+				<Text className="flex-1 text-sm text-night-muted">
 					Este aparelho está em{" "}
-					<Text className="font-semibold text-foreground">{device}</Text>, mas
-					seus dias são contados em{" "}
-					<Text className="font-semibold text-foreground">{saved}</Text>.
+					<Text className="font-semibold text-night-foreground">{device}</Text>,
+					mas seus dias são contados em{" "}
+					<Text className="font-semibold text-night-foreground">{saved}</Text>.
 				</Text>
 			</View>
 			<View className="flex-row flex-wrap gap-2">

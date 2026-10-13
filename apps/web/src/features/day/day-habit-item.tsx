@@ -1,14 +1,14 @@
 import type { Habit } from "@habits/contracts";
 import { useId, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
-import { pulse } from "@/features/heatmap/pulse.ts";
+import { pulse, release } from "@/features/heatmap/pulse.ts";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion.ts";
 import { cn } from "@/lib/utils.ts";
 
 /**
  * One habit of a day with its checkbox: the whole row is the target (44px+).
  * Shared by the day view and the heatmap's "Hoje" panel. Checking pulses the
- * box (skipped with reduced motion).
+ * box and unchecking dips it (both skipped with reduced motion).
  */
 export function DayHabitItem({
 	habit,
@@ -43,7 +43,7 @@ export function DayHabitItem({
 					disabled={!editable}
 					onCheckedChange={(checked) => {
 						const value = checked === true;
-						if (value && !reducedMotion) pulse(box.current);
+						if (!reducedMotion) (value ? pulse : release)(box.current);
 						onToggle(value);
 					}}
 				/>

@@ -1,7 +1,6 @@
-// Since 2.4.0 the web uses only the `night` design tokens (DESIGN.md). The
-// older names still exist in the generated theme as deprecated aliases for
-// the mobile screens not migrated yet (stage 4); this keeps them from
-// creeping back into the web.
+// Since 2.4.0 the web uses only the `night` design tokens (DESIGN.md); since
+// 2.6.0 the older palette no longer exists in the theme at all, so an old
+// class would silently render nothing. This keeps old names from coming back.
 import { describe, expect, it } from "vitest";
 
 const sources = import.meta.glob<string>(

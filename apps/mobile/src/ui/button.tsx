@@ -1,33 +1,34 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, nightColors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import type { ComponentProps, Ref } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 
 const CONTAINER: Record<Variant, string> = {
-	primary: "bg-violet-600 active:bg-violet-700",
-	secondary: "border border-border bg-surface active:bg-border",
-	outline: "border-2 border-accent active:bg-surface",
-	ghost: "active:bg-surface",
-	danger: "border border-danger active:bg-danger-surface",
+	primary: "bg-night-accent active:bg-night-accent-hover",
+	secondary:
+		"border border-night-border bg-night-surface active:bg-night-surface-raised",
+	outline: "border-2 border-night-accent active:bg-night-surface",
+	ghost: "active:bg-night-surface",
+	danger: "border border-night-danger active:bg-night-danger-surface",
 };
 
 // Text on the accent uses accent-on (4.7:1); the foreground would be 4.2:1.
 const LABEL: Record<Variant, string> = {
 	primary: "text-night-accent-on",
-	secondary: "text-foreground",
-	outline: "text-foreground",
-	ghost: "text-muted",
-	danger: "text-danger",
+	secondary: "text-night-foreground",
+	outline: "text-night-foreground",
+	ghost: "text-night-muted",
+	danger: "text-night-danger",
 };
 
 const ICON_COLOR: Record<Variant, string> = {
 	primary: nightColors.accent.on,
-	secondary: colors.foreground,
-	outline: colors.accent.DEFAULT,
-	ghost: colors.muted,
-	danger: colors.danger.DEFAULT,
+	secondary: nightColors.foreground,
+	outline: nightColors.accent.text,
+	ghost: nightColors.muted,
+	danger: nightColors.danger.DEFAULT,
 };
 
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -102,10 +103,14 @@ export function IconButton({
 			disabled={disabled}
 			onPress={onPress}
 			hitSlop={4}
-			className={`size-touch items-center justify-center rounded-md active:bg-surface ${disabled ? "opacity-30" : ""}`}
+			className={`size-touch items-center justify-center rounded-md active:bg-night-surface ${disabled ? "opacity-30" : ""}`}
 		>
 			<View>
-				<MaterialCommunityIcons name={icon} size={24} color={colors.muted} />
+				<MaterialCommunityIcons
+					name={icon}
+					size={24}
+					color={nightColors.muted}
+				/>
 			</View>
 		</Pressable>
 	);

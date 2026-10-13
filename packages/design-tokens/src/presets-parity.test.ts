@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { tailwindV3Preset } from "./tailwind-v3-preset.ts";
 import { renderThemeCss } from "./theme-css.ts";
-import { colors, HEATMAP_LEVELS, nightColors, nightFonts } from "./tokens.ts";
+import { HEATMAP_LEVELS, nightColors, nightFonts } from "./tokens.ts";
 
 type Tree = { readonly [key: string]: string | readonly string[] | Tree };
 
@@ -39,7 +39,8 @@ function v4Vars(): Map<string, string> {
 
 // Since 2.5.0 the mobile uses the same identity as the web: both outputs
 // must expose exactly the same tokens with the same values, in both
-// directions (a token only one side has would be a drift).
+// directions (a token only one side has would be a drift). Since 2.6.0 the
+// only colors are the night set.
 describe("Tailwind v3 preset and v4 theme", () => {
 	it("expose exactly the same tokens with the same values", () => {
 		const v3 = Object.fromEntries(v3Vars());
@@ -55,13 +56,11 @@ describe("Tailwind v3 preset and v4 theme", () => {
 		expect(v3.get("--font-display")).toBe(nightFonts.display.join(","));
 	});
 
-	it("point every deprecated alias at a night value", () => {
-		const night = new Set(
-			flatten(nightColors, "--color-night").map(([, value]) => value)
+	it("carry no color outside the night set (2.6.0)", () => {
+		const colorsOutside = [...v4Vars().keys()].filter(
+			(name) => name.startsWith("--color-") && !name.startsWith("--color-night")
 		);
-		for (const [name, value] of flatten(colors, "--color")) {
-			expect(night.has(value), name).toBe(true);
-		}
+		expect(colorsOutside).toEqual([]);
 	});
 
 	it("define one night color per heatmap level", () => {

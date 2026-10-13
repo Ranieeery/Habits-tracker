@@ -4,10 +4,16 @@
 import type {
 	CalendarDate,
 	CreateHabitRequest,
+	Habit,
 	SummaryDay,
 	UpdateHabitRequest,
 } from "@habits/contracts";
-import { parseCalendarDate } from "@habits/core";
+import {
+	moveHabit,
+	parseCalendarDate,
+	type SortKeyChange,
+	withSortKeys,
+} from "@habits/core";
 import {
 	type QueryClient,
 	useMutation,
@@ -230,6 +236,59 @@ export function useUpdateHabit() {
 		}) => repository.updateHabit(habitId, changes),
 		onSuccess: () => invalidateHabitData(queryClient),
 	});
+}
+
+/**
+ * Moves a habit in the user's order (core `moveHabit`: normally one
+ * `habit.update` with a key between the new neighbors, through the outbox,
+ * offline too). The list is reordered before the write so the move shows at
+ * once; a failure puts the previous order back and calls `onError`.
+ */
+export function useReorderHabit(onError?: (error: Error) => void) {
+	const { repository } = useServices();
+	const queryClient = useQueryClient();
+	const mutation = useMutation({
+		mutationKey: ["habit", "reorder"],
+		// One write after another: a renumbering (keys missing, e.g. from an
+		// API before 2.4.0) changes every habit, in the order shown.
+		mutationFn: async ({
+			changes,
+		}: {
+			changes: SortKeyChange[];
+			previous?: Habit[];
+		}) => {
+			for (const change of changes) {
+				await repository.updateHabit(change.habit_id, {
+					sort_key: change.sort_key,
+				});
+			}
+		},
+		onError: (error, { previous }) => {
+			if (previous) queryClient.setQueryData(queryKeys.habits, previous);
+			onError?.(error);
+		},
+		onSettled: () => invalidateHabitData(queryClient),
+	});
+
+	/** Moves `habitId` to `toIndex` within `ordered` (the list as shown). */
+	const move = (
+		ordered: readonly Pick<Habit, "id" | "sort_key">[],
+		habitId: string,
+		toIndex: number
+	) => {
+		const changes = moveHabit(ordered, habitId, toIndex);
+		if (changes.length === 0) return;
+		const previous = queryClient.getQueryData<Habit[]>(queryKeys.habits);
+		if (previous) {
+			queryClient.setQueryData(
+				queryKeys.habits,
+				withSortKeys(previous, changes)
+			);
+		}
+		mutation.mutate({ changes, previous });
+	};
+
+	return { move };
 }
 
 // Days and heatmap

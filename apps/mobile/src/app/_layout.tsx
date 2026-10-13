@@ -3,7 +3,7 @@ import "../global.css";
 // starts the app headless only to run it).
 import "@/data/sync/background.ts";
 
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -94,7 +94,7 @@ function RootNavigator() {
 		<Stack
 			screenOptions={{
 				headerShown: false,
-				contentStyle: { backgroundColor: colors.background },
+				contentStyle: { backgroundColor: nightColors.bg },
 				animation: "fade",
 			}}
 		>

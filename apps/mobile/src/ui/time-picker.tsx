@@ -22,7 +22,9 @@ export function QuarterTimePicker({
 	const [hour = "20", minute = "00"] = value.split(":");
 	return (
 		<View className="gap-2">
-			<Text className="text-sm font-semibold text-foreground">{label}</Text>
+			<Text className="text-sm font-semibold text-night-foreground">
+				{label}
+			</Text>
 			<View className="flex-row flex-wrap items-center gap-2">
 				<IconButton
 					icon="minus"
@@ -33,7 +35,7 @@ export function QuarterTimePicker({
 				<Text
 					accessibilityLabel={`${Number(hour)} horas`}
 					accessibilityLiveRegion="polite"
-					className="w-10 text-center text-2xl font-bold text-foreground"
+					className="w-10 text-center text-2xl font-bold text-night-foreground"
 				>
 					{hour}
 				</Text>
@@ -43,7 +45,7 @@ export function QuarterTimePicker({
 					disabled={disabled}
 					onPress={() => onChange(stepHour(value, 1))}
 				/>
-				<Text className="text-2xl font-bold text-muted">:</Text>
+				<Text className="text-2xl font-bold text-night-muted">:</Text>
 				<View accessibilityRole="radiogroup" className="flex-row gap-1">
 					{REMINDER_MINUTES.map((m) => (
 						<Choice

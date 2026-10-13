@@ -1,5 +1,4 @@
 import {
-	colors,
 	fontFamily,
 	nightColors,
 	nightFonts,
@@ -39,13 +38,10 @@ function indent(line: string): string {
 
 /**
  * Renders the tokens as a Tailwind v4 `@theme` block (web): the same tokens
- * as the mobile preset (`night` set and the deprecated aliases).
+ * as the mobile preset (the `night` set, radii, spacing and fonts).
  */
 export function renderThemeCss(): string {
 	const lines = [
-		...flattenColors(colors, "--color").map(
-			([name, value]) => `${name}: ${value};`
-		),
 		...Object.entries(radius).map(
 			([name, value]) => `--radius-${name}: ${value};`
 		),

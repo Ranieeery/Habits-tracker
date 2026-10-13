@@ -1,4 +1,4 @@
-import { colors } from "@habits/design-tokens";
+import { nightColors } from "@habits/design-tokens";
 import { Stack } from "expo-router";
 import { NotificationResponder } from "@/features/notifications/notification-responder.tsx";
 import { SettingsGate } from "@/features/settings/settings-gate.tsx";
@@ -15,11 +15,11 @@ export default function AppLayout() {
 				<NotificationResponder />
 				<Stack
 					screenOptions={{
-						headerStyle: { backgroundColor: colors.background },
-						headerTintColor: colors.foreground,
+						headerStyle: { backgroundColor: nightColors.bg },
+						headerTintColor: nightColors.foreground,
 						headerTitleStyle: { fontWeight: "700" },
 						headerShadowVisible: false,
-						contentStyle: { backgroundColor: colors.background },
+						contentStyle: { backgroundColor: nightColors.bg },
 					}}
 				>
 					<Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -32,6 +32,7 @@ export default function AppLayout() {
 						name="habit/[id]"
 						options={{ title: "Editar hábito", presentation: "modal" }}
 					/>
+					<Stack.Screen name="settings" options={{ title: "Ajustes" }} />
 					<Stack.Screen
 						name="sync"
 						options={{ title: "Sincronização", presentation: "modal" }}

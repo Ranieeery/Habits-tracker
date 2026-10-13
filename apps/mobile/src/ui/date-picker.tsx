@@ -37,11 +37,11 @@ export function DatePicker({
 
 	return (
 		<View className="gap-2">
-			<Text className="text-sm font-semibold text-foreground">
+			<Text className="text-sm font-semibold text-night-foreground">
 				{label}
 				{value ? `: ${formatDayMonthYear(value)}` : ""}
 			</Text>
-			<View className="gap-1 rounded-xl border border-border bg-surface p-2">
+			<View className="gap-1 rounded-xl border border-night-border bg-night-surface p-2">
 				<View className="flex-row items-center justify-between">
 					<IconButton
 						icon="chevron-left"
@@ -52,7 +52,7 @@ export function DatePicker({
 					<Text
 						accessibilityRole="header"
 						accessibilityLiveRegion="polite"
-						className="text-base font-semibold text-foreground"
+						className="text-base font-semibold text-night-foreground"
 					>
 						{monthTitle(shown)}
 					</Text>
@@ -69,7 +69,7 @@ export function DatePicker({
 					{WEEKDAY_SHORT_NAMES.map((name) => (
 						<Text
 							key={name}
-							className="flex-1 text-center text-xs font-semibold text-muted"
+							className="flex-1 text-center text-xs font-semibold text-night-muted"
 						>
 							{name.charAt(0).toUpperCase()}
 						</Text>
@@ -116,10 +116,10 @@ function DayCell({
 			accessibilityState={{ selected, disabled }}
 			disabled={disabled}
 			onPress={onPress}
-			className={`min-h-touch flex-1 items-center justify-center rounded-md ${selected ? "bg-violet-600" : "active:bg-border"} ${disabled ? "opacity-30" : ""}`}
+			className={`min-h-touch flex-1 items-center justify-center rounded-md ${selected ? "bg-night-accent" : "active:bg-night-surface-raised"} ${disabled ? "opacity-30" : ""}`}
 		>
 			<Text
-				className={`text-base ${selected ? "font-bold text-night-accent-on" : "text-foreground"}`}
+				className={`text-base ${selected ? "font-bold text-night-accent-on" : "text-night-foreground"}`}
 			>
 				{Number(date.slice(8))}
 			</Text>

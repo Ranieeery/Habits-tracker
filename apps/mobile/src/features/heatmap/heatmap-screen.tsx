@@ -12,20 +12,18 @@ import { Text, useWindowDimensions, View } from "react-native";
 import {
 	isSettled,
 	useHabits,
-	usePrefetchDay,
 	useRefreshAll,
 	useYearSummary,
 } from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import { TimezoneBanner } from "@/features/settings/timezone-banner.tsx";
-import { SyncIndicator } from "@/features/sync/sync-indicator.tsx";
+import { TabHeader } from "@/features/shell/tab-header.tsx";
 import { capitalizeFirst, formatLongDate } from "@/lib/format.ts";
 import { IconButton } from "@/ui/button.tsx";
 import { DisplayText } from "@/ui/display-text.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
-import { Wordmark } from "@/ui/wordmark.tsx";
-import { Backdrop } from "./backdrop.tsx";
+import { Backdrop } from "@/ui/backdrop.tsx";
 import { HeatmapGrid } from "./heatmap-grid.tsx";
 import { HeatmapLegend } from "./heatmap-legend.tsx";
 import {
@@ -34,14 +32,12 @@ import {
 	HeatmapSkeleton,
 } from "./heatmap-states.tsx";
 import { OverviewStrip } from "./overview-strip.tsx";
-import { TodayPanel } from "./today-panel.tsx";
 
 /**
- * The home screen (2.5.0 identity, DESIGN.md "Mobile"), ordered for one
- * hand: what is only read sits at the top (mark, date, sync state, the
- * numbers), the heatmap in the middle, and today's habits, the daily
- * action, in the lower part where the thumb reaches. Tapping a day still
- * opens the day screen.
+ * The "Histórico" tab (the heatmap, DESIGN.md "Mobile"): mark, sync state
+ * and gear, the date, the overview numbers, the year and its grid. Today's
+ * habits live in the "Hoje" tab since 2.6.0; tapping a past day still opens
+ * the day screen, and today opens the Hoje tab.
  */
 export function HeatmapScreen() {
 	const router = useRouter();
@@ -62,8 +58,6 @@ export function HeatmapScreen() {
 		overviewNeedsPreviousYear(current.data, today);
 	const previous = useYearSummary(range.last - 1, { enabled: needsPrevious });
 	const { refresh, refreshing } = useRefreshAll();
-	// "Hoje" is the most used screen: have it ready before the tap.
-	usePrefetchDay(today);
 	useHideSplashWhen(isSettled(summary));
 
 	const grid = useMemo(
@@ -90,10 +84,12 @@ export function HeatmapScreen() {
 
 	const openDay = useCallback(
 		(cell: GridCell) =>
-			router.push({
-				pathname: "/day/[date]",
-				params: { date: cell.relation === "today" ? "hoje" : cell.date },
-			}),
+			cell.relation === "today"
+				? router.navigate("/")
+				: router.push({
+						pathname: "/day/[date]",
+						params: { date: cell.date },
+					}),
 		[router]
 	);
 
@@ -106,10 +102,7 @@ export function HeatmapScreen() {
 			background={<Backdrop />}
 		>
 			<View className="gap-1">
-				<View className="flex-row items-center justify-between gap-3">
-					<Wordmark />
-					<SyncIndicator />
-				</View>
+				<TabHeader />
 				<Text className="text-sm text-night-muted">
 					{capitalizeFirst(formatLongDate(today))}
 				</Text>
@@ -130,7 +123,7 @@ export function HeatmapScreen() {
 					<DisplayText
 						accessibilityRole="header"
 						accessibilityLiveRegion="polite"
-						className="text-4xl tracking-tight text-night-foreground"
+						className="text-3xl tracking-tight text-night-foreground"
 						style={{ fontVariant: ["tabular-nums"] }}
 					>
 						{year}
@@ -154,8 +147,8 @@ export function HeatmapScreen() {
 					<>
 						<HeatmapGrid grid={grid} onOpenDay={openDay} />
 						<View className="flex-row flex-wrap items-center justify-between gap-2">
-							<Text className="text-xs text-night-subtle">
-								Toque em um dia para ver os hábitos.
+							<Text className="flex-1 text-xs text-night-subtle">
+								Sequência: dias com 80% ou mais.
 							</Text>
 							<HeatmapLegend />
 						</View>
@@ -164,13 +157,6 @@ export function HeatmapScreen() {
 					<HeatmapSkeleton width={width - 32} />
 				)}
 			</View>
-
-			{noHabits ? null : (
-				<TodayPanel
-					today={today}
-					onOpenToday={() => router.push("/day/hoje")}
-				/>
-			)}
 		</Screen>
 	);
 }
