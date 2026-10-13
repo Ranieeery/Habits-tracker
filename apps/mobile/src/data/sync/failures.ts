@@ -80,6 +80,10 @@ export function describeMutation(
 			if (schedule !== undefined) return `Mudar os dias de ${habit}`;
 			return `Editar ${habit}`;
 		}
+		case "habit.delete":
+			return `Apagar ${nameOf(mutation.habit_id)}`;
+		case "habit.restore":
+			return `Restaurar ${nameOf(mutation.habit_id)}`;
 		case "completion.set":
 			return `${mutation.completed ? "Marcar" : "Desmarcar"} ${nameOf(mutation.habit_id)} em ${formatShortDate(mutation.date)}`;
 		default: {

@@ -94,6 +94,26 @@ export async function updateHabit(
 	).habit;
 }
 
+/** Deletes an archived habit (2.11.0); 409 `conflict` when not archived. */
+export async function deleteHabit(api: ApiClient, habitId: string) {
+	return (
+		await unwrap(
+			api.v1.habits[":habit_id"].$delete({ param: { habit_id: habitId } })
+		)
+	).habit;
+}
+
+/** Undoes a deletion: the habit comes back archived, with its history. */
+export async function restoreHabit(api: ApiClient, habitId: string) {
+	return (
+		await unwrap(
+			api.v1.habits[":habit_id"].restore.$post({
+				param: { habit_id: habitId },
+			})
+		)
+	).habit;
+}
+
 export async function updateSettings(
 	api: ApiClient,
 	body: UpdateUserSettingsRequest

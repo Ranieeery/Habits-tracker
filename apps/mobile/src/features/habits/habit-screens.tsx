@@ -4,7 +4,9 @@ import { errorMessage, isUnauthorized } from "@/data/errors.ts";
 import {
 	isSettled,
 	useCreateHabit,
+	useDeleteHabit,
 	useHabits,
+	useRestoreHabit,
 	useUpdateHabit,
 } from "@/data/hooks.ts";
 import { useToday, useUserTimeZone } from "@/data/today.ts";
@@ -65,7 +67,10 @@ export function EditHabitScreen() {
 	const today = useToday();
 	const timeZone = useUserTimeZone();
 	const update = useUpdateHabit();
+	const remove = useDeleteHabit();
+	const restore = useRestoreHabit();
 	const onError = useErrorToast("Não foi possível salvar o hábito");
+	const onDeleteError = useErrorToast("Não foi possível apagar o hábito");
 	useHideSplashWhen(isSettled(habits));
 
 	return (
@@ -104,6 +109,33 @@ export function EditHabitScreen() {
 							}
 						);
 
+					// The undo outlives this screen (it closes on success), so it
+					// uses the promise, not callbacks tied to the screen.
+					const undoDelete = () => {
+						restore.mutateAsync(habit.id).then(
+							() => toast("info", "Hábito restaurado", habit.name),
+							(error: Error) => {
+								if (!isUnauthorized(error)) {
+									toast(
+										"error",
+										"Não foi possível restaurar o hábito",
+										errorMessage(error)
+									);
+								}
+							}
+						);
+					};
+					const deleteHabit = () =>
+						remove.mutate(habit.id, {
+							onSuccess: () => {
+								toast("info", "Hábito apagado", habit.name, {
+									action: { label: "Desfazer", onPress: undoDelete },
+								});
+								router.back();
+							},
+							onError: onDeleteError,
+						});
+
 					return (
 						<View className="gap-10">
 							<HabitForm
@@ -138,13 +170,40 @@ export function EditHabitScreen() {
 										: "Arquivar tira o hábito dos próximos dias e mantém o histórico."}
 								</Text>
 								{archived ? (
-									<Button
-										variant="secondary"
-										icon="archive-arrow-up-outline"
-										label="Desarquivar"
-										disabled={update.isPending}
-										onPress={() => setArchived(false)}
-									/>
+									<>
+										<Button
+											variant="secondary"
+											icon="archive-arrow-up-outline"
+											label="Desarquivar"
+											disabled={update.isPending || remove.isPending}
+											onPress={() => setArchived(false)}
+										/>
+										{/* 2.11.0: only archived habits can be deleted. */}
+										<Text className="pt-3 text-sm text-night-muted">
+											Apagar tira o hábito e todo o histórico dele do mapa e dos
+											dias.
+										</Text>
+										<Button
+											variant="danger"
+											icon="trash-can-outline"
+											label="Apagar hábito"
+											disabled={update.isPending || remove.isPending}
+											onPress={() =>
+												Alert.alert(
+													"Apagar hábito?",
+													`"${habit.name}" e todo o histórico dele saem do mapa e dos dias. Para manter o histórico, deixe-o arquivado.`,
+													[
+														{ text: "Cancelar", style: "cancel" },
+														{
+															text: "Apagar",
+															style: "destructive",
+															onPress: () => deleteHabit(),
+														},
+													]
+												)
+											}
+										/>
+									</>
 								) : (
 									<Button
 										variant="danger"

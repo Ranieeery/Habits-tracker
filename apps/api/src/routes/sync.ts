@@ -14,7 +14,6 @@ import {
 	SyncPullResponse as SyncPullResponseSchema,
 	SyncPushEnvelope,
 	SyncPushResponse,
-	type UpdateHabitRequest,
 } from "@habits/contracts";
 import {
 	applyMutation,
@@ -35,6 +34,7 @@ import {
 	isReadableBy,
 } from "../http/schedule-version.ts";
 import { userToday } from "../http/today.ts";
+import type { HabitFieldChanges } from "../repos/habits.ts";
 import { uuidV7 } from "../lib/ids.ts";
 import {
 	findProcessedMutations,
@@ -148,7 +148,7 @@ export const syncRoutes = router()
 		const state = syncState(records.habits, records.completions);
 		const existingHabits = new Set(records.habits.map((habit) => habit.id));
 		const createdHabits: string[] = [];
-		const habitChanges = new Map<string, UpdateHabitRequest>();
+		const habitChanges = new Map<string, HabitFieldChanges>();
 		const changedCompletions = new Set<string>();
 		const appliedCompletionKeys = new Map<number, string>();
 		const processedNow: { mutation_id: string; canonical_id: string }[] = [];
@@ -200,11 +200,15 @@ export const syncRoutes = router()
 					createdHabits.push(mutation.id);
 					break;
 				case "habit.update":
+				case "habit.delete":
+				case "habit.restore":
 					// A habit created in this batch is inserted in its final state.
 					if (existingHabits.has(mutation.habit_id)) {
 						habitChanges.set(mutation.habit_id, {
 							...habitChanges.get(mutation.habit_id),
-							...mutation.changes,
+							...(mutation.type === "habit.update"
+								? mutation.changes
+								: { deleted: mutation.type === "habit.delete" }),
 						});
 					}
 					break;

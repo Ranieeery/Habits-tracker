@@ -61,6 +61,15 @@ describe("describeMutation", () => {
 		).toBe("Arquivar “Ler”");
 		expect(
 			describeMutation(
+				{ ...base, type: "habit.delete", habit_id: HABIT },
+				names
+			)
+		).toBe("Apagar “Ler”");
+		expect(
+			describeMutation({ ...base, type: "habit.restore", habit_id: "x" }, names)
+		).toBe("Restaurar “hábito removido”");
+		expect(
+			describeMutation(
 				{
 					...base,
 					type: "habit.update",

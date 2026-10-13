@@ -51,6 +51,34 @@ export const HabitUpdateMutation = z.object({
 export type HabitUpdateMutation = z.infer<typeof HabitUpdateMutation>;
 
 /**
+ * Deletes an archived habit (2.11.0), like `DELETE /v1/habits/{habit_id}`:
+ * a tombstone (`deleted_at`), so the habit leaves every day, past ones too,
+ * until it is restored or purged. Rejected with `conflict` when the habit is
+ * not archived; deleting a deleted habit changes nothing. A new type instead
+ * of a field of `habit.update`: an older API rejects an unknown type alone,
+ * while it would silently drop an unknown field.
+ */
+export const HabitDeleteMutation = z.object({
+	...MutationBase,
+	type: z.literal("habit.delete"),
+	habit_id: Uuid,
+});
+export type HabitDeleteMutation = z.infer<typeof HabitDeleteMutation>;
+
+/**
+ * Brings a deleted habit back (2.11.0, the "Desfazer" of a deletion), like
+ * `POST /v1/habits/{habit_id}/restore`. It stays archived; its completions
+ * were never touched, so its history returns as it was. Restoring a live
+ * habit changes nothing.
+ */
+export const HabitRestoreMutation = z.object({
+	...MutationBase,
+	type: z.literal("habit.restore"),
+	habit_id: Uuid,
+});
+export type HabitRestoreMutation = z.infer<typeof HabitRestoreMutation>;
+
+/**
  * Marks a habit done or undone on a date; idempotent per `(habit_id, date)`.
  * `id` is the id the client gave the completion; if the server already has a
  * completion for that habit and date, it keeps its own id and answers it as
@@ -71,6 +99,8 @@ export type CompletionSetMutation = z.infer<typeof CompletionSetMutation>;
 export const Mutation = z.discriminatedUnion("type", [
 	HabitCreateMutation,
 	HabitUpdateMutation,
+	HabitDeleteMutation,
+	HabitRestoreMutation,
 	CompletionSetMutation,
 ]);
 export type Mutation = z.infer<typeof Mutation>;

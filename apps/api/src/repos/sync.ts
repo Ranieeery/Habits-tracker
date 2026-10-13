@@ -5,12 +5,7 @@
 // Statement budget (D1 Free: 50 queries per invocation; each statement of a
 // batch is counted): a push reads at most ~6 times and writes in one batch of
 // chunked multi-row statements; a pull is one batch of 6 reads.
-import type {
-	CalendarDate,
-	Completion,
-	Habit,
-	UpdateHabitRequest,
-} from "@habits/contracts";
+import type { CalendarDate, Completion, Habit } from "@habits/contracts";
 import { completionKey } from "@habits/core";
 import {
 	and,
@@ -39,7 +34,7 @@ import {
 	processedMutations,
 	syncState,
 } from "../db/schema.ts";
-import { changedHabitFields } from "./habits.ts";
+import { changedHabitFields, type HabitFieldChanges } from "./habits.ts";
 
 /** Applied mutation ids among `mutationIds`, with their canonical record id. */
 export async function findProcessedMutations(
@@ -129,7 +124,7 @@ export async function findTakenIds(
 
 export interface SyncWrites {
 	newHabits: Habit[];
-	habitUpdates: { habit: Habit; changes: UpdateHabitRequest }[];
+	habitUpdates: { habit: Habit; changes: HabitFieldChanges }[];
 	/** Final state of every completion written (new or changed). */
 	completions: Completion[];
 	processed: { mutation_id: string; canonical_id: string }[];

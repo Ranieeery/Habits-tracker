@@ -25,6 +25,13 @@ export interface HabitsRepository {
 	createHabit(input: CreateHabitRequest): Promise<Habit>;
 	/** Rename, reschedule, archive (`archived: true`) or unarchive. */
 	updateHabit(habitId: string, changes: UpdateHabitRequest): Promise<Habit>;
+	/**
+	 * Deletes an archived habit (2.11.0): it leaves every day, past ones too.
+	 * `DataError` `conflict` when it is not archived.
+	 */
+	deleteHabit(habitId: string): Promise<Habit>;
+	/** Undoes a deletion (the habit comes back archived, with its history). */
+	restoreHabit(habitId: string): Promise<Habit>;
 
 	/** Habits possible on a local date and which of them were completed. */
 	getDay(date: CalendarDate): Promise<DayData>;

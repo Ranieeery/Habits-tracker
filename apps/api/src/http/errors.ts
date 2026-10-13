@@ -50,7 +50,7 @@ export function jsonBody<T extends z.ZodType>(schema: T) {
 	return { content: { "application/json": { schema } }, required: true };
 }
 
-const errorResponse = (description: string) =>
+export const errorResponse = (description: string) =>
 	jsonResponse(ApiError, description);
 
 /** Error responses shared by every authenticated route. */

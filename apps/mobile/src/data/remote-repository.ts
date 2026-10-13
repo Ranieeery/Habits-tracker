@@ -46,6 +46,28 @@ export function createRemoteRepository(api: ApiClient): HabitsRepository {
 						)
 					).habit
 			),
+		deleteHabit: (habitId) =>
+			call(
+				async () =>
+					(
+						await unwrap(
+							api.v1.habits[":habit_id"].$delete({
+								param: { habit_id: habitId },
+							})
+						)
+					).habit
+			),
+		restoreHabit: (habitId) =>
+			call(
+				async () =>
+					(
+						await unwrap(
+							api.v1.habits[":habit_id"].restore.$post({
+								param: { habit_id: habitId },
+							})
+						)
+					).habit
+			),
 
 		getDay: (date) => call(() => unwrap(api.v1.day.$get({ query: { date } }))),
 		// The API has no per-habit summary; the app reads it from the device

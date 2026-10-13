@@ -3,7 +3,12 @@ import type {
 	Habit,
 	UpdateHabitRequest,
 } from "@habits/contracts";
-import { applyHabitChanges } from "@habits/core";
+import {
+	applyHabitChanges,
+	applyHabitDelete,
+	applyHabitRestore,
+	ARCHIVED_REQUIRED_ERROR,
+} from "@habits/core";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { fromHabitRow, toHabitPatchRow, toHabitRow } from "../db/records.ts";
@@ -90,11 +95,80 @@ export async function updateHabit(
 	return row ? fromHabitRow(row) : null;
 }
 
+/**
+ * A habit of the user, deleted ones included (deleting twice and restoring
+ * need them). Still scoped by `user_id`: another user's habit is null.
+ */
+async function getHabitIncludingDeleted(
+	db: Db,
+	userId: string,
+	habitId: string
+): Promise<Habit | null> {
+	const row = await db.query.habits.findFirst({
+		where: and(eq(habits.user_id, userId), eq(habits.id, habitId)),
+	});
+	return row ? fromHabitRow(row) : null;
+}
+
+async function writeDeletion(
+	db: Db,
+	userId: string,
+	next: Habit
+): Promise<Habit | null> {
+	const [row] = await db
+		.update(habits)
+		.set(
+			changedHabitFields(userId, next, { deleted: next.deleted_at !== null })
+		)
+		.where(and(eq(habits.user_id, userId), eq(habits.id, next.id)))
+		.returning();
+	return row ? fromHabitRow(row) : null;
+}
+
+/**
+ * Deletes an archived habit (rules in `applyHabitDelete`, shared with sync):
+ * a tombstone, its completions untouched. Null if the habit is not the
+ * user's; deleting a deleted habit returns it unchanged.
+ */
+export async function deleteHabit(
+	db: Db,
+	userId: string,
+	habitId: string,
+	now: number
+): Promise<Habit | { error: ApiErrorBody } | null> {
+	const current = await getHabitIncludingDeleted(db, userId, habitId);
+	if (!current) return null;
+	const result = applyHabitDelete(current, now);
+	if (result === "archived_required") return { error: ARCHIVED_REQUIRED_ERROR };
+	if (!result.changed) return current;
+	return writeDeletion(db, userId, result.habit);
+}
+
+/** Restores a deleted habit (`applyHabitRestore`); null if not the user's. */
+export async function restoreHabit(
+	db: Db,
+	userId: string,
+	habitId: string,
+	now: number
+): Promise<Habit | null> {
+	const current = await getHabitIncludingDeleted(db, userId, habitId);
+	if (!current) return null;
+	const result = applyHabitRestore(current, now);
+	if (!result.changed) return current;
+	return writeDeletion(db, userId, result.habit);
+}
+
+/**
+ * What a write carries: the fields of an update, or `deleted` for a deletion
+ * or a restore (2.11.0).
+ */
+export type HabitFieldChanges = UpdateHabitRequest & { deleted?: boolean };
+
 /** The columns an update writes: `updated_at` and the fields it carries. */
 export function changedHabitFields(
 	userId: string,
 	next: Habit,
-	changes: UpdateHabitRequest
+	changes: HabitFieldChanges
 ): Partial<typeof habits.$inferInsert> {
 	const row = toHabitPatchRow(userId, next);
 	return {
@@ -103,5 +177,6 @@ export function changedHabitFields(
 		...(changes.schedule !== undefined && { schedule: row.schedule }),
 		...(changes.archived !== undefined && { archived_at: row.archived_at }),
 		...(changes.sort_key !== undefined && { sort_key: row.sort_key }),
+		...(changes.deleted !== undefined && { deleted_at: row.deleted_at }),
 	};
 }

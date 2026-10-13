@@ -55,6 +55,8 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 
 **Botões** (`Button`: `default` = `night-accent`, `secondary`, `outline`, `ghost`, `danger`, `success` só para "concluído", `link`): primário só um por área. Hover clareia o fundo; foco = anel global; desabilitado = 50% de opacidade, sem ponteiro; carregando = rótulo com "…" ("Salvando…") e desabilitado.
 
+**Ações destrutivas** (2.11.0): arquivar é o caminho padrão; "Apagar" (`danger` ou ícone de lixeira) só aparece para hábitos já arquivados, sempre depois de uma confirmação com "Cancelar" em foco que diz o que se perde (o histórico sai do mapa), e termina com "Desfazer" por 6 s.
+
 **Campos e toggles**: borda `night-border-strong`, fundo `night-bg`; marcado = `night-success` com ícone `night-bg`; erro = texto `night-danger` abaixo do campo, ligado por `aria-describedby`.
 
 **Linha de hábito** (dia e painel Hoje): a linha inteira é o alvo (44 px), checkbox à esquerda, nome riscado em `night-muted` quando feito, pulso ao marcar.

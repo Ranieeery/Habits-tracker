@@ -39,8 +39,10 @@ import { isUnauthorized } from "@/lib/query-client.ts";
 import { useServices } from "@/lib/services.ts";
 import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
 import { cn } from "@/lib/utils.ts";
+import { DeleteHabitButton } from "./delete-habit-button.tsx";
 import { HabitCard } from "./habit-card.tsx";
 import { HabitForm, type HabitFormValues } from "./habit-form.tsx";
+import { useDeleteHabit } from "./use-delete-habit.ts";
 import { useReorderHabit } from "./use-reorder-habit.ts";
 import { useSortableList } from "./use-sortable-list.ts";
 
@@ -104,6 +106,8 @@ export function HabitsPage() {
 		onError: notifyError("Não foi possível alterar o hábito"),
 		onSettled: () => invalidateHabitData(queryClient),
 	});
+
+	const deletion = useDeleteHabit();
 
 	// Already in the user's order (the API sorts by `sort_key`).
 	const live = habits.data?.filter((habit) => habit.archived_at === null);
@@ -215,17 +219,24 @@ export function HabitsPage() {
 										timeZone={timeZone}
 										muted
 										actions={
-											<Button
-												variant="ghost"
-												size="sm"
-												disabled={archive.isPending}
-												onClick={() =>
-													archive.mutate({ id: habit.id, archived: false })
-												}
-											>
-												<ArchiveRestoreIcon aria-hidden="true" />
-												Desarquivar
-											</Button>
+											<>
+												<Button
+													variant="ghost"
+													size="sm"
+													disabled={archive.isPending || deletion.isPending}
+													onClick={() =>
+														archive.mutate({ id: habit.id, archived: false })
+													}
+												>
+													<ArchiveRestoreIcon aria-hidden="true" />
+													Desarquivar
+												</Button>
+												<DeleteHabitButton
+													habit={habit}
+													disabled={archive.isPending || deletion.isPending}
+													onDelete={deletion.remove}
+												/>
+											</>
 										}
 									/>
 								))}

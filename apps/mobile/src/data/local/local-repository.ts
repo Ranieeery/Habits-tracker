@@ -12,6 +12,9 @@ import {
 import {
 	addDays,
 	applyHabitChanges,
+	applyHabitDelete,
+	applyHabitRestore,
+	ARCHIVED_REQUIRED_ERROR,
 	BACKFILL_DAYS,
 	completionKey,
 	dayView,
@@ -144,6 +147,42 @@ export function createLocalRepository({
 			if (!parsed.success) throw invalid(parsed.error);
 			const result = applyHabitChanges(habit, parsed.data.changes, at);
 			if (result.changed) await write(parsed.data);
+			return result.habit;
+		},
+
+		async deleteHabit(habitId): Promise<Habit> {
+			const { state } = await view("habits");
+			const habit = state.habits.get(habitId);
+			if (!habit) throw new DataError("not_found", "Habit not found");
+			const at = now();
+			const result = applyHabitDelete(habit, at);
+			if (result === "archived_required") {
+				throw new DataError("conflict", ARCHIVED_REQUIRED_ERROR.message);
+			}
+			if (result.changed) {
+				await write({
+					mutation_id: newId(),
+					created_at: at,
+					type: "habit.delete",
+					habit_id: habitId,
+				});
+			}
+			return result.habit;
+		},
+		async restoreHabit(habitId): Promise<Habit> {
+			const { state } = await view("habits");
+			const habit = state.habits.get(habitId);
+			if (!habit) throw new DataError("not_found", "Habit not found");
+			const at = now();
+			const result = applyHabitRestore(habit, at);
+			if (result.changed) {
+				await write({
+					mutation_id: newId(),
+					created_at: at,
+					type: "habit.restore",
+					habit_id: habitId,
+				});
+			}
 			return result.habit;
 		},
 

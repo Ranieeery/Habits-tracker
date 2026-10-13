@@ -20,6 +20,7 @@ import {
 	conflictError,
 	dateErrors,
 	errorBody,
+	errorResponse,
 	jsonBody,
 	jsonResponse,
 	notFoundError,
@@ -30,7 +31,13 @@ import {
 } from "../http/schedule-version.ts";
 import { userToday } from "../http/today.ts";
 import { uuidV7 } from "../lib/ids.ts";
-import { insertHabit, listHabits, updateHabit } from "../repos/habits.ts";
+import {
+	deleteHabit,
+	insertHabit,
+	listHabits,
+	restoreHabit,
+	updateHabit,
+} from "../repos/habits.ts";
 
 const tags = ["habits"];
 
@@ -75,6 +82,36 @@ const updateRoute = createRoute({
 		200: jsonResponse(HabitResponse, "Updated"),
 		...commonErrors,
 		...dateErrors,
+		...notFoundError,
+	},
+});
+
+const deleteRoute = createRoute({
+	method: "delete",
+	path: "/habits/{habit_id}",
+	tags,
+	summary: "Delete an archived habit (tombstone, undone by restore)",
+	description:
+		"Only archived habits can be deleted (409 otherwise). The habit leaves every day, past ones included; its completions are kept, so a restore brings its history back. Idempotent: deleting a deleted habit returns it unchanged. Purged after 90 days.",
+	request: { params: HabitParams },
+	responses: {
+		200: jsonResponse(HabitResponse, "Deleted"),
+		...commonErrors,
+		...notFoundError,
+		409: errorResponse("The habit is not archived (`conflict`)"),
+	},
+});
+
+const restoreRoute = createRoute({
+	method: "post",
+	path: "/habits/{habit_id}/restore",
+	tags,
+	summary: "Restore a deleted habit (it stays archived)",
+	description: "Restoring a habit that is not deleted returns it unchanged.",
+	request: { params: HabitParams },
+	responses: {
+		200: jsonResponse(HabitResponse, "Restored"),
+		...commonErrors,
 		...notFoundError,
 	},
 });
@@ -135,4 +172,27 @@ export const habitRoutes = router()
 		if (!result) return c.json(errorBody("not_found", "Habit not found"), 404);
 		if ("error" in result) return c.json({ error: result.error }, 422);
 		return c.json({ habit: result }, 200);
+	})
+	.openapi(deleteRoute, async (c) => {
+		const { habit_id } = c.req.valid("param");
+		const result = await deleteHabit(
+			c.var.db,
+			c.var.userId,
+			habit_id,
+			c.var.now()
+		);
+		if (!result) return c.json(errorBody("not_found", "Habit not found"), 404);
+		if ("error" in result) return c.json({ error: result.error }, 409);
+		return c.json({ habit: result }, 200);
+	})
+	.openapi(restoreRoute, async (c) => {
+		const { habit_id } = c.req.valid("param");
+		const habit = await restoreHabit(
+			c.var.db,
+			c.var.userId,
+			habit_id,
+			c.var.now()
+		);
+		if (!habit) return c.json(errorBody("not_found", "Habit not found"), 404);
+		return c.json({ habit }, 200);
 	});

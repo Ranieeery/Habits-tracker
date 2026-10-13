@@ -242,6 +242,30 @@ export function useUpdateHabit() {
 	});
 }
 
+/** Deletes an archived habit (2.11.0), through the outbox (offline too). */
+export function useDeleteHabit() {
+	const { repository } = useServices();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (habitId: string) => repository.deleteHabit(habitId),
+		// Not awaited: the edit screen closes first, so it never shows the
+		// habit as missing while the lists refetch.
+		onSuccess: () => {
+			void invalidateHabitData(queryClient);
+		},
+	});
+}
+
+/** Undoes a deletion ("Desfazer"): the habit comes back archived. */
+export function useRestoreHabit() {
+	const { repository } = useServices();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (habitId: string) => repository.restoreHabit(habitId),
+		onSuccess: () => invalidateHabitData(queryClient),
+	});
+}
+
 /**
  * Moves a habit in the user's order (core `moveHabit`: normally one
  * `habit.update` with a key between the new neighbors, through the outbox,

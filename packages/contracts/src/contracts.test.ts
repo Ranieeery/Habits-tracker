@@ -208,6 +208,34 @@ describe("Mutation", () => {
 		});
 	});
 
+	it("parses habit.delete and habit.restore (2.11.0)", () => {
+		for (const type of ["habit.delete", "habit.restore"] as const) {
+			const mutation = Mutation.parse({
+				mutation_id: id,
+				created_at: 1_767_800_000_000,
+				type,
+				habit_id: habitId,
+			});
+			expect(mutation).toEqual({
+				mutation_id: id,
+				created_at: 1_767_800_000_000,
+				type,
+				habit_id: habitId,
+			});
+			expect(
+				Mutation.safeParse({ mutation_id: id, created_at: 1, type }).success
+			).toBe(false);
+			expect(
+				Mutation.safeParse({
+					mutation_id: id,
+					created_at: 1,
+					type,
+					habit_id: "not-a-uuid",
+				}).success
+			).toBe(false);
+		}
+	});
+
 	it("does not require the client's updated_at on completion.set", () => {
 		expect(
 			Mutation.safeParse({

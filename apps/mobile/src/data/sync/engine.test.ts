@@ -522,3 +522,170 @@ describe("sync engine", () => {
 		expect(engine.getStatus().clockSkewMs).toBe(3 * 60 * 60_000);
 	});
 });
+
+describe("deleting habits (2.11.0)", () => {
+	async function archivedOnServer(server: FakeServer, name = "Ler") {
+		const habitId = serverHabit(server, name);
+		server.write({
+			mutation_id: uuidV7(NOW, randomBytes()),
+			created_at: NOW,
+			type: "habit.update",
+			habit_id: habitId,
+			changes: { archived: true },
+		});
+		return habitId;
+	}
+
+	it("deletes offline at once, everywhere, and syncs the tombstone", async () => {
+		const server = createFakeServer(NOW);
+		const live = serverHabit(server, "Correr");
+		const habitId = await archivedOnServer(server);
+		server.write({
+			mutation_id: uuidV7(NOW, randomBytes()),
+			created_at: NOW,
+			type: "completion.set",
+			id: uuidV7(NOW, randomBytes()),
+			habit_id: habitId,
+			date: "2026-10-05",
+			completed: true,
+		});
+		const { engine, repository, store } = await setup({ server });
+		await engine.sync("launch");
+		const before = await repository.getYearSummary(2026);
+
+		engine.setOnline(false);
+		await repository.deleteHabit(habitId);
+
+		expect((await repository.listHabits()).map((h) => h.id)).toEqual([live]);
+		const oct5 = await repository.getDay("2026-10-05");
+		expect(oct5.possible_habits.map((h) => h.id)).toEqual([live]);
+		expect(oct5.completed_habit_ids).toEqual([]);
+		expect(await repository.getYearSummary(2026)).not.toEqual(before);
+		expect((await store.readOutbox()).map((e) => e.mutation.type)).toEqual([
+			"habit.delete",
+		]);
+
+		engine.setOnline(true);
+		await engine.sync("manual");
+		expect(server.state.habits.get(habitId)?.deleted_at).toBe(NOW);
+		expect(engine.getStatus()).toMatchObject({ pending: 0, failed: 0 });
+		expect((await repository.listHabits()).map((h) => h.id)).toEqual([live]);
+	});
+
+	it("delete then Desfazer before syncing leaves the server as it was", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = await archivedOnServer(server);
+		const { engine, repository } = await setup({ server });
+		await engine.sync("launch");
+		const before = await repository.getYearSummary(2026);
+		const original = server.state.habits.get(habitId);
+
+		engine.setOnline(false);
+		await repository.deleteHabit(habitId);
+		await repository.restoreHabit(habitId);
+		expect((await repository.listHabits()).map((h) => h.id)).toEqual([habitId]);
+
+		engine.setOnline(true);
+		await engine.sync("manual");
+		expect(server.state.habits.get(habitId)).toMatchObject({
+			...original,
+			deleted_at: null,
+			updated_at: NOW,
+		});
+		expect(await repository.getYearSummary(2026)).toEqual(before);
+	});
+
+	it("refuses to delete a habit that is not archived, writing nothing", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = serverHabit(server);
+		const { engine, repository, store } = await setup({ server });
+		await engine.sync("launch");
+
+		await expect(repository.deleteHabit(habitId)).rejects.toMatchObject({
+			kind: "conflict",
+		});
+		await expect(
+			repository.deleteHabit(uuidV7(NOW, randomBytes()))
+		).rejects.toMatchObject({
+			kind: "not_found",
+		});
+		expect(await store.readOutbox()).toEqual([]);
+	});
+
+	it("brings the habit back when the server refuses the delete (unarchived elsewhere)", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = await archivedOnServer(server);
+		const { engine, repository, store } = await setup({ server });
+		await engine.sync("launch");
+
+		engine.setOnline(false);
+		await repository.deleteHabit(habitId);
+		// Meanwhile, the web unarchives it.
+		server.write({
+			mutation_id: uuidV7(NOW, randomBytes()),
+			created_at: NOW,
+			type: "habit.update",
+			habit_id: habitId,
+			changes: { archived: false },
+		});
+		engine.setOnline(true);
+		await engine.sync("manual");
+
+		expect(engine.getStatus()).toMatchObject({ pending: 0, failed: 1 });
+		const [failed] = await store.readOutbox();
+		expect(failed?.lastError?.code).toBe("conflict");
+		expect((await repository.listHabits()).map((h) => h.id)).toEqual([habitId]);
+	});
+
+	it("goes to the failures, without blocking the rest, against an API that does not know it", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = await archivedOnServer(server);
+		const live = serverHabit(server, "Correr");
+		// An API older than 2.11.0 rejects an unknown mutation type alone.
+		const push = server.push.bind(server);
+		server.push = async (mutations) => {
+			const known = mutations.filter((m) => m.type !== "habit.delete");
+			const applied = await push(known);
+			return mutations.map(
+				(m) =>
+					applied.find((r) => r.mutation_id === m.mutation_id) ?? {
+						mutation_id: m.mutation_id,
+						status: "rejected" as const,
+						error: { code: "validation_error", message: "Invalid mutation" },
+					}
+			);
+		};
+		const { engine, repository, store } = await setup({ server });
+		await engine.sync("launch");
+
+		await repository.deleteHabit(habitId);
+		await repository.setCompletion(live, TODAY, true);
+		await engine.sync("manual");
+
+		expect(engine.getStatus()).toMatchObject({ pending: 0, failed: 1 });
+		expect(serverCompletion(server, live, TODAY)?.deleted_at).toBeNull();
+		const failed = (await store.readOutbox()).filter(
+			(e) => e.state === "failed"
+		);
+		expect(failed.map((e) => e.mutation.type)).toEqual(["habit.delete"]);
+		expect((await repository.listHabits()).map((h) => h.id)).toContain(habitId);
+	});
+
+	it("hides a habit deleted on another device after a pull", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = await archivedOnServer(server);
+		const { engine, repository } = await setup({ server });
+		await engine.sync("launch");
+		expect(await repository.listHabits()).toHaveLength(1);
+
+		server.write({
+			mutation_id: uuidV7(NOW, randomBytes()),
+			created_at: NOW,
+			type: "habit.delete",
+			habit_id: habitId,
+		});
+		await engine.sync("manual");
+
+		expect(await repository.listHabits()).toEqual([]);
+	});
+});

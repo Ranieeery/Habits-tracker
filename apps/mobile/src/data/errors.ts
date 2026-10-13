@@ -7,6 +7,8 @@ export type DataErrorKind =
 	| "offline"
 	| "invalid"
 	| "not_found"
+	/** The data does not allow it now (2.11.0: deleting a habit not archived). */
+	| "conflict"
 	| "out_of_range"
 	| "rate_limited"
 	| "unknown";
@@ -57,6 +59,7 @@ const MESSAGES: Record<DataErrorKind, string> = {
 	offline: "Sem conexão com o servidor. Verifique sua internet.",
 	invalid: "Alguns dados estão inválidos. Confira e tente de novo.",
 	not_found: "Não encontramos o que você procurava.",
+	conflict: "Só dá para apagar um hábito arquivado.",
 	out_of_range: "Essa data não pode mais ser alterada.",
 	rate_limited: "Muitas tentativas. Aguarde um pouco e tente de novo.",
 	unknown: "Algo deu errado. Tente de novo.",

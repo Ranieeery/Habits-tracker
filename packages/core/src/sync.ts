@@ -84,6 +84,47 @@ export function applyHabitChanges(
 	};
 }
 
+/**
+ * Deletes a habit (2.11.0): a tombstone at `now`, everything else kept, so
+ * a restore brings back the same habit and, since its completions are never
+ * touched, the same history. Only archived habits can be deleted (archiving
+ * is the default way out; the apps offer "Apagar" only on archived habits):
+ * otherwise `archived_required`. Deleting a deleted habit keeps its first
+ * `deleted_at`.
+ */
+export function applyHabitDelete(
+	habit: Habit,
+	now: number
+): { habit: Habit; changed: boolean } | "archived_required" {
+	if (habit.deleted_at !== null) return { habit, changed: false };
+	if (habit.archived_at === null) return "archived_required";
+	return {
+		habit: { ...habit, deleted_at: now, updated_at: now },
+		changed: true,
+	};
+}
+
+/**
+ * Restores a deleted habit (the "Desfazer" of a deletion). It stays archived.
+ * Restoring a live habit changes nothing.
+ */
+export function applyHabitRestore(
+	habit: Habit,
+	now: number
+): { habit: Habit; changed: boolean } {
+	if (habit.deleted_at === null) return { habit, changed: false };
+	return {
+		habit: { ...habit, deleted_at: null, updated_at: now },
+		changed: true,
+	};
+}
+
+/** The rejection for deleting a habit that is not archived. */
+export const ARCHIVED_REQUIRED_ERROR: ApiErrorBody = {
+	code: "conflict",
+	message: "Habit must be archived before deleting",
+};
+
 export interface CompletionSetInput {
 	/** Id for a new row; an existing row for the habit and date keeps its own. */
 	id: string;
@@ -289,6 +330,32 @@ export function applyMutation(
 				changed: result.changed,
 			};
 		}
+		case "habit.delete": {
+			// Deleted habits included: deleting twice is not an error.
+			const habit = state.habits.get(mutation.habit_id);
+			if (!habit) return reject("not_found", "Habit not found");
+			const result = applyHabitDelete(habit, ctx.now);
+			if (result === "archived_required") {
+				return { status: "rejected", error: ARCHIVED_REQUIRED_ERROR };
+			}
+			if (result.changed) state.habits.set(habit.id, result.habit);
+			return {
+				status: "applied",
+				canonical_id: habit.id,
+				changed: result.changed,
+			};
+		}
+		case "habit.restore": {
+			const habit = state.habits.get(mutation.habit_id);
+			if (!habit) return reject("not_found", "Habit not found");
+			const result = applyHabitRestore(habit, ctx.now);
+			if (result.changed) state.habits.set(habit.id, result.habit);
+			return {
+				status: "applied",
+				canonical_id: habit.id,
+				changed: result.changed,
+			};
+		}
 		case "completion.set": {
 			if (!liveHabit(state, mutation.habit_id)) {
 				return reject("not_found", "Habit not found");
@@ -349,6 +416,8 @@ export function habitDependency(mutation: Mutation): string | null {
 		case "habit.create":
 			return null;
 		case "habit.update":
+		case "habit.delete":
+		case "habit.restore":
 		case "completion.set":
 			return mutation.habit_id;
 		default: {
