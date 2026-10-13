@@ -29,7 +29,14 @@ export interface HabitsRepository {
 	/** Habits possible on a local date and which of them were completed. */
 	getDay(date: CalendarDate): Promise<DayData>;
 	/** Completed/possible counts per local date of a year. */
-	getYearSummary(year: number): Promise<SummaryDay[]>;
+	/**
+	 * The year's days (heatmap, overview). With `habitId`, only that habit
+	 * counts (2.7.0: the history filter and the per-habit rows).
+	 */
+	getYearSummary(
+		year: number,
+		options?: { habitId?: string }
+	): Promise<SummaryDay[]>;
 	/** Idempotent: marking done twice, or undone twice, is a no-op. */
 	setCompletion(
 		habitId: string,

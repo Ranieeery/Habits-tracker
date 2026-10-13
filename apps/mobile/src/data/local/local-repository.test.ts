@@ -92,6 +92,54 @@ describe("local repository", () => {
 		expect(counts().writes).toBe(3);
 	});
 
+	it("summarizes the year for one habit only (2.7.0 history filter)", async () => {
+		const { repository } = setup();
+		const read = await repository.createHabit({
+			name: "Ler",
+			schedule: EVERY_DAY,
+			start_date: TODAY,
+		});
+		const run = await repository.createHabit({
+			name: "Correr",
+			schedule: EVERY_DAY,
+			start_date: TODAY,
+		});
+		await repository.setCompletion(read.id, TODAY, true);
+
+		const all = await repository.getYearSummary(2026);
+		expect(all).toContainEqual({ date: TODAY, possible: 2, completed: 1 });
+		expect(
+			await repository.getYearSummary(2026, { habitId: read.id })
+		).toContainEqual({ date: TODAY, possible: 1, completed: 1 });
+		expect(
+			await repository.getYearSummary(2026, { habitId: run.id })
+		).toContainEqual({ date: TODAY, possible: 1, completed: 0 });
+	});
+
+	it("moves habits with several writes in a row (2.6.0 reorder)", async () => {
+		const { repository } = setup();
+		const ids: string[] = [];
+		for (const name of ["A", "B", "C"]) {
+			const habit = await repository.createHabit({
+				name,
+				schedule: EVERY_DAY,
+				start_date: TODAY,
+			});
+			ids.push(habit.id);
+		}
+		// Concurrent writes, as several taps would make: none may be lost.
+		await Promise.all(
+			ids.map((id, index) =>
+				repository.updateHabit(id, { sort_key: `a${3 - index}` })
+			)
+		);
+		expect((await repository.listHabits()).map((h) => h.name)).toEqual([
+			"C",
+			"B",
+			"A",
+		]);
+	});
+
 	it("does not queue a change that changes nothing", async () => {
 		const { repository, store } = setup();
 		const habit = await repository.createHabit({

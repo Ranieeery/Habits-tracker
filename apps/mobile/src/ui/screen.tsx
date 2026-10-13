@@ -1,14 +1,20 @@
 import { nightColors } from "@habits/design-tokens";
 import { useFocusEffect } from "expo-router";
-import { type ReactNode, useCallback, useRef } from "react";
+import { type ReactNode, type Ref, useCallback, useRef } from "react";
 import { RefreshControl, View } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import {
+	KeyboardAwareScrollView,
+	type KeyboardAwareScrollViewRef,
+} from "react-native-keyboard-controller";
 import {
 	type Edge,
 	SafeAreaView,
 	useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useToastAnchor } from "./toast.tsx";
+
+/** What `scrollRef` points at (it has `scrollTo`). */
+export type ScreenScroll = KeyboardAwareScrollViewRef;
 
 /**
  * Scrolling page with safe-area padding. Focused inputs scroll above the
@@ -27,6 +33,7 @@ export function Screen({
 	refreshing = false,
 	footer,
 	background,
+	scrollRef,
 }: {
 	children: ReactNode;
 	edges?: Edge[];
@@ -36,6 +43,8 @@ export function Screen({
 	refreshing?: boolean;
 	footer?: ReactNode;
 	background?: ReactNode;
+	/** To scroll from the screen (e.g. back to the top after a filter). */
+	scrollRef?: Ref<ScreenScroll>;
 }) {
 	const insets = useSafeAreaInsets();
 	const reportFooter = useToastAnchor();
@@ -66,6 +75,7 @@ export function Screen({
 		>
 			{background}
 			<KeyboardAwareScrollView
+				ref={scrollRef}
 				bottomOffset={24}
 				keyboardShouldPersistTaps="handled"
 				refreshControl={

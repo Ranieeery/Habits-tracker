@@ -18,6 +18,7 @@ import {
 	type QueryClient,
 	useMutation,
 	usePrefetchQuery,
+	useQueries,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
@@ -50,7 +51,10 @@ export const queryKeys = {
 	days: ["day"] as const,
 	day: (date: CalendarDate) => ["day", date] as const,
 	summaries: ["summary"] as const,
-	summary: (year: number) => ["summary", year] as const,
+	summary: (year: number, habitId?: string) =>
+		habitId === undefined
+			? (["summary", year] as const)
+			: (["summary", year, habitId] as const),
 };
 
 /** After a habit or completion change: lists, days and heatmaps refetch. */
@@ -312,13 +316,27 @@ export function usePrefetchDay(date: CalendarDate) {
 
 export function useYearSummary(
 	year: number,
-	{ enabled = true }: { enabled?: boolean } = {}
+	{ enabled = true, habitId }: { enabled?: boolean; habitId?: string } = {}
 ) {
 	const { repository } = useServices();
 	return useQuery({
-		queryKey: queryKeys.summary(year),
-		queryFn: () => repository.getYearSummary(year),
+		queryKey: queryKeys.summary(year, habitId),
+		queryFn: () => repository.getYearSummary(year, { habitId }),
 		enabled,
+	});
+}
+
+/** One year summary per habit (the history's per-habit rows), in order. */
+export function useHabitYearSummaries(
+	year: number,
+	habitIds: readonly string[]
+) {
+	const { repository } = useServices();
+	return useQueries({
+		queries: habitIds.map((habitId) => ({
+			queryKey: queryKeys.summary(year, habitId),
+			queryFn: () => repository.getYearSummary(year, { habitId }),
+		})),
 	});
 }
 

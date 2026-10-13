@@ -4,6 +4,10 @@ import { nightColors } from "@habits/design-tokens";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import Animated, {
+	LinearTransition,
+	ReduceMotion,
+} from "react-native-reanimated";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
 import { isSettled, useHabits, useReorderHabit } from "@/data/hooks.ts";
 import { useLoadedSettings, useToday } from "@/data/today.ts";
@@ -15,6 +19,10 @@ import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { useToast } from "@/ui/toast.tsx";
 import { HabitCard } from "./habit-card.tsx";
+
+const REORDER = LinearTransition.duration(200).reduceMotion(
+	ReduceMotion.System
+);
 
 /** A single-date habit whose date has passed (kept, not archived). */
 function isPastOnce(habit: Habit, today: string): boolean {
@@ -114,35 +122,37 @@ export function HabitsScreen() {
 								) : (
 									<View className="gap-2">
 										{active.map((habit, index) => (
-											<HabitCard
-												key={habit.id}
-												habit={habit}
-												today={today}
-												timeZone={timezone}
-												onPress={reordering ? undefined : () => open(habit)}
-												actions={
-													reordering ? (
-														<View className="flex-row pr-1">
-															<IconButton
-																icon="arrow-up"
-																label={`Subir ${habit.name}`}
-																disabled={index === 0}
-																onPress={() =>
-																	move(active, habit.id, index - 1)
-																}
-															/>
-															<IconButton
-																icon="arrow-down"
-																label={`Descer ${habit.name}`}
-																disabled={index === active.length - 1}
-																onPress={() =>
-																	move(active, habit.id, index + 1)
-																}
-															/>
-														</View>
-													) : undefined
-												}
-											/>
+											// A moved card slides to its new place (200 ms).
+											<Animated.View key={habit.id} layout={REORDER}>
+												<HabitCard
+													habit={habit}
+													today={today}
+													timeZone={timezone}
+													onPress={reordering ? undefined : () => open(habit)}
+													actions={
+														reordering ? (
+															<View className="flex-row pr-1">
+																<IconButton
+																	icon="arrow-up"
+																	label={`Subir ${habit.name}`}
+																	disabled={index === 0}
+																	onPress={() =>
+																		move(active, habit.id, index - 1)
+																	}
+																/>
+																<IconButton
+																	icon="arrow-down"
+																	label={`Descer ${habit.name}`}
+																	disabled={index === active.length - 1}
+																	onPress={() =>
+																		move(active, habit.id, index + 1)
+																	}
+																/>
+															</View>
+														) : undefined
+													}
+												/>
+											</Animated.View>
 										))}
 									</View>
 								)}

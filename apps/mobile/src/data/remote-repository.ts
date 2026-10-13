@@ -3,7 +3,7 @@
 // the local repository; this one only serves settings (and push). With
 // `sync/transport.ts`, the only modules that talk to `@habits/api-client`.
 import { type ApiClient, createApiClient, unwrap } from "@habits/api-client";
-import { toDataError } from "./errors.ts";
+import { DataError, toDataError } from "./errors.ts";
 import type {
 	HabitsRepository,
 	NotificationsRepository,
@@ -48,12 +48,21 @@ export function createRemoteRepository(api: ApiClient): HabitsRepository {
 			),
 
 		getDay: (date) => call(() => unwrap(api.v1.day.$get({ query: { date } }))),
-		getYearSummary: (year) =>
-			call(
-				async () =>
-					(await unwrap(api.v1.summary.$get({ query: { year: String(year) } })))
-						.days
-			),
+		// The API has no per-habit summary; the app reads it from the device
+		// database (local repository), so a filter here is a programming error.
+		getYearSummary: (year, options) =>
+			options?.habitId
+				? Promise.reject(
+						new DataError("unknown", "Per-habit summary is local only")
+					)
+				: call(
+						async () =>
+							(
+								await unwrap(
+									api.v1.summary.$get({ query: { year: String(year) } })
+								)
+							).days
+					),
 		setCompletion: (habitId, date, completed) =>
 			call(async () => {
 				await unwrap(

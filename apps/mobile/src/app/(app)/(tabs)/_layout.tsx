@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { nightColors } from "@habits/design-tokens";
 import { Tabs } from "expo-router";
 import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { withAlpha } from "@/lib/color.ts";
 import type { IconName } from "@/ui/button.tsx";
 
@@ -33,6 +34,10 @@ function tabIcon(name: IconName) {
  * peers: switching never slides.
  */
 export default function TabsLayout() {
+	// The custom icon (pill and top bar) is taller than the default bar, so
+	// the height follows the bottom safe area itself: labels never reach the
+	// Android buttons or gesture bar.
+	const insets = useSafeAreaInsets();
 	return (
 		<Tabs
 			screenOptions={{
@@ -42,6 +47,8 @@ export default function TabsLayout() {
 				tabBarStyle: {
 					backgroundColor: nightColors.bg,
 					borderTopColor: nightColors.border.DEFAULT,
+					height: 64 + insets.bottom,
+					paddingBottom: insets.bottom + 6,
 				},
 				tabBarItemStyle: { paddingTop: 4 },
 				tabBarActiveTintColor: nightColors.accent.text,

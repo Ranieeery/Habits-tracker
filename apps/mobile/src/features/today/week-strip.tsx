@@ -1,7 +1,8 @@
 import type { CalendarDate } from "@habits/contracts";
 import { parseCalendarDate } from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { PressableScale } from "@/ui/pressable-scale.tsx";
 import { useYearSummary } from "@/data/hooks.ts";
 import { DisplayText } from "@/ui/display-text.tsx";
 import { levelFill } from "@/features/heatmap/heatmap-layout.ts";
@@ -37,13 +38,14 @@ export function WeekStrip({
 			{days.map((day) => {
 				const chosen = day.date === selected;
 				return (
-					<Pressable
+					<PressableScale
 						key={day.date}
 						accessibilityRole="tab"
 						accessibilityLabel={day.label}
 						accessibilityState={{ selected: chosen }}
 						onPress={() => onSelect(day.date)}
-						className={`min-h-touch flex-1 items-center gap-1 rounded-lg py-2 ${chosen ? "bg-night-accent" : "bg-night-surface active:bg-night-surface-raised"}`}
+						outerStyle={{ flex: 1 }}
+						className={`min-h-touch items-center gap-1 rounded-lg py-2 ${chosen ? "bg-night-accent" : "bg-night-surface active:bg-night-surface-raised"}`}
 					>
 						<Text
 							maxFontSizeMultiplier={1.3}
@@ -79,7 +81,7 @@ export function WeekStrip({
 						) : (
 							<View style={styles.dotSpace} />
 						)}
-					</Pressable>
+					</PressableScale>
 				);
 			})}
 		</View>

@@ -152,13 +152,22 @@ export function createLocalRepository({
 				timeZone: timezone,
 			});
 		},
-		async getYearSummary(year) {
+		async getYearSummary(year, { habitId } = {}) {
 			const { timezone } = await settings();
 			const today = todayIn(timezone, now());
-			const { habits, completions } = await view({
+			const all = await view({
 				from: firstDayOfYear(year),
 				to: lastDayOfYear(year),
 			});
+			// One habit: core's year view over that habit and its completions.
+			const habits = habitId
+				? all.habits.filter((habit) => habit.id === habitId)
+				: all.habits;
+			const completions = habitId
+				? all.completions.filter(
+						(completion) => completion.habit_id === habitId
+					)
+				: all.completions;
 			return summarizeYear(habits, completions, {
 				year,
 				today,

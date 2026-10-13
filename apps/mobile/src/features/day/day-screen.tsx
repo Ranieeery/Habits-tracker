@@ -12,6 +12,7 @@ import { nightColors } from "@habits/design-tokens";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { type ReactNode, useState } from "react";
 import { Text, View } from "react-native";
+import Animated, { FadeIn, ReduceMotion } from "react-native-reanimated";
 import { isSettled, useDay, useHabits } from "@/data/hooks.ts";
 import { useToday } from "@/data/today.ts";
 import {
@@ -32,6 +33,8 @@ import { HabitRow } from "./habit-row.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
 import { useCompletionChange } from "./use-completion-change.ts";
+
+const DAY_ENTER = FadeIn.duration(150).reduceMotion(ReduceMotion.System);
 
 /** Route param: a `YYYY-MM-DD` date, or "hoje" (follows the day turning). */
 export const TODAY_PARAM = "hoje";
@@ -136,34 +139,37 @@ export function DayView({
 				</DisplayText>
 			</View>
 
-			<QueryState query={day} loadingLabel="Carregando o dia…">
-				{(data) =>
-					data.possible_habits.length === 0 && isToday ? (
-						<TodayEmptyState />
-					) : data.possible_habits.length === 0 ? (
-						<EmptyState
-							title="Nenhum hábito para este dia"
-							description="Hábitos aparecem nos dias em que se repetem."
-							action={
-								<Button
-									variant="outline"
-									label="Gerenciar hábitos"
-									onPress={() => router.navigate("/habits")}
-								/>
-							}
-						/>
-					) : (
-						<DayContent
-							possible={data.possible_habits}
-							completedIds={new Set(data.completed_habit_ids)}
-							editable={editable}
-							editState={editState}
-							unlocked={unlocked}
-							onToggle={(habit, completed) => change(habit, completed)}
-						/>
-					)
-				}
-			</QueryState>
+			{/* Changing the day (Hoje's strip) fades the new list in (150 ms). */}
+			<Animated.View entering={DAY_ENTER} style={{ gap: 24 }}>
+				<QueryState query={day} loadingLabel="Carregando o dia…">
+					{(data) =>
+						data.possible_habits.length === 0 && isToday ? (
+							<TodayEmptyState />
+						) : data.possible_habits.length === 0 ? (
+							<EmptyState
+								title="Nenhum hábito para este dia"
+								description="Hábitos aparecem nos dias em que se repetem."
+								action={
+									<Button
+										variant="outline"
+										label="Gerenciar hábitos"
+										onPress={() => router.navigate("/habits")}
+									/>
+								}
+							/>
+						) : (
+							<DayContent
+								possible={data.possible_habits}
+								completedIds={new Set(data.completed_habit_ids)}
+								editable={editable}
+								editState={editState}
+								unlocked={unlocked}
+								onToggle={(habit, completed) => change(habit, completed)}
+							/>
+						)
+					}
+				</QueryState>
+			</Animated.View>
 			{isToday ? <UpcomingSection today={today} /> : null}
 		</Screen>
 	);

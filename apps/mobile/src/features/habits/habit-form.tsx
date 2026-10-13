@@ -5,7 +5,10 @@ import {
 	type StoredSchedule,
 } from "@habits/contracts";
 import {
+	addMonths,
 	buildFromDraft,
+	clampDayToMonth,
+	daysInAnyYear,
 	type DraftErrors,
 	draftFromHabit,
 	emptyDraft,
@@ -17,14 +20,14 @@ import {
 } from "@habits/core";
 import { type Ref, useState } from "react";
 import { Alert, Text, type TextInput, View } from "react-native";
-import { weekdayInitial, weekdayName } from "@/lib/format.ts";
+import { capitalizeFirst, weekdayInitial, weekdayName } from "@/lib/format.ts";
 import { Button } from "@/ui/button.tsx";
 import { Choice } from "@/ui/choice.tsx";
 import { DatePicker } from "@/ui/date-picker.tsx";
+import { MonthDayPicker } from "@/ui/month-day-picker.tsx";
 import { FieldError, TextField } from "@/ui/text-field.tsx";
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
-const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export interface HabitFormValues {
 	name: string;
@@ -71,30 +74,35 @@ export function WeekdayPicker({
 	);
 }
 
-/** Days 1-31 in rows of 7 (single choice for yearly, multiple for monthly). */
-function MonthDayGrid({
-	selected,
-	role,
-	onPress,
+/**
+ * "Todo ano": a month calendar like "Começa em", the arrows paging through
+ * the months (December → January wraps), without a year (a yearly habit has
+ * none, so no weekday header). The shown month is local; a tap picks that
+ * month and day.
+ */
+function YearlyDatePicker({
+	month,
+	day,
+	onChange,
 }: {
-	selected: (day: number) => boolean;
-	role: "checkbox" | "radio";
-	onPress: (day: number) => void;
+	month: number;
+	day: number;
+	onChange: (month: number, day: number) => void;
 }) {
+	const [shown, setShown] = useState(month);
+	// Any year works for paging months; only `month` is used.
+	const step = (delta: number) =>
+		setShown(addMonths({ year: 2024, month: shown }, delta).month);
 	return (
-		<View className="flex-row flex-wrap gap-1">
-			{MONTH_DAYS.map((day) => (
-				<Choice
-					key={day}
-					role={role}
-					label={String(day)}
-					accessibilityLabel={`Dia ${day}`}
-					selected={selected(day)}
-					className="w-[13%] px-0"
-					onPress={() => onPress(day)}
-				/>
-			))}
-		</View>
+		<MonthDayPicker
+			title={capitalizeFirst(MONTH_NAMES[shown - 1] ?? "")}
+			days={daysInAnyYear(shown)}
+			role="radio"
+			selected={(value) => shown === month && value === day}
+			onPress={(value) => onChange(shown, clampDayToMonth(shown, value))}
+			onPrevious={() => step(-1)}
+			onNext={() => step(1)}
+		/>
 	);
 }
 
@@ -210,7 +218,7 @@ export function HabitForm({
 				value={name}
 				onChangeText={setName}
 				maxLength={120}
-				placeholder="Ex.: exercícios, consulta, pagar condomínio…"
+				placeholder="Ex.: correr, ler, beber água"
 				autoCapitalize="sentences"
 				returnKeyType="done"
 				// The keyboard's Enter key submits the form.
@@ -272,7 +280,9 @@ export function HabitForm({
 								<Text className="text-sm font-semibold text-night-foreground">
 									Em quais dias do mês?
 								</Text>
-								<MonthDayGrid
+								<MonthDayPicker
+									title="Dias do mês"
+									days={31}
 									role="checkbox"
 									selected={(day) => draft.monthDays.includes(day)}
 									onPress={(day) =>
@@ -280,8 +290,7 @@ export function HabitForm({
 									}
 								/>
 								<Text className="text-xs text-night-muted">
-									Em meses sem o dia escolhido (como 31 ou 30 em fevereiro),
-									vale o último dia do mês.
+									Nos meses mais curtos, 29, 30 e 31 caem no último dia do mês.
 								</Text>
 							</>
 						)}
@@ -301,31 +310,12 @@ export function HabitForm({
 						{draft.kind === "yearly" && (
 							<>
 								<Text className="text-sm font-semibold text-night-foreground">
-									Em qual mês?
+									Em qual dia do ano?
 								</Text>
-								<View
-									accessibilityRole="radiogroup"
-									className="flex-row flex-wrap gap-1"
-								>
-									{MONTH_NAMES.map((month, index) => (
-										<Choice
-											key={month}
-											role="radio"
-											label={month.slice(0, 3)}
-											accessibilityLabel={month}
-											selected={draft.month === index + 1}
-											className="w-[23%] px-0"
-											onPress={() => update({ month: index + 1 })}
-										/>
-									))}
-								</View>
-								<Text className="text-sm font-semibold text-night-foreground">
-									Em qual dia?
-								</Text>
-								<MonthDayGrid
-									role="radio"
-									selected={(day) => draft.day === day}
-									onPress={(day) => update({ day })}
+								<YearlyDatePicker
+									month={draft.month}
+									day={draft.day}
+									onChange={(month, day) => update({ month, day })}
 								/>
 								{draft.month === 2 && draft.day === 29 ? (
 									<Text className="text-xs text-night-muted">

@@ -1,4 +1,5 @@
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
+import { PressableScale } from "./pressable-scale.tsx";
 
 /**
  * A toggle chip (44 dp target): a checkbox in a multi-choice group, a radio
@@ -22,7 +23,7 @@ export function Choice({
 	className?: string;
 }) {
 	return (
-		<Pressable
+		<PressableScale
 			accessibilityRole={role}
 			accessibilityLabel={accessibilityLabel ?? label}
 			accessibilityState={
@@ -39,6 +40,6 @@ export function Choice({
 			>
 				{label}
 			</Text>
-		</Pressable>
+		</PressableScale>
 	);
 }

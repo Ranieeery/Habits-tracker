@@ -5,10 +5,16 @@ import {
 	heatmapYearRange,
 	overviewNeedsPreviousYear,
 	overviewStats,
+	trendNeedsPreviousYear,
 } from "@habits/core";
-import { useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, useWindowDimensions, View } from "react-native";
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
 import {
 	isSettled,
 	useHabits,
@@ -19,11 +25,13 @@ import { useToday } from "@/data/today.ts";
 import { TimezoneBanner } from "@/features/settings/timezone-banner.tsx";
 import { TabHeader } from "@/features/shell/tab-header.tsx";
 import { capitalizeFirst, formatLongDate } from "@/lib/format.ts";
+import { Backdrop } from "@/ui/backdrop.tsx";
 import { IconButton } from "@/ui/button.tsx";
 import { DisplayText } from "@/ui/display-text.tsx";
-import { Screen } from "@/ui/screen.tsx";
+import { Screen, type ScreenScroll } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
-import { Backdrop } from "@/ui/backdrop.tsx";
+import { useReducedMotion } from "@/ui/use-reduced-motion.ts";
+import { HabitFilter } from "./habit-filter.tsx";
 import { HeatmapGrid } from "./heatmap-grid.tsx";
 import { HeatmapLegend } from "./heatmap-legend.tsx";
 import {
@@ -31,13 +39,19 @@ import {
 	HeatmapError,
 	HeatmapSkeleton,
 } from "./heatmap-states.tsx";
+import { HighlightsSection } from "./highlights-section.tsx";
 import { OverviewStrip } from "./overview-strip.tsx";
+import { PerHabitSection } from "./per-habit-section.tsx";
+import { TrendSection } from "./trend-section.tsx";
 
 /**
- * The "Histórico" tab (the heatmap, DESIGN.md "Mobile"): mark, sync state
- * and gear, the date, the overview numbers, the year and its grid. Today's
- * habits live in the "Hoje" tab since 2.6.0; tapping a past day still opens
- * the day screen, and today opens the Hoje tab.
+ * The "Histórico" tab (DESIGN.md "Mobile"). The heatmap stays the hero at
+ * the top (header, date, overview, an optional habit filter, the year and
+ * its grid); below it, quieter sections each answer one question (2.7.0):
+ * "Tendência" (getting better?), "Destaques" (what stands out this year?)
+ * and "Por hábito" (how is each one doing? a tap filters the map). The
+ * filter is memory only and resets when the tab loses focus. Tapping a past
+ * day opens the day screen; today opens the Hoje tab.
  */
 export function HeatmapScreen() {
 	const router = useRouter();
@@ -49,14 +63,23 @@ export function HeatmapScreen() {
 	const [chosen, setChosen] = useState<number | null>(null);
 	const year = chosen === null ? range.last : clampYear(chosen, range);
 	const goTo = (next: number) => setChosen(next >= range.last ? null : next);
-	const summary = useYearSummary(year);
-	// The overview is about today: today's year always, and last year too
-	// when core says the numbers reach into it (same as the web).
-	const current = useYearSummary(range.last);
+	// null: every habit.
+	const [habitId, setHabitId] = useState<string | null>(null);
+	const filter = habitId ?? undefined;
+	useFocusEffect(useCallback(() => () => setHabitId(null), []));
+
+	const summary = useYearSummary(year, { habitId: filter });
+	// The overview and the trend are about today: today's year always, and
+	// last year too when core says they reach into it (same as the web).
+	const current = useYearSummary(range.last, { habitId: filter });
 	const needsPrevious =
-		current.data !== undefined &&
-		overviewNeedsPreviousYear(current.data, today);
-	const previous = useYearSummary(range.last - 1, { enabled: needsPrevious });
+		trendNeedsPreviousYear(today) ||
+		(current.data !== undefined &&
+			overviewNeedsPreviousYear(current.data, today));
+	const previous = useYearSummary(range.last - 1, {
+		habitId: filter,
+		enabled: needsPrevious,
+	});
 	const { refresh, refreshing } = useRefreshAll();
 	useHideSplashWhen(isSettled(summary));
 
@@ -64,11 +87,15 @@ export function HeatmapScreen() {
 		() => summary.data && buildYearGrid({ year, today, summary: summary.data }),
 		[year, today, summary.data]
 	);
+	const recent = useMemo(
+		() => [...(previous.data ?? []), ...(current.data ?? [])],
+		[previous.data, current.data]
+	);
 	const stats = useMemo(() => {
 		if (!current.data || !summary.data) return null;
 		if (needsPrevious && previous.isPending) return null;
 		return overviewStats({
-			days: [...(previous.data ?? []), ...current.data, ...summary.data],
+			days: [...recent, ...summary.data],
 			today,
 			year,
 		});
@@ -77,7 +104,7 @@ export function HeatmapScreen() {
 		summary.data,
 		needsPrevious,
 		previous.isPending,
-		previous.data,
+		recent,
 		today,
 		year,
 	]);
@@ -93,6 +120,27 @@ export function HeatmapScreen() {
 		[router]
 	);
 
+	// The grid fades in again when the filter changes (150 ms, opacity only):
+	// the same grid stays mounted, so its entrance sweep does not replay.
+	const reduced = useReducedMotion();
+	const gridOpacity = useSharedValue(1);
+	const firstFilter = useRef(true);
+	useEffect(() => {
+		if (firstFilter.current) {
+			firstFilter.current = false;
+			return;
+		}
+		if (reduced) return;
+		gridOpacity.set(0.3);
+		gridOpacity.set(withTiming(1, { duration: 150 }));
+	}, [habitId, reduced, gridOpacity]);
+	const gridFade = useAnimatedStyle(() => ({ opacity: gridOpacity.get() }));
+
+	const scroll = useRef<ScreenScroll>(null);
+	const active = (habits.data ?? []).filter(
+		(habit) => habit.archived_at === null && habit.deleted_at === null
+	);
+	const filtered = active.find((habit) => habit.id === habitId);
 	const noHabits = habits.data?.length === 0;
 
 	return (
@@ -100,6 +148,7 @@ export function HeatmapScreen() {
 			onRefresh={() => void refresh()}
 			refreshing={refreshing}
 			background={<Backdrop />}
+			scrollRef={scroll}
 		>
 			<View className="gap-1">
 				<TabHeader />
@@ -113,6 +162,7 @@ export function HeatmapScreen() {
 			{noHabits ? null : <OverviewStrip stats={stats} year={year} />}
 
 			<View className="gap-3">
+				<HabitFilter habits={active} selected={habitId} onSelect={setHabitId} />
 				<View className="-ml-3 flex-row items-center">
 					<IconButton
 						icon="chevron-left"
@@ -134,6 +184,14 @@ export function HeatmapScreen() {
 						disabled={year >= range.last}
 						onPress={() => goTo(year + 1)}
 					/>
+					{filtered ? (
+						<Text
+							numberOfLines={1}
+							className="flex-1 text-base text-night-muted"
+						>
+							{filtered.name}
+						</Text>
+					) : null}
 				</View>
 
 				{summary.isError && !summary.data ? (
@@ -144,7 +202,7 @@ export function HeatmapScreen() {
 				) : noHabits ? (
 					<HeatmapEmpty onCreate={() => router.push("/habit/new")} />
 				) : grid ? (
-					<>
+					<Animated.View style={[gridFade, { gap: 12 }]}>
 						<HeatmapGrid grid={grid} onOpenDay={openDay} />
 						<View className="flex-row flex-wrap items-center justify-between gap-2">
 							<Text className="flex-1 text-xs text-night-subtle">
@@ -152,11 +210,33 @@ export function HeatmapScreen() {
 							</Text>
 							<HeatmapLegend />
 						</View>
-					</>
+					</Animated.View>
 				) : (
 					<HeatmapSkeleton width={width - 32} />
 				)}
 			</View>
+
+			{noHabits || !current.data ? null : (
+				<TrendSection days={recent} today={today} />
+			)}
+			{noHabits || !summary.data ? null : (
+				<HighlightsSection
+					days={summary.data}
+					today={today}
+					year={year}
+					currentYear={year === range.last}
+				/>
+			)}
+			{noHabits ? null : (
+				<PerHabitSection
+					habits={active}
+					today={today}
+					onSelect={(id) => {
+						setHabitId(id);
+						scroll.current?.scrollTo({ y: 0, animated: !reduced });
+					}}
+				/>
+			)}
 		</Screen>
 	);
 }

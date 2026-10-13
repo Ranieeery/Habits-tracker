@@ -12,7 +12,8 @@ import {
 } from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { PressableScale } from "@/ui/pressable-scale.tsx";
 import { weekdayInitial } from "@/lib/format.ts";
 import type { IconName } from "@/ui/button.tsx";
 
@@ -134,13 +135,14 @@ export function HabitCard({
 
 	return (
 		<View className="flex-row items-center rounded-xl border border-night-border bg-night-surface">
-			<Pressable
+			<PressableScale
 				accessibilityRole={onPress ? "button" : undefined}
 				accessibilityLabel={label}
 				accessibilityHint={onPress ? "Abre para editar ou arquivar" : undefined}
 				disabled={!onPress}
 				onPress={onPress}
-				className="min-h-14 flex-1 gap-2 rounded-xl py-3 pl-4 pr-2 active:bg-night-surface-raised"
+				outerStyle={{ flex: 1 }}
+				className="min-h-14 gap-2 rounded-xl py-3 pl-4 pr-2 active:bg-night-surface-raised"
 			>
 				<View importantForAccessibility="no-hide-descendants" className="gap-2">
 					<View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
@@ -159,7 +161,7 @@ export function HabitCard({
 					</View>
 					<ScheduleStrip habit={habit} today={today} muted={muted} />
 				</View>
-			</Pressable>
+			</PressableScale>
 			{actions ??
 				(onPress ? (
 					<View className="pr-3">

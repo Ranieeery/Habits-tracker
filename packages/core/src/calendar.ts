@@ -52,6 +52,22 @@ export function monthGrid({
 	return weeks;
 }
 
+/**
+ * Days a yearly habit's month can offer (February has 29: a 29/02 habit falls
+ * on 28/02 in years that are not leap, see `schedule.ts`).
+ */
+export function daysInAnyYear(month: number): number {
+	return daysInMonth(2024, month);
+}
+
+/**
+ * Keeps a chosen day when the month changes, or moves it to the month's last
+ * day (31 → 30 in April, 30 → 29 in February).
+ */
+export function clampDayToMonth(month: number, day: number): number {
+	return Math.max(1, Math.min(day, daysInAnyYear(month)));
+}
+
 /** Whether `target` is a month entirely before `min`. */
 export function isMonthBefore(target: MonthRef, min: CalendarDate): boolean {
 	const limit = monthOf(min);
