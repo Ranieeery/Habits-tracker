@@ -1,6 +1,6 @@
-// The habit actions menu of a day's rows (2.15.0): only on the Hoje tab
-// (`/today`), never in the history (the home "Hoje" panel and days opened
-// from the heatmap, past or future). The "more options" button and the right
+// The habit actions menu of a day's rows (2.15.0): on the Hoje tab
+// (`/today`) and, since 2.16.1, on the days opened from the heatmap (past or
+// future); never on the home "Hoje" panel. The "more options" button and the right
 // click inside the row open the same menu; neither marks the habit; editing
 // stays on the day; archiving is immediate with "Desfazer".
 // TODAY = Friday 2026-10-09.
@@ -96,12 +96,47 @@ describe("the habit actions menu", () => {
 	});
 
 	it.each([
-		["a past day", "/day/2026-10-05"],
-		["a future day", "/day/2026-10-11"],
-		["the home Hoje panel", "/"],
-	])("has no menu in the history: %s", async (_case, path) => {
+		["a past day", "/day/2026-10-05", ["Editar hábito", "Arquivar"]],
+		[
+			"today opened from the heatmap",
+			`/day/${TODAY}`,
+			["Editar hábito", "Arquivar"],
+		],
+		["a future day", "/day/2026-10-11", ["Editar hábito"]],
+	])(
+		"has the menu on %s, from the button and the right click",
+		async (_case, path, items) => {
+			const { routes } = server();
+			const { user, requests } = renderApp(path, { routes });
+			await user.click(
+				await screen.findByRole(
+					"button",
+					{ name: "Mais opções de Beber água" },
+					{ timeout: 5000 }
+				)
+			);
+			const menu = await screen.findByRole("menu");
+			for (const label of items) {
+				expect(
+					within(menu).getByRole("menuitem", { name: new RegExp(label) })
+				).toBeInTheDocument();
+			}
+			await user.keyboard("{Escape}");
+			await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+
+			const row = screen.getByText("Beber água").closest("li");
+			if (!row) throw new Error("no row");
+			expect(fireEvent.contextMenu(row, { clientX: 10, clientY: 10 })).toBe(
+				false
+			);
+			expect(await screen.findByRole("menu")).toBeInTheDocument();
+			expect(puts(requests)).toEqual([]);
+		}
+	);
+
+	it("has no menu on the home Hoje panel", async () => {
 		const { routes } = server();
-		renderApp(path, { routes });
+		renderApp("/", { routes });
 		const name = await screen.findByText("Beber água", undefined, {
 			timeout: 5000,
 		});

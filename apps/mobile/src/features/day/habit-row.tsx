@@ -20,12 +20,13 @@ import { LONG_PRESS_MS } from "./long-press.ts";
  * habit (2.8.0) carries the "Atrasado desde 11/10" badge below the name
  * (icon and text, never color alone), read as "Nome, atrasado desde 11 de
  * outubro".
- * 2.15.0: with `onShowActions` (only the Hoje tab), the "more options"
+ * 2.15.0: with `onShowActions` (the Hoje tab and, since 2.16.1, days
+ * opened from the history), the "more options"
  * button (⋮) at the end opens the habit's actions sheet, and so does holding
  * the row for `LONG_PRESS_MS` (light haptic when it opens; releasing then
  * never marks). A shorter press still marks. With it, read-only rows are not
  * disabled (the long press must work), but a tap does nothing and they still
- * read as disabled. Without it (days opened from the history), neither. An
+ * read as disabled. Without it, neither. An
  * archived habit still listed (today or a past day) carries the "Arquivado"
  * badge. 2.16.0: a postponed occurrence on its new day carries "Adiado de
  * 20/10" (icon and text, neutral), read with the name.
@@ -65,7 +66,7 @@ export function HabitRow({
 	/** 2.16.0: "Adiado de 20/10". */
 	moved?: { text: string; spoken: string } | null;
 	/**
-	 * Opens the actions sheet (only on the Hoje tab); `origin` gets the focus
+	 * Opens the actions sheet (every day screen); `origin` gets the focus
 	 * back on closing.
 	 */
 	onShowActions?: (origin: View | null) => void;

@@ -47,8 +47,9 @@ export function DayView({
 	date: CalendarDate;
 	today: CalendarDate;
 	/**
-	 * The habit actions menu on each row (2.15.0): only on the Hoje tab
-	 * (`/today`), never on days opened from the history.
+	 * The habit actions menu on each row (2.15.0): on the Hoje tab
+	 * (`/today`) and, since 2.16.1, on the days of `/day/*`; never on the
+	 * home screen's "Hoje" panel.
 	 */
 	actions?: boolean;
 }) {
@@ -140,7 +141,7 @@ export function DayView({
 				/>
 			)}
 
-			{/* 2.16.0: on the Hoje tab, today's occurrences postponed away. */}
+			{/* 2.16.0: on today (/today, /day/<today>), occurrences postponed away. */}
 			{actions && isToday && view && (
 				<MovedOutNotes items={view.movedOut} today={today} />
 			)}

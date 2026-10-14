@@ -36,6 +36,7 @@ export function TodayPage() {
  * up to the last preview day (today + PREVIEW_DAYS, 2.14.0, read only).
  * Steps replace the history entry, so Back still returns to where the day
  * was opened from. A later date says it is too far instead of a day.
+ * 2.16.1: the rows have the habit actions menu here too, like on `/today`.
  */
 export function DayPage({ date }: { date: CalendarDate }) {
 	const today = useToday();
@@ -108,7 +109,7 @@ export function DayPage({ date }: { date: CalendarDate }) {
 			) : preview ? (
 				<FutureDayView key={date} date={date} />
 			) : (
-				<DayView key={date} date={date} today={today} />
+				<DayView key={date} date={date} today={today} actions />
 			)}
 		</div>
 	);

@@ -8,11 +8,13 @@ import {
 	rescheduledLabel,
 } from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
+import * as Haptics from "expo-haptics";
 import { useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { DescriptionSheet } from "@/features/habits/description-sheet.tsx";
 import { useHabitActionsSheet } from "./habit-actions-sheet.tsx";
 import { MoreOptionsButton } from "./habit-row.tsx";
+import { LONG_PRESS_MS } from "./long-press.ts";
 
 /**
  * What is planned for a preview day (2.14.0) in one `night-surface` panel,
@@ -20,9 +22,11 @@ import { MoreOptionsButton } from "./habit-row.tsx";
  * element ("Nome, vence neste dia"); a deadline task due that day carries
  * the "Vence neste dia" badge (icon and text). The note icon still opens
  * the description, like on any other day. 2.16.0: a postponed occurrence
- * carries "Adiado de 20/10", and the rows whose occurrence can move have the
- * "more options" button with "Adiar" (no archiving here: that stays on
- * today), written to the outbox like everything else (offline too).
+ * carries "Adiado de 20/10". Every row has the "more options" button and,
+ * like the other days, opens the same sheet when held for `LONG_PRESS_MS`
+ * (2.16.1; before, only the rows whose occurrence can move had it): "Adiar"
+ * where it applies, "Editar hábito", the description, no archiving (that
+ * stays on today and past days), written to the outbox (offline too).
  */
 export function PreviewList({
 	items,
@@ -83,12 +87,28 @@ function PreviewRow({
 		rescheduledFrom: rescheduledFrom ?? null,
 		count: rescheduleCount,
 	});
+	const showActions = (fromHold: boolean) => {
+		if (fromHold) {
+			void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		}
+		onShowActions(habit, more.current, {
+			availability,
+			occurrence: {
+				original: rescheduledFrom ?? date,
+				effective: date,
+				count: rescheduleCount,
+			},
+			archive: false,
+		});
+	};
 	return (
 		<View
 			className={`flex-row items-center ${divider ? "border-t border-night-border" : ""}`}
 		>
-			<View
-				accessible
+			{/* Read only: a tap does nothing, holding opens the actions sheet. */}
+			<Pressable
+				onLongPress={() => showActions(true)}
+				delayLongPress={LONG_PRESS_MS}
 				accessibilityLabel={[
 					habit.name,
 					dueOnDay && "vence neste dia",
@@ -96,7 +116,7 @@ function PreviewRow({
 				]
 					.filter(Boolean)
 					.join(", ")}
-				className="min-h-14 flex-1 flex-row items-center gap-4 px-4 py-3"
+				className="min-h-14 flex-1 flex-row items-center gap-4 py-3 pr-1 pl-4 active:bg-night-surface-raised"
 			>
 				<MaterialCommunityIcons
 					name="circle-outline"
@@ -140,13 +160,13 @@ function PreviewRow({
 						</View>
 					) : null}
 				</View>
-			</View>
+			</Pressable>
 			{hasDescription(habit) ? (
 				<Pressable
 					accessibilityRole="button"
 					accessibilityLabel={`Descrição de ${habit.name}`}
 					onPress={onShowDescription}
-					className={`size-touch items-center justify-center rounded-md active:bg-night-surface-raised ${availability.state === "hidden" ? "mr-2" : ""}`}
+					className="size-touch items-center justify-center rounded-md active:bg-night-surface-raised"
 				>
 					<MaterialCommunityIcons
 						name="text-box-outline"
@@ -155,23 +175,11 @@ function PreviewRow({
 					/>
 				</Pressable>
 			) : null}
-			{availability.state !== "hidden" ? (
-				<MoreOptionsButton
-					ref={more}
-					name={habit.name}
-					onPress={() =>
-						onShowActions(habit, more.current, {
-							availability,
-							occurrence: {
-								original: rescheduledFrom ?? date,
-								effective: date,
-								count: rescheduleCount,
-							},
-							archive: false,
-						})
-					}
-				/>
-			) : null}
+			<MoreOptionsButton
+				ref={more}
+				name={habit.name}
+				onPress={() => showActions(false)}
+			/>
 		</View>
 	);
 }

@@ -43,8 +43,9 @@ import { useHabitActions } from "./use-habit-actions.ts";
  * and (2.16.0) the postponed occurrences, with core's `dayView` (the day
  * detail's own function), only when the day is opened. 2.16.0: a postponed
  * occurrence shows "Adiado de 20/10", one that left this day a note "Adiado
- * para", and the rows whose occurrence can move have the actions menu with
- * "Adiar" (no archiving here: that stays on today).
+ * para", and every row has the actions menu (2.16.1; before, only the rows
+ * whose occurrence can move), with "Adiar" where it applies and no
+ * archiving (that stays on today and past days).
  */
 export function FutureDayView({ date }: { date: CalendarDate }) {
 	const { api } = useServices();
@@ -151,7 +152,7 @@ export function FutureDayView({ date }: { date: CalendarDate }) {
 
 /**
  * One planned habit: its name, the description's first line, no checkbox;
- * the actions menu only where "Adiar" applies (shown, or disabled with its
+ * the actions menu ("Adiar" where it applies, shown or disabled with its
  * reason).
  */
 function PreviewRow({
@@ -186,7 +187,6 @@ function PreviewRow({
 		},
 		archive: false,
 	};
-	const withMenu = reschedule.availability.state !== "hidden";
 	const row = (
 		<li className="flex items-center gap-1">
 			<div className="flex min-h-touch min-w-0 flex-1 items-center gap-3 px-2 py-1.5">
@@ -228,20 +228,16 @@ function PreviewRow({
 				</span>
 			</div>
 			{hasDescription(habit) && <DescriptionPopover habit={habit} />}
-			{withMenu && (
-				<HabitActionsButton
-					habit={habit}
-					reschedule={reschedule}
-					onAction={onAction}
-				/>
-			)}
+			<HabitActionsButton
+				habit={habit}
+				reschedule={reschedule}
+				onAction={onAction}
+			/>
 		</li>
 	);
-	return withMenu ? (
+	return (
 		<HabitRowMenu habit={habit} reschedule={reschedule} onAction={onAction}>
 			{row}
 		</HabitRowMenu>
-	) : (
-		row
 	);
 }

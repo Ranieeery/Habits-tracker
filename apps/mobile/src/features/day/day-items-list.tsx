@@ -22,8 +22,8 @@ import { HabitRow } from "./habit-row.tsx";
  * A day's rows (`useDayItems`) in one `night-surface` panel: overdue habits
  * first with their badge, then the day's habits, then (today, 2.13.0) the
  * open deadline tasks under "Com prazo", by due date, with their badge.
- * 2.15.0: with `actions` (only the Hoje tab), every row opens the habit's
- * actions sheet (one per list); days opened from the history have none.
+ * 2.15.0: with `actions`, every row opens the habit's actions sheet (one
+ * per list): the Hoje tab and, since 2.16.1, days opened from the history.
  * 2.16.0: the sheet also offers "Adiar" on the rows whose occurrence lives
  * on the day shown (core's `rescheduleAvailability`), and a postponed one
  * carries "Adiado de 20/10".

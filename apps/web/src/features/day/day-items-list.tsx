@@ -12,7 +12,8 @@ import { useHabitActions } from "./use-habit-actions.ts";
  * A day's rows (`useDayItems`): overdue habits first with their badge, then
  * the day's habits, then (today, 2.13.0) the open deadline tasks under "Com
  * prazo", by due date. Shared by the day view and the heatmap's "Hoje" panel.
- * 2.15.0: with `actions` (only the Hoje tab, `/today`), every row has the
+ * 2.15.0: with `actions` (the Hoje tab, `/today`, and since 2.16.1 the days
+ * of `/day/*`; never the home panel), every row has the
  * habit's actions menu, with one edit dialog for the whole list; 2.16.0:
  * also "Adiar" (one postponement dialog for the list) on the rows whose
  * occurrence lives on the day shown.

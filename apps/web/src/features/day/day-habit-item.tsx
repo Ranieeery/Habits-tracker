@@ -35,10 +35,10 @@ import {
  * box and unchecking dips it (both skipped with reduced motion). An overdue
  * habit (2.8.0) carries the "Atrasado desde 11/10" badge (icon and text,
  * never color alone), read as "Nome, atrasado desde 11 de outubro".
- * 2.15.0: with `onAction` (only on the Hoje tab, `/today`), the actions
- * menu, from the always visible "more options" button at the end and from a
- * right click inside the row; elsewhere (the history: the heatmap's panel
- * and days opened from it) neither. Also the "Arquivado" badge of a habit
+ * 2.15.0: with `onAction` (the Hoje tab, `/today`, and since 2.16.1 the
+ * days of `/day/*`), the actions menu, from the always visible "more
+ * options" button at the end and from a right click inside the row; on the
+ * heatmap's "Hoje" panel neither. Also the "Arquivado" badge of a habit
  * archived today or later that a day still lists. Memoized: it takes the
  * item from `dayItems` (memoized by the day) and stable handlers, and
  * builds its labels itself. 2.16.0: a postponed occurrence living on this
@@ -60,7 +60,7 @@ export const DayHabitItem = memo(function DayHabitItem({
 	today: CalendarDate;
 	editable: boolean;
 	onToggle: (habit: Habit, completed: boolean) => void;
-	/** The actions menu (only on the Hoje tab); absent elsewhere. */
+	/** The actions menu (`/today` and `/day/*`); absent on the home panel. */
 	onAction?: HabitActionHandler;
 }) {
 	const { habit, done: completed } = item;

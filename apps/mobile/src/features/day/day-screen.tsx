@@ -184,16 +184,16 @@ export function DayView({
 								editable={editable}
 								editState={editState}
 								unlocked={unlocked}
-								// 2.15.0: the actions menu only on the Hoje tab, never on
-								// days opened from the history.
-								actions={inTabs}
+								// 2.15.0: the actions menu on the Hoje tab; since 2.16.1
+								// also on days opened from the history.
+								actions
 								onToggle={(habit, completed) => change(habit, completed)}
 							/>
 						)
 					}
 				</QueryState>
-				{/* 2.16.0: occurrences postponed away (the Hoje tab, previews). */}
-				{(inTabs && isToday) || preview ? (
+				{/* 2.16.0: occurrences postponed away (today, previews). */}
+				{isToday || preview ? (
 					<MovedOutNotes items={view?.movedOut} today={today} />
 				) : null}
 			</Animated.View>

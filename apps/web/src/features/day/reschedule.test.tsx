@@ -228,11 +228,13 @@ describe("'Adiar' in the menu", () => {
 		]);
 		await user.keyboard("{Escape}");
 
+		// 2.16.1: a past day has the menu too, without "Adiar".
 		const past = server();
-		renderApp("/day/2026-10-05", { routes: past.routes });
+		const second = renderApp("/day/2026-10-05", { routes: past.routes });
 		await screen.findAllByText("Condomínio", undefined, { timeout: 5000 });
+		const pastMenu = await openMenu(second.user, "Condomínio");
 		expect(
-			screen.queryByRole("button", { name: "Mais opções de Condomínio" })
+			within(pastMenu).queryByRole("menuitem", { name: /Adiar/ })
 		).toBeNull();
 	});
 });
