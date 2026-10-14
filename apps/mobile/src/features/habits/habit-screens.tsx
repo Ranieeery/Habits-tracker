@@ -1,4 +1,7 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { DISCARD_CHANGES } from "@habits/core";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { usePreventRemove } from "expo-router/react-navigation";
+import { useRef } from "react";
 import { Alert, Text, View } from "react-native";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
 import {
@@ -12,11 +15,13 @@ import {
 } from "@/data/hooks.ts";
 import { useToday, useUserTimeZone } from "@/data/today.ts";
 import { Button } from "@/ui/button.tsx";
+import { ConfirmDialog } from "@/ui/confirm-dialog.tsx";
 import { Screen } from "@/ui/screen.tsx";
 import { useHideSplashWhen } from "@/ui/splash.ts";
 import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { useToast } from "@/ui/toast.tsx";
 import { HabitForm } from "./habit-form.tsx";
+import { useDiscardGuard } from "./use-discard-guard.ts";
 
 function useErrorToast(title: string) {
 	const toast = useToast();
@@ -25,22 +30,63 @@ function useErrorToast(title: string) {
 	};
 }
 
+/**
+ * Leaving a form screen (2.16.2): with unsaved changes, the header arrow,
+ * Android back and its gesture (the predictive one is off, so it is a plain
+ * back) are held by `usePreventRemove` and ask "Descartar alterações?" in
+ * a `ConfirmDialog`; "Descartar" runs the navigation that was held. `leave`
+ * is the flow's own way out (saved, archived, deleted): it never asks.
+ */
+function useLeaveGuard() {
+	const router = useRouter();
+	const navigation = useNavigation();
+	const guard = useDiscardGuard();
+	const leaving = useRef(false);
+	usePreventRemove(guard.dirty, ({ data }) => {
+		if (leaving.current) {
+			navigation.dispatch(data.action);
+			return;
+		}
+		guard.request(() => navigation.dispatch(data.action));
+	});
+	return {
+		onDirtyChange: guard.onDirtyChange,
+		leave: () => {
+			leaving.current = true;
+			router.back();
+		},
+		confirm: (
+			<ConfirmDialog
+				visible={guard.asking}
+				title={DISCARD_CHANGES.title}
+				body={DISCARD_CHANGES.body}
+				cancelLabel={DISCARD_CHANGES.keep}
+				confirmLabel={DISCARD_CHANGES.discard}
+				onCancel={guard.keep}
+				onConfirm={guard.discard}
+			/>
+		),
+	};
+}
+
 export function NewHabitScreen() {
 	useHideSplashWhen(true);
-	const router = useRouter();
 	const today = useToday();
 	const timeZone = useUserTimeZone();
 	const toast = useToast();
 	const create = useCreateHabit();
 	const onError = useErrorToast("Não foi possível criar o hábito");
+	const exit = useLeaveGuard();
 
 	return (
 		<Screen edges={["bottom"]}>
+			{exit.confirm}
 			<HabitForm
 				today={today}
 				timeZone={timeZone}
 				submitLabel="Criar hábito"
 				pending={create.isPending}
+				onDirtyChange={exit.onDirtyChange}
 				onSubmit={({ name, description, schedule, start_date }) =>
 					schedule &&
 					create.mutate(
@@ -49,7 +95,7 @@ export function NewHabitScreen() {
 						{
 							onSuccess: (habit) => {
 								toast("success", "Hábito criado", habit.name);
-								router.back();
+								exit.leave();
 							},
 							onError,
 						}
@@ -73,10 +119,12 @@ export function EditHabitScreen() {
 	const restore = useRestoreHabit();
 	const onError = useErrorToast("Não foi possível salvar o hábito");
 	const onDeleteError = useErrorToast("Não foi possível apagar o hábito");
+	const exit = useLeaveGuard();
 	useHideSplashWhen(isSettled(habits));
 
 	return (
 		<Screen edges={["bottom"]}>
+			{exit.confirm}
 			<QueryState query={habits}>
 				{(list) => {
 					const habit = list.find((item) => item.id === id);
@@ -105,7 +153,7 @@ export function EditHabitScreen() {
 										value ? "Hábito arquivado" : "Hábito restaurado",
 										habit.name
 									);
-									router.back();
+									exit.leave();
 								},
 								onError,
 							}
@@ -133,7 +181,7 @@ export function EditHabitScreen() {
 								toast("info", "Hábito apagado", habit.name, {
 									action: { label: "Desfazer", onPress: undoDelete },
 								});
-								router.back();
+								exit.leave();
 							},
 							onError: onDeleteError,
 						});
@@ -147,6 +195,7 @@ export function EditHabitScreen() {
 								reschedules={reschedules}
 								submitLabel="Salvar"
 								pending={update.isPending}
+								onDirtyChange={exit.onDirtyChange}
 								onSubmit={(values) =>
 									update.mutate(
 										{
@@ -160,7 +209,7 @@ export function EditHabitScreen() {
 										{
 											onSuccess: () => {
 												toast("success", "Hábito salvo", values.name);
-												router.back();
+												exit.leave();
 											},
 											onError,
 										}

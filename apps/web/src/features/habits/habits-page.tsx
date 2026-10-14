@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { DiscardChangesDialog } from "@/components/discard-changes-dialog.tsx";
 import { EmptyState, ErrorState } from "@/components/states.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -46,6 +47,7 @@ import { DeleteHabitButton } from "./delete-habit-button.tsx";
 import { HabitCard } from "./habit-card.tsx";
 import { HabitForm, type HabitFormValues } from "./habit-form.tsx";
 import { useDeleteHabit } from "./use-delete-habit.ts";
+import { useDiscardGuard } from "./use-discard-guard.ts";
 import { useReorderHabit } from "./use-reorder-habit.ts";
 import { useSortableList } from "./use-sortable-list.ts";
 
@@ -79,6 +81,8 @@ export function HabitsPage() {
 	const habits = useQuery(habitsQuery(api));
 	const firsts = useQuery(deadlineFirstsQuery(api));
 	const [editing, setEditing] = useState<Editing>(null);
+	// 2.16.2: Esc, a click outside or "Fechar" with unsaved changes ask first.
+	const guard = useDiscardGuard(() => setEditing(null));
 
 	const save = useMutation({
 		mutationFn: ({
@@ -268,7 +272,7 @@ export function HabitsPage() {
 			<Dialog
 				open={editing !== null}
 				onOpenChange={(open) => {
-					if (!open) setEditing(null);
+					if (!open) guard.onOpenChange(false);
 				}}
 			>
 				<DialogContent>
@@ -296,9 +300,11 @@ export function HabitsPage() {
 							autoFocusName={editing.mode === "create"}
 							submitLabel={editing.mode === "edit" ? "Salvar" : "Criar"}
 							pending={save.isPending}
+							onDirtyChange={guard.onDirtyChange}
 							onSubmit={(values) => save.mutate(values)}
 						/>
 					)}
+					<DiscardChangesDialog {...guard.confirm} />
 				</DialogContent>
 			</Dialog>
 		</section>

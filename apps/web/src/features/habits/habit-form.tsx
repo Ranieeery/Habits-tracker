@@ -16,9 +16,11 @@ import {
 	formatDayMonthYear,
 	type HabitDraft,
 	isDeadlinePast,
+	isHabitFormDirty,
 	latestDueDate,
 	MONTH_NAMES,
 	NO_RESCHEDULES,
+	normalizeHabitForm,
 	orphanedReschedules,
 	orphanNotice,
 	previewHabit,
@@ -27,7 +29,7 @@ import {
 	type RepeatKind,
 	UNSUPPORTED_SCHEDULE_TEXT,
 } from "@habits/core";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useState } from "react";
 import { FieldError } from "@/components/states.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -209,6 +211,7 @@ export function HabitForm({
 	pending = false,
 	autoFocusName = false,
 	error,
+	onDirtyChange,
 	onSubmit,
 }: {
 	/** The habit being edited (absent: a new habit). */
@@ -227,6 +230,11 @@ export function HabitForm({
 	autoFocusName?: boolean;
 	/** A failure to save, shown above the button; the typed values stay. */
 	error?: string;
+	/**
+	 * 2.16.2: whether the fields differ from the ones the form opened with
+	 * (core's `isHabitFormDirty`), called only when that changes.
+	 */
+	onDirtyChange?: (dirty: boolean) => void;
 	onSubmit: (values: HabitFormValues) => void;
 }) {
 	const ids = {
@@ -253,6 +261,13 @@ export function HabitForm({
 	const [descriptionProblem, setDescriptionProblem] = useState<string>();
 	const [errors, setErrors] = useState<DraftErrors>({});
 	const [confirming, setConfirming] = useState<HabitFormValues | null>(null);
+	// 2.16.2: the state it opened with, normalized once; a habit refetched
+	// while the form is open (another device) never moves it.
+	const [baseline] = useState(() =>
+		normalizeHabitForm({ name, description, draft })
+	);
+	const dirty = isHabitFormDirty(baseline, { name, description, draft });
+	useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
 	const update = (changes: Partial<HabitDraft>) => {
 		setConfirming(null);

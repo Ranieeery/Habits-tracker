@@ -45,9 +45,15 @@ describe("contrast of the night pairs", () => {
 	});
 
 	// The web's description quick look (2.14.1) sets its title, secondary
-	// body and action on the popover surface.
+	// body and action on the popover surface; the mobile "Descartar
+	// alterações?" card (2.16.2) draws "Descartar" in the warning token there.
 	it("text on overlay", () => {
-		for (const text of [n.foreground, n.muted, n.accent.text]) {
+		for (const text of [
+			n.foreground,
+			n.muted,
+			n.accent.text,
+			n.warning.DEFAULT,
+		]) {
 			expect(contrast(text, n.surface.overlay), text).toBeGreaterThanOrEqual(
 				TEXT
 			);

@@ -17,6 +17,8 @@ import { useReducedMotion } from "./use-reduced-motion.ts";
  * (react-native-keyboard-controller follows Modals) and the sheet shrinks to
  * the space above it, below the status bar, so long content scrolls inside
  * (2.10.1). It does not slide with the system's "remove animations".
+ * `overlay` (2.16.2) is drawn over everything inside the same Modal (an
+ * inline `ConfirmDialog`), so a question never needs a second Modal.
  */
 export function BottomSheet({
 	visible,
@@ -24,6 +26,7 @@ export function BottomSheet({
 	titleRef,
 	onClose,
 	onShow,
+	overlay,
 	children,
 }: {
 	visible: boolean;
@@ -32,6 +35,8 @@ export function BottomSheet({
 	titleRef?: React.Ref<View>;
 	onClose: () => void;
 	onShow?: () => void;
+	/** Over the sheet, in the same window (2.16.2). */
+	overlay?: ReactNode;
 	children: ReactNode;
 }) {
 	const insets = useSafeAreaInsets();
@@ -85,6 +90,7 @@ export function BottomSheet({
 					</View>
 				</View>
 			</KeyboardAvoidingView>
+			{overlay}
 		</Modal>
 	);
 }

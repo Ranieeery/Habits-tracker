@@ -1,4 +1,5 @@
 import type { Habit } from "@habits/contracts";
+import { DiscardChangesDialog } from "@/components/discard-changes-dialog.tsx";
 import {
 	Dialog,
 	DialogContent,
@@ -9,13 +10,14 @@ import {
 import { useScheduleOptions } from "@/lib/use-schedule-options.ts";
 import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
 import { HabitForm } from "./habit-form.tsx";
+import { useDiscardGuard } from "./use-discard-guard.ts";
 import { useEditHabit } from "./use-edit-habit.ts";
 
 /**
  * Editing one habit in a dialog (2.12.0: from the habit's page; 2.15.0:
  * also from a day's actions menu, without leaving the day). Saving is
  * optimistic (`useEditHabit`); a failure keeps the dialog open with what was
- * typed.
+ * typed. Closing with unsaved changes asks first (2.16.2); saving never does.
  */
 export function EditHabitDialog({
 	habit,
@@ -29,10 +31,17 @@ export function EditHabitDialog({
 	const today = useToday();
 	const timeZone = useUserTimeZone();
 	const { options } = useScheduleOptions();
-	const save = useEditHabit(habit, () => onOpenChange(false));
+	const close = () => onOpenChange(false);
+	const save = useEditHabit(habit, close);
+	const guard = useDiscardGuard(close);
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog
+			open={open}
+			onOpenChange={(next) =>
+				next ? onOpenChange(true) : guard.onOpenChange(false)
+			}
+		>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Editar hábito</DialogTitle>
@@ -49,10 +58,12 @@ export function EditHabitDialog({
 						timeZone={timeZone}
 						reschedules={options.reschedules}
 						submitLabel="Salvar"
+						onDirtyChange={guard.onDirtyChange}
 						pending={save.isPending}
 						onSubmit={(values) => save.mutate(values)}
 					/>
 				)}
+				<DiscardChangesDialog {...guard.confirm} />
 			</DialogContent>
 		</Dialog>
 	);

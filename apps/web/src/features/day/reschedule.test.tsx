@@ -283,6 +283,26 @@ describe("the dialog", () => {
 		).toHaveTextContent("Pagar conta · Adiado para 16/10");
 	});
 
+	it("closes without the discard question, even after a choice (2.16.2)", async () => {
+		const { routes, posts } = server();
+		const { user } = renderApp("/today", { routes });
+		await user.click(
+			within(await openMenu(user, "Pagar conta")).getByRole("menuitem", {
+				name: /Adiar/,
+			})
+		);
+		const dialog = await screen.findByRole("dialog", {
+			name: "Adiar Pagar conta",
+		});
+		await user.click(
+			within(dialog).getByRole("button", { name: /Daqui a 1 semana/ })
+		);
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(screen.queryByRole("alertdialog")).toBeNull();
+		expect(posts).toEqual([]);
+	});
+
 	it("disables a quick choice past the next occurrence, with the reason", async () => {
 		const twice = habit({
 			id: "0199c9a0-2222-7000-8000-000000000009",

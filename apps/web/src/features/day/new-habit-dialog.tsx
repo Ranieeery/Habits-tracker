@@ -1,6 +1,7 @@
 import type { CalendarDate } from "@habits/contracts";
 import { PlusIcon } from "lucide-react";
 import { useState } from "react";
+import { DiscardChangesDialog } from "@/components/discard-changes-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
 	Dialog,
@@ -15,12 +16,14 @@ import { isUnauthorized } from "@/lib/query-client.ts";
 import { useServices } from "@/lib/services.ts";
 import { useUserTimeZone } from "@/lib/use-today.ts";
 import { HabitForm } from "../habits/habit-form.tsx";
+import { useDiscardGuard } from "../habits/use-discard-guard.ts";
 import { useCreateHabitToday } from "./use-create-habit-today.ts";
 
 /**
  * "Novo hábito" on today's view: a dialog with the habits form (every
  * weekday selected, starting today), creating the habit. Radix traps the focus,
- * closes on Esc and gives the focus back to this button.
+ * closes on Esc and gives the focus back to this button. With unsaved
+ * changes, closing asks first (2.16.2, `useDiscardGuard`).
  */
 export function NewHabitDialog({
 	today,
@@ -35,12 +38,17 @@ export function NewHabitDialog({
 	// The id of the habit being created: one per opening, null when closed.
 	const [habitId, setHabitId] = useState<string | null>(null);
 
+	const close = () => {
+		if (!create.isPending) setHabitId(null);
+	};
+	const guard = useDiscardGuard(close);
+
 	const onOpenChange = (open: boolean) => {
 		if (open) {
 			create.reset();
 			setHabitId(newId());
 		} else if (!create.isPending) {
-			setHabitId(null);
+			guard.onOpenChange(false);
 		}
 	};
 
@@ -71,6 +79,7 @@ export function NewHabitDialog({
 						timeZone={timeZone}
 						submitLabel="Criar"
 						autoFocusName
+						onDirtyChange={guard.onDirtyChange}
 						pending={create.isPending}
 						error={error}
 						onSubmit={(values) =>
@@ -82,6 +91,7 @@ export function NewHabitDialog({
 						}
 					/>
 				)}
+				<DiscardChangesDialog {...guard.confirm} />
 			</DialogContent>
 		</Dialog>
 	);

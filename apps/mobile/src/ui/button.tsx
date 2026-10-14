@@ -4,7 +4,14 @@ import type { ComponentProps, Ref } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { PressableScale } from "./pressable-scale.tsx";
 
-type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger";
+type Variant =
+	| "primary"
+	| "secondary"
+	| "outline"
+	| "ghost"
+	| "danger"
+	// A careful action (2.16.2: "Descartar"): the warning token, never red.
+	| "careful";
 
 const CONTAINER: Record<Variant, string> = {
 	primary: "bg-night-accent active:bg-night-accent-hover",
@@ -13,6 +20,7 @@ const CONTAINER: Record<Variant, string> = {
 	outline: "border-2 border-night-accent active:bg-night-surface",
 	ghost: "active:bg-night-surface",
 	danger: "border border-night-danger active:bg-night-danger-surface",
+	careful: "border border-night-warning active:bg-night-warning-surface",
 };
 
 // Text on the accent uses accent-on (4.7:1); the foreground would be 4.2:1.
@@ -22,6 +30,7 @@ const LABEL: Record<Variant, string> = {
 	outline: "text-night-foreground",
 	ghost: "text-night-muted",
 	danger: "text-night-danger",
+	careful: "text-night-warning",
 };
 
 const ICON_COLOR: Record<Variant, string> = {
@@ -30,6 +39,7 @@ const ICON_COLOR: Record<Variant, string> = {
 	outline: nightColors.accent.text,
 	ghost: nightColors.muted,
 	danger: nightColors.danger.DEFAULT,
+	careful: nightColors.warning.DEFAULT,
 };
 
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];

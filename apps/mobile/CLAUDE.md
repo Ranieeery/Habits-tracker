@@ -62,9 +62,28 @@ The value is the API base without `/v1` and without a trailing slash. The API al
 
 - Add native/Expo packages with `pnpm exec expo install <pkg>` so versions match the SDK; check with `pnpm dlx expo-doctor`.
 - Styling: NativeWind 4 (Tailwind v3). `tailwind.config.js` uses the preset from `@habits/design-tokens/tailwind-v3-preset`; `src/global.css` is wired in `metro.config.js` and `babel.config.js`. `react-native-css-interop` is a direct dependency and must match the version `nativewind` pins. `@babel/plugin-transform-react-jsx` is a devDependency only because the NativeWind/css-interop preset loads it by name without declaring it (a clean install cannot resolve it otherwise); keep it.
-- Version (`2.16.0`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
+- Version (`2.16.2`) is in both `package.json` and `expo.version` in `app.json`, the same as api and web; bump them together with every change (policy in the root `CLAUDE.md`). `fingerprint.config.js` keeps the versions out of the runtime fingerprint; `versionCode` is managed by EAS (remote, auto-incremented).
 - Native colors in `app.json` (window, splash, adaptive icon background, notification color) must equal `nightColors` (`src/app-config.test.ts`); the icon and splash PNGs come from `pnpm --filter @habits/design-tokens brand` (2.9.0), never edited by hand, and any change to them needs a new build.
 - `*.config.js` files are CommonJS (ESLint override in `eslint.config.mjs`); the Vitest config is `vitest.config.mts` because the package is CommonJS.
+
+## Manual checks (2.16.2: confirm before discarding changes)
+
+Pending, after the deploy (web, then the OTA; JS only, same fingerprint `9fc2aad…` before and after on Windows; the API carries only the version). Confirm in Ajustes that the phone runs 2.16.2. Use test habits (the phone has real data). The sheets have no drag to dismiss (the handle is only drawn), so "arrastar para baixo" does not apply. Implementation: `features/habits/use-discard-guard.ts`, `ui/confirm-dialog.tsx`, `BottomSheet` `overlay`, `usePreventRemove` in `habit-screens.tsx`.
+
+The four ways in: (A) Hoje > "Novo hábito" (sheet); (B) Hábitos > "Novo hábito" (screen `habit/new`); (C) "⋮" (or 1 s hold) on a row > "Editar hábito" (sheet); (D) Hábitos > a card (screen `habit/[id]`), also "Editar" on the habit page.
+
+1. Without changes, every exit closes at once, no question: A and C with "Fechar", a tap outside the sheet, the Android back button and the back gesture (check once with 3-button navigation and once with gestures, Settings > Display > Navigation bar); B and D with the header arrow, the back button and the back gesture.
+2. With changes (type one letter in the name), every exit above shows "Descartar alterações?" with "Continuar editando" and "Descartar" (amber, never red); the sheet or screen stays behind it.
+3. "Continuar editando": back to the form, the letter is still there. "Descartar": the sheet closes / the screen goes back, nothing is saved (the list does not change); opening again starts empty (A, B) or with the saved values (C, D).
+4. Only one weekday changed (A, B: untoggle Monday) and leave: the question appears. Toggle it back and leave: closes at once. Type a name and erase it, or type only spaces: closes at once.
+5. In C/D, change the repetition kind and switch back to the original, then leave: closes at once.
+6. With the question open: press back (and the gesture) again: only the question closes (= "Continuar editando"); never two questions, the sheet never closes under it. Double tap "Descartar" quickly: one close only (no double back on B/D).
+7. Keyboard open in the name field, then back (A, C: the first back may only close the keyboard; the next one asks): the question appears with the keyboard closed and both buttons visible.
+8. Save with changes (Criar hábito / Salvar), and in D "Arquivar" / "Desarquivar" / "Apagar hábito": they close without the question.
+9. "Adiar" (from "⋮") with a date chosen: "Fechar" or back closes without the question.
+10. Font at the maximum: title and text whole, the buttons stay 44 dp and wrap to two lines without cutting. TalkBack: when the question opens it lands on "Continuar editando" and reads the question as its hint; the swipe reaches the title, "Descartar"; nothing behind the card is reachable.
+11. "Remove animations" on: the question appears without fading or zooming; off: a short fade and zoom (~150 ms).
+12. Airplane mode: everything above works the same (nothing needs the network); a discarded change never shows up as pending.
 
 ## Manual checks (2.16.1: actions menu on every day screen)
 

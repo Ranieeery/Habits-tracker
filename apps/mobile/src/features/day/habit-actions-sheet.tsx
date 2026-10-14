@@ -4,6 +4,7 @@ import {
 	ARCHIVE_NOTICE,
 	ARCHIVED_BADGE,
 	ARCHIVED_TOAST,
+	DISCARD_CHANGES,
 	type HabitActionId,
 	habitActions,
 	RESCHEDULE_UNDONE_TOAST,
@@ -34,8 +35,10 @@ import {
 	HabitForm,
 	type HabitFormValues,
 } from "@/features/habits/habit-form.tsx";
+import { useDiscardGuard } from "@/features/habits/use-discard-guard.ts";
 import { BottomSheet } from "@/ui/bottom-sheet.tsx";
 import type { IconName } from "@/ui/button.tsx";
+import { ConfirmDialog } from "@/ui/confirm-dialog.tsx";
 import { PressableScale } from "@/ui/pressable-scale.tsx";
 import { useToast } from "@/ui/toast.tsx";
 import { type OccurrenceTarget, RescheduleForm } from "./reschedule-form.tsx";
@@ -62,6 +65,9 @@ const ICONS: Record<HabitActionId, IconName> = {
  * (`RescheduleForm`), written to the outbox like the rest (offline too), with
  * "Adiado para 27/10" and "Desfazer" in the toast; at the limit the item
  * stays, disabled, with the reason.
+ * 2.16.2: while editing with unsaved changes, "Fechar", a tap outside and
+ * Android back ask "Descartar alterações?" first (`useDiscardGuard`);
+ * saving closes it without asking.
  */
 
 /** What a row adds for "Adiar" (2.16.0). */
@@ -123,6 +129,13 @@ export function HabitActionsSheet({
 		setMode("actions");
 		setError(undefined);
 		onClose();
+	};
+	const guard = useDiscardGuard();
+	// Only the habit form asks; the menu and "Adiar" close at once.
+	const requestClose = () => {
+		if (update.isPending || postpone.isPending) return;
+		if (editing) guard.request(close);
+		else close();
 	};
 
 	const reschedule = (
@@ -276,7 +289,19 @@ export function HabitActionsSheet({
 						: (target?.name ?? "")
 			}
 			titleRef={titleRef}
-			onClose={close}
+			onClose={requestClose}
+			overlay={
+				<ConfirmDialog
+					inline
+					visible={editing && guard.asking}
+					title={DISCARD_CHANGES.title}
+					body={DISCARD_CHANGES.body}
+					cancelLabel={DISCARD_CHANGES.keep}
+					confirmLabel={DISCARD_CHANGES.discard}
+					onCancel={guard.keep}
+					onConfirm={guard.discard}
+				/>
+			}
 			onShow={() => {
 				if (titleRef.current) {
 					AccessibilityInfo.sendAccessibilityEvent(titleRef.current, "focus");
@@ -321,6 +346,7 @@ export function HabitActionsSheet({
 							submitLabel="Salvar"
 							pending={update.isPending}
 							error={error}
+							onDirtyChange={guard.onDirtyChange}
 							onSubmit={(values) => save(target, values)}
 						/>
 					</ScrollView>

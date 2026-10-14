@@ -23,6 +23,9 @@ const buttonVariants = cva(
 					"text-night-muted hover:bg-night-surface-raised hover:text-night-foreground",
 				danger:
 					"border border-night-danger/40 text-night-danger hover:bg-night-danger-surface",
+				// A careful action (2.16.2: "Descartar"): the warning token, never red.
+				careful:
+					"border border-night-warning/50 text-night-warning hover:bg-night-warning-surface",
 				link: "text-night-accent-text underline-offset-4 hover:underline",
 			},
 			size: {

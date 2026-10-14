@@ -23,13 +23,15 @@ import {
 	descriptionError,
 	formatDayMonthYear,
 	isDeadlinePast,
+	isHabitFormDirty,
 	latestDueDate,
 	NO_RESCHEDULES,
+	normalizeHabitForm,
 	orphanedReschedules,
 	orphanNotice,
 	type RescheduleIndex,
 } from "@habits/core";
-import { type Ref, useState } from "react";
+import { type Ref, useEffect, useState } from "react";
 import { Alert, Text, type TextInput, View } from "react-native";
 import { capitalizeFirst, weekdayInitial, weekdayName } from "@/lib/format.ts";
 import { Button } from "@/ui/button.tsx";
@@ -141,6 +143,7 @@ export function HabitForm({
 	pending = false,
 	error,
 	nameRef,
+	onDirtyChange,
 	onSubmit,
 }: {
 	/** The habit being edited (absent: a new habit). */
@@ -159,6 +162,11 @@ export function HabitForm({
 	error?: string;
 	/** The name input, for focusing it when a sheet opens. */
 	nameRef?: Ref<TextInput>;
+	/**
+	 * 2.16.2: whether the fields differ from the ones the form opened with
+	 * (core's `isHabitFormDirty`), called only when that changes.
+	 */
+	onDirtyChange?: (dirty: boolean) => void;
 	onSubmit: (values: HabitFormValues) => void;
 }) {
 	const editing = initial
@@ -173,6 +181,13 @@ export function HabitForm({
 	const [nameError, setNameError] = useState<string>();
 	const [descriptionProblem, setDescriptionProblem] = useState<string>();
 	const [errors, setErrors] = useState<DraftErrors>({});
+	// 2.16.2: the state it opened with, normalized once; a habit changed by a
+	// sync while the form is open never moves it.
+	const [baseline] = useState(() =>
+		normalizeHabitForm({ name, description, draft })
+	);
+	const dirty = isHabitFormDirty(baseline, { name, description, draft });
+	useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
 	const update = (changes: Partial<HabitDraft>) =>
 		setDraft((current) => (current ? { ...current, ...changes } : current));

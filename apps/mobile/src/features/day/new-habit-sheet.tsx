@@ -1,5 +1,5 @@
 import type { CalendarDate } from "@habits/contracts";
-import { NO_RESCHEDULES, newHabitNotice } from "@habits/core";
+import { DISCARD_CHANGES, NO_RESCHEDULES, newHabitNotice } from "@habits/core";
 import { useEffect, useRef, useState } from "react";
 import type { View } from "react-native";
 import {
@@ -16,8 +16,10 @@ import {
 	HabitForm,
 	type HabitFormValues,
 } from "@/features/habits/habit-form.tsx";
+import { useDiscardGuard } from "@/features/habits/use-discard-guard.ts";
 import { BottomSheet } from "@/ui/bottom-sheet.tsx";
 import { Button } from "@/ui/button.tsx";
+import { ConfirmDialog } from "@/ui/confirm-dialog.tsx";
 import { useToast } from "@/ui/toast.tsx";
 
 /**
@@ -27,6 +29,8 @@ import { useToast } from "@/ui/toast.tsx";
  * outbox), so this works offline and the list shows it at once. The sheet is
  * `BottomSheet` (the keyboard pushes it up and the form scrolls inside it,
  * 2.10.1). Closing it gives the accessibility focus back to the button.
+ * With unsaved changes, "Fechar", a tap outside and Android back ask first
+ * (2.16.2, `useDiscardGuard`); creating closes it without asking.
  */
 export function NewHabitSheet({ today }: { today: CalendarDate }) {
 	const { height } = useWindowDimensions();
@@ -63,8 +67,12 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 		setHabitId(newId());
 	};
 
+	const guard = useDiscardGuard();
 	const close = () => {
 		if (!sending.current) setHabitId(null);
+	};
+	const requestClose = () => {
+		if (!sending.current) guard.request(close);
 	};
 
 	const submit = ({
@@ -114,8 +122,20 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 			<BottomSheet
 				visible={habitId !== null}
 				title="Novo hábito"
-				onClose={close}
+				onClose={requestClose}
 				onShow={() => nameRef.current?.focus()}
+				overlay={
+					<ConfirmDialog
+						inline
+						visible={guard.asking}
+						title={DISCARD_CHANGES.title}
+						body={DISCARD_CHANGES.body}
+						cancelLabel={DISCARD_CHANGES.keep}
+						confirmLabel={DISCARD_CHANGES.discard}
+						onCancel={guard.keep}
+						onConfirm={guard.discard}
+					/>
+				}
 			>
 				<Text className="text-sm text-night-muted">
 					Começa a contar na data escolhida e não muda os dias anteriores.
@@ -135,6 +155,7 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 							pending={create.isPending}
 							error={error}
 							nameRef={nameRef}
+							onDirtyChange={guard.onDirtyChange}
 							onSubmit={submit}
 						/>
 					</ScrollView>

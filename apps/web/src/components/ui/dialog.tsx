@@ -18,8 +18,12 @@ function DialogTrigger(
 function DialogContent({
 	className,
 	children,
+	hideClose = false,
 	...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+	/** No "Fechar" corner button (a question with its own buttons). */
+	hideClose?: boolean;
+}) {
 	return (
 		<DialogPrimitive.Portal>
 			<DialogPrimitive.Overlay
@@ -35,13 +39,15 @@ function DialogContent({
 				{...props}
 			>
 				{children}
-				<DialogPrimitive.Close
-					data-slot="dialog-close"
-					className="absolute top-2 right-2 flex size-touch items-center justify-center rounded-md text-night-muted transition-colors hover:bg-night-surface-raised hover:text-night-foreground"
-				>
-					<XIcon className="size-5" aria-hidden="true" />
-					<span className="sr-only">Fechar</span>
-				</DialogPrimitive.Close>
+				{!hideClose && (
+					<DialogPrimitive.Close
+						data-slot="dialog-close"
+						className="absolute top-2 right-2 flex size-touch items-center justify-center rounded-md text-night-muted transition-colors hover:bg-night-surface-raised hover:text-night-foreground"
+					>
+						<XIcon className="size-5" aria-hidden="true" />
+						<span className="sr-only">Fechar</span>
+					</DialogPrimitive.Close>
+				)}
 			</DialogPrimitive.Content>
 		</DialogPrimitive.Portal>
 	);

@@ -12,6 +12,7 @@ export * from "./digest.ts";
 export * from "./grid.ts";
 export * from "./habit-actions.ts";
 export * from "./habit-draft.ts";
+export * from "./habit-form-dirty.ts";
 export * from "./ids.ts";
 export * from "./insights.ts";
 export * from "./overdue.ts";
