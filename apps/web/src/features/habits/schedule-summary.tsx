@@ -10,6 +10,7 @@ import {
 import {
 	CalendarDaysIcon,
 	CalendarHeartIcon,
+	CalendarRangeIcon,
 	type LucideIcon,
 	PinIcon,
 	RepeatIcon,
@@ -26,6 +27,7 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
 	monthly_days: CalendarDaysIcon,
 	once: PinIcon,
 	yearly: CalendarHeartIcon,
+	deadline: CalendarRangeIcon,
 };
 
 /**

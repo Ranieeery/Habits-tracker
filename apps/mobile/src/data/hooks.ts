@@ -211,6 +211,19 @@ export function useHabits() {
 }
 
 /**
+ * First completion of each deadline task (2.13.0, local): done tasks go to
+ * "Passados". Under the habits key, so any habit or completion change that
+ * refreshes the habits refreshes it too.
+ */
+export function useDeadlineFirsts() {
+	const { repository } = useServices();
+	return useQuery({
+		queryKey: [...queryKeys.habits, "deadline-firsts"],
+		queryFn: () => repository.getDeadlineFirsts(),
+	});
+}
+
+/**
  * The id generator (UUID v7) for records a screen creates: a form takes one
  * id per opening, so submitting twice never creates two records.
  */
@@ -414,9 +427,14 @@ export function useToggleCompletion(
 			// With several quick toggles, refetch only after the last one:
 			// an earlier refetch would briefly undo the pending ones.
 			if (client.isMutating({ mutationKey }) > 1) return;
+			// Every cached day (a deadline task's completion moves its due
+			// date's failure, 2.13.0) and the first completions ("Passados").
 			return Promise.all([
-				client.invalidateQueries({ queryKey: key }),
+				client.invalidateQueries({ queryKey: queryKeys.days }),
 				client.invalidateQueries({ queryKey: queryKeys.summaries }),
+				client.invalidateQueries({
+					queryKey: [...queryKeys.habits, "deadline-firsts"],
+				}),
 			]);
 		},
 	});

@@ -286,8 +286,10 @@ export function createLocalStore(open: () => Promise<SqlDatabase>): LocalStore {
 			).map(toHabit);
 			if (range === "habits") return { habits, completions: [] };
 			const params: SqlValue[] = range ? [range.from, range.to] : [];
+			// Deadline tasks (2.13.0) count through their first completion,
+			// whatever the range: all of theirs come along.
 			const completions = await database.all<Completion>(
-				`SELECT ${COMPLETION_COLUMNS} FROM completions${range ? " WHERE date BETWEEN ? AND ?" : ""} ORDER BY date`,
+				`SELECT ${COMPLETION_COLUMNS} FROM completions${range ? " WHERE date BETWEEN ? AND ? OR habit_id IN (SELECT id FROM habits WHERE json_extract(schedule, '$.type') = 'deadline')" : ""} ORDER BY date`,
 				params
 			);
 			return { habits, completions };

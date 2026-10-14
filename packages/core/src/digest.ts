@@ -10,8 +10,9 @@ import {
 import { addDays, type CalendarDate } from "./dates.ts";
 import { overdueOn } from "./overdue.ts";
 import { isWithinSendWindow, type LocalTime } from "./reminders.ts";
+import { deadlineOf, firstCompletions } from "./deadline.ts";
 import {
-	isHabitCountedOn,
+	countOn,
 	isHabitPossibleOn,
 	type SchedulableHabit,
 	type TimeZoneOptions,
@@ -45,6 +46,10 @@ export interface DigestContent {
 	overdue: string[];
 	/** Names of single-date habits happening tomorrow. */
 	tomorrow: string[];
+	/** Open deadline tasks due today (2.13.0; also in today's counts). */
+	dueToday: string[];
+	/** Open deadline tasks due tomorrow (2.13.0). */
+	dueTomorrow: string[];
 }
 
 /**
@@ -71,20 +76,35 @@ export function selectDigestContent(
 			.filter((item) => !item.completedToday)
 			.map((item) => item.habit.name),
 		tomorrow: [],
+		dueToday: [],
+		dueTomorrow: [],
 	};
+	const first = firstCompletions(completions);
 	for (const habit of habits) {
-		const isDone = done.has(habit.id);
 		const supported = isSupportedSchedule(habit.schedule)
 			? habit.schedule
 			: null;
-		if (isHabitCountedOn(habit, today, isDone, options)) {
+		const firstDone = first.get(habit.id) ?? null;
+		const count = countOn(habit, today, done.has(habit.id), options, firstDone);
+		if (count.counted) {
 			content.todayTotal += 1;
-			if (!isDone) {
+			if (!count.done) {
 				content.todayPending += 1;
-				if (supported && supported.type !== "weekdays") {
+				if (supported?.type === "deadline") content.dueToday.push(habit.name);
+				else if (supported && supported.type !== "weekdays") {
 					content.highlights.push(habit.name);
 				}
 			}
+		}
+		// Due tomorrow and not done by today (open, started, not archived).
+		const deadline = deadlineOf(habit.schedule);
+		if (
+			deadline &&
+			deadline.due_date === tomorrowDate &&
+			(firstDone === null || firstDone > today) &&
+			isHabitPossibleOn(habit, tomorrowDate, options)
+		) {
+			content.dueTomorrow.push(habit.name);
 		}
 		if (
 			supported?.type === "once" &&
@@ -154,7 +174,8 @@ export function shouldSendMorningDigest(input: ShouldSendDigestInput): boolean {
 	if (
 		content.todayPending === 0 &&
 		content.overdue.length === 0 &&
-		content.tomorrow.length === 0
+		content.tomorrow.length === 0 &&
+		content.dueTomorrow.length === 0
 	) {
 		return false;
 	}
@@ -198,7 +219,8 @@ export function digestMessage(
 	const title = "Resumo do dia";
 	const hasToday = content.todayPending > 0;
 	const overdueCount = content.overdue.length;
-	const hasTomorrow = content.tomorrow.length > 0;
+	const tomorrowCount = content.tomorrow.length + content.dueTomorrow.length;
+	const hasTomorrow = tomorrowCount > 0;
 	if (!showTitles && overdueCount > 0) {
 		// Counts only, like the reminder: "Você tem compromissos hoje e 2
 		// hábitos atrasados."
@@ -209,9 +231,7 @@ export function digestMessage(
 		);
 		if (hasTomorrow) {
 			clauses.push(
-				content.tomorrow.length === 1
-					? "um compromisso amanhã"
-					: "compromissos amanhã"
+				tomorrowCount === 1 ? "um compromisso amanhã" : "compromissos amanhã"
 			);
 		}
 		return { title, body: `Você tem ${joinWithAnd(clauses)}.` };
@@ -220,11 +240,22 @@ export function digestMessage(
 		let body: string;
 		if (hasToday && hasTomorrow) body = "Você tem compromissos hoje e amanhã.";
 		else if (hasToday) body = "Você tem compromissos hoje.";
-		else if (content.tomorrow.length === 1) {
+		else if (tomorrowCount === 1) {
 			body = "Você tem um compromisso amanhã.";
 		} else body = "Você tem compromissos amanhã.";
 		return { title, body };
 	}
+	// 2.13.0: deadline lists take a fixed share at the end; without them the
+	// text is exactly what it was before.
+	const dueParts = [
+		content.dueToday.length > 0 ? ["Vence hoje: ", content.dueToday] : null,
+		content.dueTomorrow.length > 0
+			? ["Vence amanhã: ", content.dueTomorrow]
+			: null,
+	].filter((part): part is [string, string[]] => part !== null);
+	const dueShare = 70;
+	const maxBody = MAX_BODY - dueShare * dueParts.length;
+	const hasOtherTomorrow = content.tomorrow.length > 0;
 	const total =
 		content.todayTotal > 0
 			? `${content.todayTotal} ${content.todayTotal === 1 ? "hábito" : "hábitos"} hoje.`
@@ -239,23 +270,34 @@ export function digestMessage(
 		total.length +
 		"Hoje: . Amanhã: . ".length +
 		(overdueCount > 0 ? overduePrefix.length + ". ".length : 0);
-	const room = Math.max(20, MAX_BODY - fixed);
-	const lists = [content.highlights.length > 0, overdueCount > 0, hasTomorrow];
+	const room = Math.max(20, maxBody - fixed);
+	const lists = [
+		content.highlights.length > 0,
+		overdueCount > 0,
+		hasOtherTomorrow,
+	];
 	const share = Math.floor(room / lists.filter(Boolean).length);
 	const parts: string[] = [];
 	if (content.highlights.length > 0) {
-		const todayRoom = lists[1] || hasTomorrow ? share : room;
+		const todayRoom = lists[1] || hasOtherTomorrow ? share : room;
 		parts.push(`Hoje: ${listNames(content.highlights, todayRoom)}.`);
 	}
 	if (total) parts.push(total);
 	if (overdueCount > 0) {
 		const used = parts.join(" ").length + ` ${overduePrefix}.`.length;
-		const overdueRoom = hasTomorrow ? share : MAX_BODY - used;
+		const overdueRoom = hasOtherTomorrow ? share : maxBody - used;
 		parts.push(`${overduePrefix}${listNames(content.overdue, overdueRoom)}.`);
 	}
-	if (hasTomorrow) {
+	if (hasOtherTomorrow) {
 		const used = parts.join(" ").length + " Amanhã: .".length;
-		parts.push(`Amanhã: ${listNames(content.tomorrow, MAX_BODY - used)}.`);
+		parts.push(`Amanhã: ${listNames(content.tomorrow, maxBody - used)}.`);
+	}
+	for (const [prefix, names] of dueParts) {
+		const used = parts.join(" ").length + ` ${prefix}.`.length;
+		const left = MAX_BODY - used;
+		parts.push(
+			`${prefix}${listNames(names, Math.max(10, Math.min(left, dueShare)))}.`
+		);
 	}
 	return { title, body: parts.join(" ") };
 }

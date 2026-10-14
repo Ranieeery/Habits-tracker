@@ -425,3 +425,74 @@ describe("habit description (2.12.0)", () => {
 		expect((await repository.listHabits())[0]?.description).toBe("");
 	});
 });
+
+describe("deadline tasks (2.13.0)", () => {
+	const task = (id: string, due: string, start = "2026-09-01") => ({
+		id,
+		name: "Relatório",
+		description: "",
+		schedule: { type: "deadline" as const, due_date: due },
+		start_date: start,
+		archived_at: null,
+		sort_key: "a0",
+		created_at: 1,
+		updated_at: 1,
+		deleted_at: null,
+	});
+	const ID = "00000000-0000-7000-8000-00000000d0d0";
+
+	it("reads a first completion outside the day's range (no failure on D)", async () => {
+		const { repository, store } = setup();
+		await store.applyPullPage({
+			cursor: "1.2",
+			has_more: false,
+			changes: {
+				habits: [task(ID, "2026-10-05")],
+				completions: [
+					{
+						id: "00000000-0000-7000-8000-00000000c0c0",
+						habit_id: ID,
+						date: "2026-09-10",
+						completed_at: 1,
+						created_at: 1,
+						updated_at: 1,
+						deleted_at: null,
+					},
+				],
+			},
+		});
+		const due = await repository.getDay("2026-10-05");
+		expect(due.possible_habits).toEqual([]);
+		const done = await repository.getDay("2026-09-10");
+		expect(done.completed_habit_ids).toEqual([ID]);
+		expect(await repository.getDeadlineFirsts()).toEqual({
+			[ID]: "2026-09-10",
+		});
+	});
+
+	it("lists an open task on today under deadline and marks it offline", async () => {
+		const { repository, store } = setup();
+		await store.applyPullPage({
+			cursor: "1.1",
+			has_more: false,
+			changes: { habits: [task(ID, "2026-10-20")], completions: [] },
+		});
+		const before = await repository.getDay(TODAY);
+		expect(before.deadline).toEqual([
+			{
+				habit: expect.objectContaining({ id: ID }),
+				due_date: "2026-10-20",
+				completed_today: false,
+			},
+		]);
+		expect(before.possible_habits).toEqual([]);
+
+		await repository.setCompletion(ID, TODAY, true);
+		const after = await repository.getDay(TODAY);
+		expect(after.completed_habit_ids).toEqual([ID]);
+		expect(after.deadline?.[0]?.completed_today).toBe(true);
+		expect((await store.readOutbox()).map((e) => e.mutation.type)).toEqual([
+			"completion.set",
+		]);
+	});
+});

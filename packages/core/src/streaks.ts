@@ -1,7 +1,7 @@
 import type { SummaryDay } from "@habits/contracts";
 import { type CalendarDate, eachDay } from "./dates.ts";
 import {
-	isHabitCountedOn,
+	countOn,
 	type SchedulableHabit,
 	type TimeZoneOptions,
 } from "./schedule.ts";
@@ -55,12 +55,16 @@ export function habitStreaks(
 	options: TimeZoneOptions
 ): Streaks {
 	const done = new Set(completedDates);
+	// A deadline task counts only through its first completion (2.13.0).
+	let first: CalendarDate | null = null;
+	for (const date of done) if (first === null || date < first) first = date;
+	const count = (date: CalendarDate) =>
+		countOn(habit, date, done.has(date), options, first);
 	return computeStreaks({
 		from: habit.start_date,
 		today,
-		isPossible: (date) =>
-			isHabitCountedOn(habit, date, done.has(date), options),
-		isDone: (date) => done.has(date),
+		isPossible: (date) => count(date).counted,
+		isDone: (date) => count(date).done,
 	});
 }
 

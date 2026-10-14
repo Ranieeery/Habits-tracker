@@ -1,7 +1,7 @@
 // 2.2.0 schedule types on the device: they sync like any habit (the protocol
 // is unchanged), the pull parse tolerates types from newer versions, and a
 // mirror pulled by 2.1.0 is pulled again in full after the update.
-import { SyncPullResponse } from "@habits/contracts";
+import { SCHEDULE_VERSION, SyncPullResponse } from "@habits/contracts";
 import { uuidV7 } from "@habits/core";
 import { describe, expect, it } from "vitest";
 import { createLocalRepository } from "../local/local-repository.ts";
@@ -95,11 +95,25 @@ describe("new schedule types on the device", () => {
 
 		expect(await engine.sync("manual")).toBe("synced");
 		expect(server.calls.pull.at(-1)).toBeNull();
-		expect(await store.getMeta("schedule_version")).toBe("2");
+		expect(await store.getMeta("schedule_version")).toBe(
+			String(SCHEDULE_VERSION)
+		);
 
 		await engine.sync("manual");
 		expect(server.calls.pull.at(-1)).not.toBeNull();
 		expect(firstCursor).toBeNull();
+	});
+
+	it("pulls everything again once after updating from 2.12 (deadline tasks, 2.13.0)", async () => {
+		const { engine, store, server } = await setup();
+		expect(await engine.sync("launch")).toBe("synced");
+		// A 2.12 mirror: pulled with version 2, so deadline tasks were left out.
+		await store.setMeta("cursor", "1.5");
+		await store.setMeta("schedule_version", "2");
+
+		expect(await engine.sync("manual")).toBe("synced");
+		expect(server.calls.pull.at(-1)).toBeNull();
+		expect(await store.getMeta("schedule_version")).toBe("3");
 	});
 });
 

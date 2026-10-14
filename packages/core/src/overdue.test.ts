@@ -358,9 +358,27 @@ describe("dayItems", () => {
 	it("puts overdue habits first and leaves them out of the progress while pending", () => {
 		const { items, progress } = dayItems(day(["a"]));
 		expect(items).toEqual([
-			{ habit: monthly15, done: false, overdueSince: "2026-10-15" },
-			{ habit: a, done: true, overdueSince: null },
-			{ habit: b, done: false, overdueSince: null },
+			{
+				habit: monthly15,
+				done: false,
+				overdueSince: "2026-10-15",
+				dueDate: null,
+				completedOn: null,
+			},
+			{
+				habit: a,
+				done: true,
+				overdueSince: null,
+				dueDate: null,
+				completedOn: null,
+			},
+			{
+				habit: b,
+				done: false,
+				overdueSince: null,
+				dueDate: null,
+				completedOn: null,
+			},
 		]);
 		expect(progress).toEqual({ possible: 2, completed: 1 });
 	});
@@ -371,7 +389,12 @@ describe("dayItems", () => {
 			day(["a", "conta"], [a, b, monthly15])
 		);
 		expect(items.map((item) => item.habit.id)).toEqual(["conta", "a", "b"]);
-		expect(items[0]).toMatchObject({ done: true, overdueSince: "2026-10-15" });
+		expect(items[0]).toMatchObject({
+			done: true,
+			overdueSince: "2026-10-15",
+			dueDate: null,
+			completedOn: null,
+		});
 		expect(progress).toEqual({ possible: 3, completed: 2 });
 		// The optimistic cache only changed the completed ids: same result.
 		expect(dayItems(day(["a", "conta"])).progress).toEqual(progress);
@@ -381,8 +404,20 @@ describe("dayItems", () => {
 		const { overdue: _, ...plain } = day(["b"]);
 		expect(dayItems(plain)).toEqual({
 			items: [
-				{ habit: a, done: false, overdueSince: null },
-				{ habit: b, done: true, overdueSince: null },
+				{
+					habit: a,
+					done: false,
+					overdueSince: null,
+					dueDate: null,
+					completedOn: null,
+				},
+				{
+					habit: b,
+					done: true,
+					overdueSince: null,
+					dueDate: null,
+					completedOn: null,
+				},
 			],
 			progress: { possible: 2, completed: 1 },
 		});

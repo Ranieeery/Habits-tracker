@@ -170,6 +170,12 @@ const SCHEDULED_TODAY: readonly {
 		schedule: () => ({ type: "monthly_days", days: [20] }),
 	},
 	{
+		// 2.13.0: a task with a deadline a week ahead ("Com prazo" on today).
+		key: "report",
+		name: "Entregar relatório (teste)",
+		schedule: (today) => ({ type: "deadline", due_date: addDays(today, 7) }),
+	},
+	{
 		key: "birthday",
 		name: "Aniversário da Ana",
 		schedule: () => ({ type: "yearly", month: 11, day: 20 }),

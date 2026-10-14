@@ -1,4 +1,5 @@
 import { type Habit, isSupportedSchedule } from "@habits/contracts";
+import { isDeadlineSettled } from "@habits/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	ArchiveIcon,
@@ -31,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { errorMessage } from "@/lib/errors.ts";
 import {
 	createHabit,
+	deadlineFirstsQuery,
 	habitsQuery,
 	invalidateHabitData,
 	updateHabit,
@@ -73,6 +75,7 @@ export function HabitsPage() {
 	const today = useToday();
 	const timeZone = useUserTimeZone();
 	const habits = useQuery(habitsQuery(api));
+	const firsts = useQuery(deadlineFirstsQuery(api));
 	const [editing, setEditing] = useState<Editing>(null);
 
 	const save = useMutation({
@@ -123,8 +126,13 @@ export function HabitsPage() {
 
 	// Already in the user's order (the API sorts by `sort_key`).
 	const live = habits.data?.filter((habit) => habit.archived_at === null);
-	const active = live?.filter((habit) => !isPastOnce(habit, today));
-	const past = live?.filter((habit) => isPastOnce(habit, today));
+	// Past single dates, and deadline tasks done or past their overdue
+	// window (2.13.0), go to "Passados".
+	const isPast = (habit: Habit) =>
+		isPastOnce(habit, today) ||
+		isDeadlineSettled(habit, firsts.data?.[habit.id], today);
+	const active = live?.filter((habit) => !isPast(habit));
+	const past = live?.filter(isPast);
 	const archived = habits.data?.filter((habit) => habit.archived_at !== null);
 
 	const editAndArchive = (habit: Habit) => (

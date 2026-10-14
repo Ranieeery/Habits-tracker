@@ -18,8 +18,12 @@ import {
 	previewHabit,
 	REPEAT_KINDS,
 	UNSUPPORTED_SCHEDULE_TEXT,
+	DEADLINE_LOCKED,
 	DESCRIPTION_COUNTER_FROM,
 	descriptionError,
+	formatDayMonthYear,
+	isDeadlinePast,
+	latestDueDate,
 } from "@habits/core";
 import { type Ref, useState } from "react";
 import { Alert, Text, type TextInput, View } from "react-native";
@@ -161,6 +165,11 @@ export function HabitForm({
 		setDraft((current) => (current ? { ...current, ...changes } : current));
 
 	const built = draft ? buildFromDraft(draft, { today, editing }) : null;
+	// 2.13.0: a task whose due date went by keeps it (read only).
+	const lockedDue =
+		initial && isDeadlinePast(initial.schedule, today)
+			? (draftFromHabit(initial, today)?.due ?? null)
+			: null;
 	const preview =
 		built?.ok === true
 			? previewHabit(
@@ -224,6 +233,7 @@ export function HabitForm({
 	const showStart =
 		draft !== null &&
 		draft.kind !== "once" &&
+		draft.kind !== "deadline" &&
 		(!initial || draft.kind === "interval");
 
 	return (
@@ -344,6 +354,27 @@ export function HabitForm({
 								onChange={(date) => update({ date })}
 							/>
 						)}
+						{draft.kind === "deadline" &&
+							(lockedDue ? (
+								<View className="gap-2">
+									<Text className="text-sm font-semibold text-night-foreground">
+										Até quando: {formatDayMonthYear(lockedDue)}
+									</Text>
+									<Text className="text-sm text-night-muted">
+										{DEADLINE_LOCKED}
+									</Text>
+									<FieldError>{errors.due}</FieldError>
+								</View>
+							) : (
+								<DatePicker
+									label="Até quando?"
+									value={draft.due}
+									min={today}
+									max={latestDueDate(today)}
+									error={errors.due}
+									onChange={(due) => update({ due })}
+								/>
+							))}
 						{draft.kind === "yearly" && (
 							<>
 								<Text className="text-sm font-semibold text-night-foreground">
@@ -361,7 +392,9 @@ export function HabitForm({
 								) : null}
 							</>
 						)}
-						{draft.kind !== "interval" && draft.kind !== "once" ? (
+						{draft.kind !== "interval" &&
+						draft.kind !== "once" &&
+						draft.kind !== "deadline" ? (
 							<FieldError>{kindError}</FieldError>
 						) : null}
 					</View>

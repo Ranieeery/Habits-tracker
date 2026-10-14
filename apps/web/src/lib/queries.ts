@@ -19,6 +19,8 @@ export const queryKeys = {
 	days: ["day"] as const,
 	day: (date: CalendarDate) => ["day", date] as const,
 	summaries: ["summary"] as const,
+	/** First completion of each deadline task (2.13.0, "Passados"). */
+	deadlineFirsts: ["habits", "deadline-firsts"] as const,
 	summary: (year: number) => ["summary", year] as const,
 };
 
@@ -41,6 +43,19 @@ export function habitsQuery(api: ApiClient) {
 	return queryOptions({
 		queryKey: queryKeys.habits,
 		queryFn: async () => (await unwrap(api.v1.habits.$get())).habits,
+	});
+}
+
+/** First completion of each deadline task, by habit id (2.13.0). */
+export function deadlineFirstsQuery(api: ApiClient) {
+	return queryOptions({
+		queryKey: queryKeys.deadlineFirsts,
+		queryFn: async (): Promise<Record<string, CalendarDate>> => {
+			const { deadline_completions = [] } = await unwrap(api.v1.habits.$get());
+			return Object.fromEntries(
+				deadline_completions.map((item) => [item.habit_id, item.date])
+			);
+		},
 	});
 }
 

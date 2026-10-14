@@ -25,10 +25,14 @@ import { cn } from "@/lib/utils.ts";
  * in an English browser), whatever the page's `lang`. Days before `min` are
  * disabled; the calendar logic comes from @habits/core (shared with mobile).
  */
+const monthIndex = ({ year, month }: { year: number; month: number }) =>
+	year * 12 + month;
+
 export function DateField({
 	label,
 	value,
 	min,
+	max,
 	invalid = false,
 	describedBy,
 	onChange,
@@ -36,6 +40,8 @@ export function DateField({
 	label: string;
 	value: CalendarDate | "";
 	min: CalendarDate;
+	/** Latest date that can be picked (2.13.0: a task's due date). */
+	max?: CalendarDate;
 	invalid?: boolean;
 	describedBy?: string;
 	onChange: (date: CalendarDate) => void;
@@ -105,6 +111,10 @@ export function DateField({
 							variant="ghost"
 							size="icon"
 							aria-label="Próximo mês"
+							disabled={
+								max !== undefined &&
+								monthIndex(addMonths(shown, 1)) > monthIndex(monthOf(max))
+							}
 							onClick={() => setShown(addMonths(shown, 1))}
 						>
 							<ChevronRightIcon aria-hidden="true" />
@@ -135,7 +145,9 @@ export function DateField({
 													type="button"
 													aria-label={formatDayMonthYear(date)}
 													aria-pressed={date === value}
-													disabled={date < min}
+													disabled={
+														date < min || (max !== undefined && date > max)
+													}
 													onClick={() => {
 														onChange(date);
 														setOpen(false);

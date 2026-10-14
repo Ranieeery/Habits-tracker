@@ -42,7 +42,13 @@ export function upcoming<
 	for (const habit of habits) {
 		if (habit.deleted_at !== null || habit.archived_at !== null) continue;
 		if (!isSupportedSchedule(habit.schedule)) continue;
-		if (habit.schedule.type === "weekdays") continue;
+		// Deadline tasks show in "Com prazo" (2.13.0).
+		if (
+			habit.schedule.type === "weekdays" ||
+			habit.schedule.type === "deadline"
+		) {
+			continue;
+		}
 		for (const date of occurrencesBetween(habit, from, to, options)) {
 			items.push({ date, habit });
 		}

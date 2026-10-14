@@ -16,6 +16,7 @@ import {
 	type SchedulableHabit,
 	type TimeZoneOptions,
 } from "./schedule.ts";
+import { latestDueDate } from "./deadline.ts";
 import { formatRelativeDate, repeatSummary } from "./schedule-text.ts";
 
 export type RepeatKind = Schedule["type"];
@@ -27,6 +28,7 @@ export const REPEAT_KINDS: readonly { kind: RepeatKind; label: string }[] = [
 	{ kind: "monthly_days", label: "Dias do mês" },
 	{ kind: "once", label: "Uma data" },
 	{ kind: "yearly", label: "Todo ano" },
+	{ kind: "deadline", label: "Até uma data" },
 ];
 
 /** pt-BR month names, January = index 0. */
@@ -56,6 +58,8 @@ export interface HabitDraft {
 	date: CalendarDate | "";
 	month: number;
 	day: number;
+	/** Due date of a task with a deadline (2.13.0). */
+	due: CalendarDate | "";
 	/**
 	 * "Começa em": the new habit's `start_date` (create), or the interval's
 	 * anchor (create and edit). Not used for single dates.
@@ -64,7 +68,7 @@ export interface HabitDraft {
 }
 
 export type DraftField =
-	"weekdays" | "every" | "monthDays" | "date" | "day" | "start";
+	"weekdays" | "every" | "monthDays" | "date" | "day" | "start" | "due";
 
 export type DraftErrors = Partial<Record<DraftField, string>>;
 
@@ -79,6 +83,7 @@ export function emptyDraft(today: CalendarDate): HabitDraft {
 		date: today,
 		month,
 		day,
+		due: today,
 		start: today,
 	};
 }
@@ -110,6 +115,8 @@ export function draftFromHabit(
 			return { ...draft, date: schedule.date };
 		case "yearly":
 			return { ...draft, month: schedule.month, day: schedule.day };
+		case "deadline":
+			return { ...draft, due: schedule.due_date };
 		default: {
 			const unknown: never = schedule;
 			throw new Error(`Unknown schedule type: ${String(unknown)}`);
@@ -128,6 +135,10 @@ export type DraftResult =
 	| { ok: false; errors: DraftErrors };
 
 const PAST_DATE = "Escolha hoje ou uma data futura.";
+
+/** The form's note when a task's due date already went by (2.13.0). */
+export const DEADLINE_LOCKED =
+	"O prazo já passou. Para mudar, arquive esta tarefa e crie outra.";
 
 /**
  * Validates the form and builds the schedule and start date (the start date
@@ -207,6 +218,27 @@ export function buildFromDraft(
 		case "yearly":
 			candidate = { type: "yearly", month: draft.month, day: draft.day };
 			break;
+		case "deadline": {
+			const previousDue =
+				previous?.type === "deadline" ? previous.due_date : null;
+			if (previousDue !== null && previousDue < today) {
+				// The due date went by: it is locked (its failure stays).
+				if (draft.due !== previousDue) errors.due = DEADLINE_LOCKED;
+			} else {
+				checkFuture(draft.due, "due", false);
+				if (!errors.due && isCalendarDate(draft.due)) {
+					if (draft.due > latestDueDate(today)) {
+						errors.due = "Escolha uma data em até 2 anos.";
+					} else if (editing && draft.due < editing.start_date) {
+						errors.due = "Escolha uma data a partir do início da tarefa.";
+					}
+				}
+			}
+			candidate = { type: "deadline", due_date: draft.due };
+			// New tasks start today ("Começa em" is not shown).
+			if (!editing) start = today;
+			break;
+		}
 		default: {
 			const unknown: never = draft.kind;
 			throw new Error(`Unknown repeat kind: ${String(unknown)}`);
@@ -214,13 +246,19 @@ export function buildFromDraft(
 	}
 	// "Começa em" of a new habit: today or later (the API still accepts a
 	// weekday habit up to BACKFILL_DAYS back, for offline creations).
-	if (!editing && draft.kind !== "once" && draft.kind !== "interval") {
+	if (
+		!editing &&
+		draft.kind !== "once" &&
+		draft.kind !== "interval" &&
+		draft.kind !== "deadline"
+	) {
 		checkFuture(draft.start, "start", false);
 	}
 
 	const parsed = Schedule.safeParse(candidate);
 	if (!parsed.success && Object.keys(errors).length === 0) {
 		if (draft.kind === "yearly") errors.day = "Esse dia não existe nesse mês.";
+		else if (draft.kind === "deadline") errors.due = "Escolha uma data.";
 		else errors.date = "Revise a repetição.";
 	}
 	if (
@@ -246,11 +284,15 @@ export function previewHabit(
 	today: CalendarDate,
 	options: TimeZoneOptions
 ): DraftPreview {
-	const next = nextOccurrence(
-		{ ...habit, archived_at: null, deleted_at: null },
-		today,
-		options
-	);
+	// A task's summary already says its due date.
+	const next =
+		isSupportedSchedule(habit.schedule) && habit.schedule.type === "deadline"
+			? null
+			: nextOccurrence(
+					{ ...habit, archived_at: null, deleted_at: null },
+					today,
+					options
+				);
 	return {
 		summary: repeatSummary(habit, today),
 		next: next === null ? null : `Próxima: ${formatRelativeDate(next, today)}`,

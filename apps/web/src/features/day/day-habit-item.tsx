@@ -1,10 +1,11 @@
 import type { Habit } from "@habits/contracts";
 import {
+	type DeadlineLabel,
 	descriptionFirstLine,
 	hasDescription,
 	type OverdueLabel,
 } from "@habits/core";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, CalendarRange } from "lucide-react";
 import { useId, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DescriptionPopover } from "@/features/habits/description-popover.tsx";
@@ -24,12 +25,21 @@ export function DayHabitItem({
 	completed,
 	editable,
 	overdue = null,
+	due = null,
+	doneOn = null,
 	onToggle,
 }: {
 	habit: Pick<Habit, "id" | "name"> & { description?: string };
 	completed: boolean;
 	editable: boolean;
 	overdue?: OverdueLabel | null;
+	/** An open deadline task (2.13.0): "Até 20/10 · faltam 7 dias". */
+	due?: DeadlineLabel | null;
+	/**
+	 * A deadline task first completed on another day (2.13.0): "Já concluída
+	 * em 22/10", shown checked and disabled (no second completion).
+	 */
+	doneOn?: { text: string; spoken: string } | null;
 	onToggle: (completed: boolean) => void;
 }) {
 	const id = useId();
@@ -56,10 +66,12 @@ export function DayHabitItem({
 					// Explicit: a hidden text inside the label would be read with a
 					// space before the comma ("Nome , atrasado…").
 					// The description line is not part of the name: it describes it.
-					aria-label={overdue ? `${habit.name}, ${overdue.spoken}` : habit.name}
+					aria-label={[habit.name, overdue?.spoken, due?.spoken, doneOn?.spoken]
+						.filter(Boolean)
+						.join(", ")}
 					aria-describedby={firstLine ? lineId : undefined}
-					checked={completed}
-					disabled={!editable}
+					checked={completed || doneOn !== null}
+					disabled={!editable || doneOn !== null}
 					onCheckedChange={(checked) => {
 						const value = checked === true;
 						if (!reducedMotion) (value ? pulse : release)(box.current);
@@ -83,6 +95,25 @@ export function DayHabitItem({
 							>
 								<CalendarClock className="size-3.5 shrink-0" />
 								{overdue.text}
+							</span>
+						)}
+						{due && (
+							<span
+								aria-hidden="true"
+								className={cn(
+									"inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap",
+									due.dueToday
+										? "border-night-warning/60 bg-night-warning-surface text-night-warning"
+										: "border-night-accent/40 bg-night-accent/15 text-night-accent-text"
+								)}
+							>
+								<CalendarRange className="size-3.5 shrink-0" />
+								{due.text}
+							</span>
+						)}
+						{doneOn && (
+							<span aria-hidden="true" className="text-xs text-night-muted">
+								{doneOn.text}
 							</span>
 						)}
 					</span>

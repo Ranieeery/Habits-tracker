@@ -33,6 +33,12 @@ export interface HabitsRepository {
 	/** Undoes a deletion (the habit comes back archived, with its history). */
 	restoreHabit(habitId: string): Promise<Habit>;
 
+	/**
+	 * First completion date of each deadline task (2.13.0), by habit id:
+	 * done tasks go to "Passados".
+	 */
+	getDeadlineFirsts(): Promise<Record<string, CalendarDate>>;
+
 	/** Habits possible on a local date and which of them were completed. */
 	getDay(date: CalendarDate): Promise<DayData>;
 	/** Completed/possible counts per local date of a year. */

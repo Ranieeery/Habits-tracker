@@ -126,6 +126,8 @@ export function formatSchedule(
 			return `Dia ${formatDayMonth(schedule.date, today)}`;
 		case "yearly":
 			return yearlyText(schedule.month, schedule.day);
+		case "deadline":
+			return `Até ${formatDayMonth(schedule.due_date, today)}`;
 		default: {
 			const unknown: never = schedule;
 			throw new Error(`Unknown schedule type: ${String(unknown)}`);
@@ -146,6 +148,9 @@ export function repeatSummary(
 	if (!isSupportedSchedule(schedule)) return UNSUPPORTED_SCHEDULE_TEXT;
 	if (schedule.type === "once") {
 		return `Uma vez, dia ${formatDayMonth(schedule.date, today)}`;
+	}
+	if (schedule.type === "deadline") {
+		return `Pode ser concluído até ${formatDayMonth(schedule.due_date, today)}. Se passar do prazo, fica atrasado.`;
 	}
 	let text: string;
 	if (schedule.type === "weekdays") {
@@ -180,6 +185,15 @@ export function newHabitNotice(
 ): string | null {
 	if (isHabitPossibleOn(habit, today, options)) return null;
 	const { schedule } = habit;
+	// A task started by today shows in "Com prazo" (2.13.0).
+	if (
+		isSupportedSchedule(schedule) &&
+		schedule.type === "deadline" &&
+		habit.start_date <= today &&
+		schedule.due_date >= today
+	) {
+		return null;
+	}
 	if (isSupportedSchedule(schedule) && schedule.type === "weekdays") {
 		return `Hábito criado. Aparece em: ${listWeekdays(schedule.days)}`;
 	}

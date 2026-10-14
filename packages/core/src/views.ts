@@ -8,8 +8,9 @@ import type {
 	SummaryDay,
 } from "@habits/contracts";
 import { eachDay, firstDayOfYear, lastDayOfYear } from "./dates.ts";
+import { deadlineDoneElsewhere, firstCompletions } from "./deadline.ts";
 import { summarizeDay } from "./progress.ts";
-import { isHabitCountedOn, type TimeZoneOptions } from "./schedule.ts";
+import { countOn, type TimeZoneOptions } from "./schedule.ts";
 
 type CompletionFacts = Pick<Completion, "habit_id" | "date" | "deleted_at">;
 
@@ -23,6 +24,7 @@ export function dayView(
 	date: CalendarDate,
 	options: TimeZoneOptions
 ): DayResponse {
+	const first = firstCompletions(completions);
 	const done = new Set(
 		completions
 			.filter(
@@ -31,15 +33,31 @@ export function dayView(
 			)
 			.map((completion) => completion.habit_id)
 	);
-	const possible = habits.filter((habit) =>
-		isHabitCountedOn(habit, date, done.has(habit.id), options)
+	const counts = habits.map(
+		(habit) =>
+			[
+				habit,
+				countOn(
+					habit,
+					date,
+					done.has(habit.id),
+					options,
+					first.get(habit.id) ?? null
+				),
+			] as const
 	);
+	const possible = counts
+		.filter(([, count]) => count.counted)
+		.map(([habit]) => habit);
+	const elsewhere = deadlineDoneElsewhere(possible, first, date);
 	return {
 		date,
 		possible_habits: possible,
-		completed_habit_ids: possible
-			.filter((habit) => done.has(habit.id))
-			.map((habit) => habit.id),
+		completed_habit_ids: counts
+			.filter(([, count]) => count.done)
+			.map(([habit]) => habit.id),
+		// 2.13.0: a missed due date whose task was done later.
+		...(elsewhere.length > 0 && { deadline_done: elsewhere }),
 	};
 }
 
@@ -63,6 +81,9 @@ export function summarizeYear(
 	const to = today < yearEnd ? today : yearEnd;
 	if (to < from) return [];
 
+	// Deadline tasks count through their first completion, which may be
+	// outside the year (callers pass all of their completions).
+	const first = firstCompletions(completions);
 	const byDate = new Map<CalendarDate, CompletionFacts[]>();
 	for (const completion of completions) {
 		if (completion.date < from || completion.date > to) continue;
@@ -72,9 +93,13 @@ export function summarizeYear(
 	}
 	const days: SummaryDay[] = [];
 	for (const date of eachDay(from, to)) {
-		const progress = summarizeDay(habits, byDate.get(date) ?? [], date, {
-			timeZone,
-		});
+		const progress = summarizeDay(
+			habits,
+			byDate.get(date) ?? [],
+			date,
+			{ timeZone },
+			first
+		);
 		if (progress.possible > 0) days.push({ date, ...progress });
 	}
 	return days;

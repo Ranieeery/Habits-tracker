@@ -5,6 +5,9 @@ import {
 	isSupportedSchedule,
 } from "@habits/contracts";
 import {
+	deadlineLabel,
+	deadlineOf,
+	overdueLabel,
 	formatRelativeDate,
 	formatSchedule,
 	nextOccurrence,
@@ -24,6 +27,7 @@ const TYPE_ICONS: Record<string, IconName> = {
 	monthly_days: "calendar-month-outline",
 	once: "pin-outline",
 	yearly: "calendar-heart",
+	deadline: "calendar-end",
 };
 
 /**
@@ -98,6 +102,18 @@ export function ScheduleStrip({
 /** "Hoje" when it happens today, otherwise when it happens next. */
 export function nextBadge(habit: Habit, today: CalendarDate, timeZone: string) {
 	if (habit.archived_at !== null) return null;
+	// A task with a deadline (2.13.0): how long is left, or overdue.
+	const deadline = deadlineOf(habit.schedule);
+	if (deadline) {
+		if (deadline.due_date < today) {
+			return {
+				today: false,
+				text: overdueLabel(deadline.due_date, today).text,
+			};
+		}
+		const label = deadlineLabel(deadline.due_date, today);
+		return { today: label.dueToday, text: label.text };
+	}
 	const next = nextOccurrence(habit, today, { timeZone });
 	if (next === null) return null;
 	return next === today

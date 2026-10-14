@@ -1,5 +1,5 @@
 import type { CalendarDate, DayResponse, Schedule } from "@habits/contracts";
-import { newHabit, newHabitNotice } from "@habits/core";
+import { deadlineOf, newHabit, newHabitNotice } from "@habits/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -45,6 +45,21 @@ export function useCreateHabitToday(today: CalendarDate) {
 			// A refetch in flight would overwrite the optimistic value.
 			await queryClient.cancelQueries({ queryKey: key });
 			const previous = queryClient.getQueryData<DayResponse>(key);
+			// A task with a deadline joins "Com prazo" (2.13.0), by due date.
+			const deadline = deadlineOf(habit.schedule);
+			if (previous && deadline) {
+				const listed = previous.deadline ?? [];
+				if (!listed.some((item) => item.habit.id === habit.id)) {
+					queryClient.setQueryData<DayResponse>(key, {
+						...previous,
+						deadline: [
+							...listed,
+							{ habit, due_date: deadline.due_date, completed_today: false },
+						].sort((a, b) => a.due_date.localeCompare(b.due_date)),
+					});
+				}
+				return { previous };
+			}
 			if (
 				previous &&
 				!previous.possible_habits.some((item) => item.id === habit.id)

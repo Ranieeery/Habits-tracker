@@ -69,6 +69,17 @@ export const YearlySchedule = z
 export type YearlySchedule = z.infer<typeof YearlySchedule>;
 
 /**
+ * A task that can be done any day until `due_date` (2.13.0). Single deadline
+ * for now; a later recurrence would add optional fields under a new
+ * `SCHEDULE_TYPE_VERSION` without any data migration.
+ */
+export const DeadlineSchedule = z.object({
+	type: z.literal("deadline"),
+	due_date: CalendarDate,
+});
+export type DeadlineSchedule = z.infer<typeof DeadlineSchedule>;
+
+/**
  * When a habit recurs (what clients may write). New frequencies are added as
  * new union members with a version in `SCHEDULE_TYPE_VERSION`; no data
  * migration is needed (the database only requires a JSON object with a
@@ -80,6 +91,7 @@ export const Schedule = z.discriminatedUnion("type", [
 	MonthlyDaysSchedule,
 	OnceSchedule,
 	YearlySchedule,
+	DeadlineSchedule,
 ]);
 export type Schedule = z.infer<typeof Schedule>;
 export type ScheduleType = Schedule["type"];
@@ -96,10 +108,11 @@ export const SCHEDULE_TYPE_VERSION: Readonly<Record<ScheduleType, number>> = {
 	monthly_days: 2,
 	once: 2,
 	yearly: 2,
+	deadline: 3,
 };
 
 /** The highest schedule version this build understands. */
-export const SCHEDULE_VERSION = 2;
+export const SCHEDULE_VERSION = 3;
 
 /** Request header carrying the client's `SCHEDULE_VERSION`. */
 export const SCHEDULE_VERSION_HEADER = "X-Habits-Schedule-Version";

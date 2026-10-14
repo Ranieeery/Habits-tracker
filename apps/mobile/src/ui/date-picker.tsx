@@ -18,16 +18,22 @@ import { FieldError } from "./text-field.tsx";
  * before `min` are disabled; each day is a 44 dp target with its full date
  * as the accessibility label.
  */
+const monthIndex = ({ year, month }: { year: number; month: number }) =>
+	year * 12 + month;
+
 export function DatePicker({
 	label,
 	value,
 	min,
+	max,
 	error,
 	onChange,
 }: {
 	label: string;
 	value: CalendarDate | "";
 	min: CalendarDate;
+	/** Latest date that can be picked (2.13.0: a task's due date). */
+	max?: CalendarDate;
 	error?: string;
 	onChange: (date: CalendarDate) => void;
 }) {
@@ -59,6 +65,10 @@ export function DatePicker({
 					<IconButton
 						icon="chevron-right"
 						label="Próximo mês"
+						disabled={
+							max !== undefined &&
+							monthIndex(addMonths(shown, 1)) > monthIndex(monthOf(max))
+						}
 						onPress={() => setShown(addMonths(shown, 1))}
 					/>
 				</View>
@@ -85,7 +95,7 @@ export function DatePicker({
 									key={date}
 									date={date}
 									selected={date === value}
-									disabled={date < min}
+									disabled={date < min || (max !== undefined && date > max)}
 									onPress={() => onChange(date)}
 								/>
 							)

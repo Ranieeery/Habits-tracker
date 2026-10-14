@@ -21,8 +21,10 @@ import type {
 import {
 	checkHabitDates,
 	earliestStartDate,
+	MAX_DEADLINE_DAYS,
 	type HabitDatesProblem,
 } from "./schedule.ts";
+import { addDays } from "./dates.ts";
 import { keyAfterLast } from "./sort-key.ts";
 import { isWithinWriteWindow, writeWindow } from "./window.ts";
 
@@ -249,18 +251,40 @@ function reject(
 /** The rejection for a `checkHabitDates` problem (REST answers the same). */
 export function habitDatesError(
 	problem: HabitDatesProblem,
-	earliest: CalendarDate
+	earliest: CalendarDate,
+	today?: CalendarDate
 ): ApiErrorBody {
-	return problem === "date_out_of_range"
-		? {
+	switch (problem) {
+		case "date_out_of_range":
+			return {
 				code: "date_out_of_range",
 				message: "Date is before the earliest allowed date",
 				details: { earliest },
-			}
-		: {
+			};
+		case "due_date_too_far":
+			return {
+				code: "date_out_of_range",
+				message: "Due date is too far ahead",
+				details: {
+					latest: today ? addDays(today, MAX_DEADLINE_DAYS) : undefined,
+				},
+			};
+		case "deadline_passed":
+			return {
+				code: "validation_error",
+				message: "Due date already passed and cannot change",
+				details: { reason: "deadline_passed" },
+			};
+		case "date_before_start":
+			return {
 				code: "validation_error",
 				message: "Single date is before the habit start date",
 			};
+		default: {
+			const unknown: never = problem;
+			throw new Error(`Unknown problem: ${String(unknown)}`);
+		}
+	}
 }
 
 function liveHabit(state: SyncState, habitId: string): Habit | null {
@@ -299,11 +323,13 @@ export function applyMutation(
 				const earliest = earliestStartDate(mutation.schedule, ctx.today, {
 					offline: true,
 				});
-				const problem = checkHabitDates(mutation, earliest);
+				const problem = checkHabitDates(mutation, earliest, {
+					today: ctx.today,
+				});
 				if (problem) {
 					return {
 						status: "rejected",
-						error: habitDatesError(problem, earliest),
+						error: habitDatesError(problem, earliest, ctx.today),
 					};
 				}
 			}
@@ -326,12 +352,12 @@ export function applyMutation(
 				const problem = checkHabitDates(
 					{ schedule, start_date: habit.start_date },
 					earliest,
-					{ checkStart: false }
+					{ checkStart: false, today: ctx.today, previous: habit.schedule }
 				);
 				if (problem) {
 					return {
 						status: "rejected",
-						error: habitDatesError(problem, earliest),
+						error: habitDatesError(problem, earliest, ctx.today),
 					};
 				}
 			}

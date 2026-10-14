@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { type Habit, isSupportedSchedule } from "@habits/contracts";
+import { isDeadlineSettled } from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -9,7 +10,12 @@ import Animated, {
 	ReduceMotion,
 } from "react-native-reanimated";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
-import { isSettled, useHabits, useReorderHabit } from "@/data/hooks.ts";
+import {
+	isSettled,
+	useDeadlineFirsts,
+	useHabits,
+	useReorderHabit,
+} from "@/data/hooks.ts";
 import { useLoadedSettings, useToday } from "@/data/today.ts";
 import { TabHeader } from "@/features/shell/tab-header.tsx";
 import { Button, IconButton } from "@/ui/button.tsx";
@@ -42,6 +48,7 @@ function isPastOnce(habit: Habit, today: string): boolean {
 export function HabitsScreen() {
 	const router = useRouter();
 	const habits = useHabits();
+	const firsts = useDeadlineFirsts();
 	const today = useToday();
 	const { timezone } = useLoadedSettings();
 	const toast = useToast();
@@ -86,8 +93,13 @@ export function HabitsScreen() {
 			<QueryState query={habits} loadingLabel="Carregando hábitos…">
 				{(list) => {
 					const live = list.filter((habit) => habit.archived_at === null);
-					const active = live.filter((habit) => !isPastOnce(habit, today));
-					const past = live.filter((habit) => isPastOnce(habit, today));
+					// Past single dates, and deadline tasks done or past their
+					// overdue window (2.13.0), go to "Passados".
+					const isPast = (habit: Habit) =>
+						isPastOnce(habit, today) ||
+						isDeadlineSettled(habit, firsts.data?.[habit.id], today);
+					const active = live.filter((habit) => !isPast(habit));
+					const past = live.filter(isPast);
 					const archived = list.filter((habit) => habit.archived_at !== null);
 					if (list.length === 0) {
 						return (

@@ -7,12 +7,16 @@ import {
 } from "@habits/contracts";
 import {
 	buildFromDraft,
+	DEADLINE_LOCKED,
 	DESCRIPTION_COUNTER_FROM,
 	descriptionError,
 	type DraftErrors,
 	draftFromHabit,
 	emptyDraft,
+	formatDayMonthYear,
 	type HabitDraft,
+	isDeadlinePast,
+	latestDueDate,
 	MONTH_NAMES,
 	previewHabit,
 	REPEAT_KINDS,
@@ -295,12 +299,19 @@ export function HabitForm({
 			errors.every ??
 			errors.monthDays ??
 			errors.date ??
-			errors.day)
+			errors.day ??
+			errors.due)
 		: undefined;
+	// 2.13.0: a task whose due date went by keeps it (read only).
+	const lockedDue =
+		initial && isDeadlinePast(initial.schedule, today)
+			? (draftFromHabit(initial, today)?.due ?? null)
+			: null;
 	// "Começa em": new habits (except single dates) and the interval's anchor.
 	const showStart =
 		draft !== null &&
 		draft.kind !== "once" &&
+		draft.kind !== "deadline" &&
 		(!initial || draft.kind === "interval");
 
 	return (
@@ -432,6 +443,25 @@ export function HabitForm({
 								onChange={(date) => update({ date })}
 							/>
 						)}
+						{draft.kind === "deadline" &&
+							(lockedDue ? (
+								<div className="flex flex-col gap-1">
+									<p className="text-sm font-semibold">
+										Até quando: {formatDayMonthYear(lockedDue)}
+									</p>
+									<p className="text-sm text-night-muted">{DEADLINE_LOCKED}</p>
+								</div>
+							) : (
+								<DateField
+									label="Até quando?"
+									value={draft.due}
+									min={today}
+									max={latestDueDate(today)}
+									invalid={Boolean(errors.due)}
+									describedBy={fieldError("due")}
+									onChange={(due) => update({ due })}
+								/>
+							))}
 						{draft.kind === "yearly" && (
 							<fieldset className="flex flex-col gap-2">
 								<legend className="text-sm font-semibold">

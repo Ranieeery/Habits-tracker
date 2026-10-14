@@ -80,5 +80,14 @@ export type HabitParams = z.infer<typeof HabitParams>;
 export const HabitResponse = z.object({ habit: Habit });
 export type HabitResponse = z.infer<typeof HabitResponse>;
 
-export const HabitListResponse = z.object({ habits: z.array(Habit) });
+export const HabitListResponse = z.object({
+	habits: z.array(Habit),
+	/**
+	 * First completion of each deadline task that has one (2.13.0, additive):
+	 * done tasks go to "Passados". Absent from older APIs.
+	 */
+	deadline_completions: z
+		.array(z.object({ habit_id: Uuid, date: CalendarDate }))
+		.optional(),
+});
 export type HabitListResponse = z.infer<typeof HabitListResponse>;

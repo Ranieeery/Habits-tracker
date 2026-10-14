@@ -69,6 +69,15 @@ export function createRemoteRepository(api: ApiClient): HabitsRepository {
 					).habit
 			),
 
+		getDeadlineFirsts: () =>
+			call(async () => {
+				const { deadline_completions = [] } = await unwrap(
+					api.v1.habits.$get()
+				);
+				return Object.fromEntries(
+					deadline_completions.map((item) => [item.habit_id, item.date])
+				);
+			}),
 		getDay: (date) => call(() => unwrap(api.v1.day.$get({ query: { date } }))),
 		// The API has no per-habit summary; the app reads it from the device
 		// database (local repository), so a filter here is a programming error.

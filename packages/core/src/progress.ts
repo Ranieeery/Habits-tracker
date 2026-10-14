@@ -1,7 +1,8 @@
 import type { Completion, Habit } from "@habits/contracts";
 import type { CalendarDate } from "./dates.ts";
+import { firstCompletions } from "./deadline.ts";
 import {
-	isHabitCountedOn,
+	countOn,
 	type SchedulableHabit,
 	type TimeZoneOptions,
 } from "./schedule.ts";
@@ -35,13 +36,17 @@ export interface DayProgress {
 /**
  * Counts the habits that count on `date` (`isHabitCountedOn`: possible, or
  * completed that day) and how many of them were completed, so the ratio is
- * never above 1. Deleted completions and deleted habits are ignored.
+ * never above 1. Deleted completions and deleted habits are ignored. A
+ * deadline task counts through its first completion (`first`, 2.13.0),
+ * read from `completions` unless given: pass every completion of the
+ * deadline tasks, not only this date's.
  */
 export function summarizeDay(
 	habits: readonly (SchedulableHabit & Pick<Habit, "id">)[],
 	completions: readonly Pick<Completion, "habit_id" | "date" | "deleted_at">[],
 	date: CalendarDate,
-	options: TimeZoneOptions
+	options: TimeZoneOptions,
+	first: ReadonlyMap<string, CalendarDate> = firstCompletions(completions)
 ): DayProgress {
 	const done = new Set(
 		completions
@@ -54,10 +59,16 @@ export function summarizeDay(
 	let possible = 0;
 	let completed = 0;
 	for (const habit of habits) {
-		const isDone = done.has(habit.id);
-		if (!isHabitCountedOn(habit, date, isDone, options)) continue;
+		const count = countOn(
+			habit,
+			date,
+			done.has(habit.id),
+			options,
+			first.get(habit.id) ?? null
+		);
+		if (!count.counted) continue;
 		possible += 1;
-		if (isDone) completed += 1;
+		if (count.done) completed += 1;
 	}
 	return { possible, completed };
 }

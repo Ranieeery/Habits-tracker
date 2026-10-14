@@ -28,18 +28,23 @@ import {
 } from "./schedule.ts";
 import { formatDayMonth } from "./schedule-text.ts";
 import { compareHabitOrder } from "./sort-key.ts";
+import { deadlineOn, firstCompletions } from "./deadline.ts";
 import { dayView } from "./views.ts";
 
 /** Days after a missed occurrence during which it shows as overdue. */
 export const OVERDUE_DAYS = 15;
 
-/** Schedules on fixed days: days of the month, a single date, yearly. */
+/**
+ * Schedules on fixed days: days of the month, a single date, yearly, and
+ * since 2.13.0 a deadline (its due date, with no next occurrence).
+ */
 export function isFixedDaySchedule(schedule: StoredSchedule): boolean {
 	if (!isSupportedSchedule(schedule)) return false;
 	return (
 		schedule.type === "monthly_days" ||
 		schedule.type === "once" ||
-		schedule.type === "yearly"
+		schedule.type === "yearly" ||
+		schedule.type === "deadline"
 	);
 }
 
@@ -98,6 +103,15 @@ export function overdueOccurrence(
 	}
 	if (since === null || createdAfter(habit.created_at, since, options)) {
 		return null;
+	}
+	// A deadline task (2.13.0) is fulfilled by any completion before today,
+	// also one before its due date (done in time: it never failed).
+	if (
+		isSupportedSchedule(habit.schedule) &&
+		habit.schedule.type === "deadline"
+	) {
+		for (const date of completedDates) if (date < today) return null;
+		return { since, completedToday: completedDates.has(today) };
 	}
 
 	let later = false;
@@ -198,6 +212,14 @@ export function todayView(
 			since: item.since,
 			completed_today: item.completedToday,
 		})),
+		// 2.13.0: open deadline tasks ("Com prazo"), by due date.
+		deadline: deadlineOn(habits, firstCompletions(completions), today).map(
+			(item) => ({
+				habit: item.habit,
+				due_date: item.dueDate,
+				completed_today: item.completedToday,
+			})
+		),
 	};
 }
 
@@ -229,10 +251,20 @@ export interface DayItem {
 	done: boolean;
 	/** The missed occurrence when the habit is overdue (today only). */
 	overdueSince: CalendarDate | null;
+	/** Due date of an open deadline task ("Com prazo", today only; 2.13.0). */
+	dueDate: CalendarDate | null;
+	/**
+	 * A deadline task first completed on another day (its missed due date,
+	 * done late): "Já concluída em DD/MM", without a checkbox (2.13.0).
+	 */
+	completedOn: CalendarDate | null;
 }
 
 export interface DayItems {
-	/** Overdue habits first, then the day's habits, each habit once. */
+	/**
+	 * Overdue habits first, then the day's habits, then the open deadline
+	 * tasks ("Com prazo", by due date), each habit once.
+	 */
 	items: DayItem[];
 	/**
 	 * The day's habits plus the overdue ones completed today: a pending
@@ -250,23 +282,47 @@ export interface DayItems {
 export function dayItems(day: DayResponse): DayItems {
 	const done = new Set(day.completed_habit_ids);
 	const overdue = day.overdue ?? [];
+	const deadline = day.deadline ?? [];
+	const elsewhere = new Map(
+		(day.deadline_done ?? []).map((item) => [item.habit_id, item.date])
+	);
 	const overdueIds = new Set(overdue.map((item) => item.habit.id));
+	const deadlineIds = new Set(deadline.map((item) => item.habit.id));
 	const items: DayItem[] = [
 		...overdue.map((item) => ({
 			habit: item.habit,
 			done: done.has(item.habit.id),
 			overdueSince: item.since,
+			dueDate: null,
+			completedOn: null,
 		})),
 		...day.possible_habits
-			.filter((habit) => !overdueIds.has(habit.id))
+			.filter(
+				(habit) => !overdueIds.has(habit.id) && !deadlineIds.has(habit.id)
+			)
 			.map((habit) => ({
 				habit,
 				done: done.has(habit.id),
 				overdueSince: null,
+				dueDate: null,
+				completedOn: elsewhere.get(habit.id) ?? null,
 			})),
+		...deadline.map((item) => ({
+			habit: item.habit,
+			done: done.has(item.habit.id),
+			overdueSince: null,
+			dueDate: item.due_date,
+			completedOn: null,
+		})),
 	];
-	const counted = items.filter(
-		(item) => item.overdueSince === null || item.done
+	// Pending overdue habits and deadline tasks not yet due do not count (the
+	// same counting as `summarizeDay`): done ones and tasks due today do.
+	const counted = items.filter((item) =>
+		item.overdueSince !== null
+			? item.done
+			: item.dueDate !== null
+				? item.done || item.dueDate === day.date
+				: true
 	);
 	return {
 		items,
@@ -294,4 +350,19 @@ export function overdueLabel(
 		text: `Atrasado desde ${formatDayMonth(since, today)}`,
 		spoken: `atrasado desde ${day} de ${MONTH_NAMES[month - 1]}${sameYear ? "" : ` de ${year}`}`,
 	};
+}
+
+/**
+ * When nothing counts today yet (`progress.possible === 0`) but the list has
+ * overdue habits or open deadline tasks: what to say instead of "0 de 0".
+ */
+export function extrasOnlyText(items: readonly DayItem[]): string {
+	const overdue = items.some((item) => item.overdueSince !== null);
+	const deadline = items.some((item) => item.dueDate !== null);
+	if (overdue && deadline) {
+		return "Nada previsto para hoje além dos atrasados e das tarefas com prazo.";
+	}
+	return deadline
+		? "Nada previsto para hoje além das tarefas com prazo."
+		: "Nada previsto para hoje além dos atrasados.";
 }

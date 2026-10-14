@@ -17,6 +17,8 @@ import {
 	ARCHIVED_REQUIRED_ERROR,
 	BACKFILL_DAYS,
 	completionKey,
+	deadlineOf,
+	firstCompletions,
 	dayView,
 	firstDayOfYear,
 	isWithinWriteWindow,
@@ -74,11 +76,15 @@ export function createLocalRepository({
 			.map((entry) => entry.mutation);
 		const state = materialize(mirror, replay, { now: now(), newId });
 		const habits = [...state.habits.values()];
+		// Deadline tasks keep all their completions (their first one counts).
+		const deadlineIds = new Set(
+			habits.filter((habit) => deadlineOf(habit.schedule)).map((h) => h.id)
+		);
 		const completions = [...state.completions.values()].filter(
 			(completion) =>
 				range !== "habits" &&
-				completion.date >= range.from &&
-				completion.date <= range.to
+				((completion.date >= range.from && completion.date <= range.to) ||
+					deadlineIds.has(completion.habit_id))
 		);
 		return { habits, completions, state };
 	}
@@ -185,6 +191,13 @@ export function createLocalRepository({
 				});
 			}
 			return result.habit;
+		},
+
+		async getDeadlineFirsts() {
+			const { timezone } = await settings();
+			const today = todayIn(timezone, now());
+			const { completions } = await view({ from: today, to: today });
+			return Object.fromEntries(firstCompletions(completions));
 		},
 
 		async getDay(date) {

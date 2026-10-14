@@ -52,6 +52,10 @@ export function matchesSchedule(
 		}
 		case "once":
 			return schedule.date === date;
+		// The due date is the deadline's only "occurrence" (when it counts as a
+		// failure if still open; `countOn`).
+		case "deadline":
+			return schedule.due_date === date;
 		case "yearly": {
 			const { year, month, day } = parseCalendarDate(date);
 			if (month !== schedule.month) return false;
@@ -100,10 +104,48 @@ export function isHabitCountedOn(
 	habit: SchedulableHabit,
 	date: CalendarDate,
 	completed: boolean,
-	options: TimeZoneOptions
+	options: TimeZoneOptions,
+	first?: CalendarDate | null
 ): boolean {
-	if (habit.deleted_at !== null) return false;
-	return completed || isHabitPossibleOn(habit, date, options);
+	return countOn(habit, date, completed, options, first).counted;
+}
+
+export interface DayCount {
+	/** In the day's denominator. */
+	counted: boolean;
+	/** Counted as done (only when `counted`). */
+	done: boolean;
+}
+
+/**
+ * How a habit counts on `date`, given whether it has a live completion that
+ * day. A deadline task (2.13.0) counts only through its first live completion
+ * (`first`, `firstCompletions`): done on that day, and a failure on its due
+ * date when it was not done before it. Other completions of it are ignored,
+ * and an open task never counts before its due date. When `first` is not
+ * given, the completion of this day stands for it (enough for one day's
+ * view without older history). Other habits: `completed` or possible.
+ */
+export function countOn(
+	habit: SchedulableHabit,
+	date: CalendarDate,
+	completed: boolean,
+	options: TimeZoneOptions,
+	first?: CalendarDate | null
+): DayCount {
+	if (habit.deleted_at !== null) return { counted: false, done: false };
+	const { schedule } = habit;
+	if (isSupportedSchedule(schedule) && schedule.type === "deadline") {
+		const firstDone = first === undefined ? (completed ? date : null) : first;
+		if (firstDone === date) return { counted: true, done: true };
+		const missed =
+			date === schedule.due_date &&
+			(firstDone === null || firstDone > date) &&
+			isHabitPossibleOn(habit, date, options);
+		return { counted: missed, done: false };
+	}
+	if (completed) return { counted: true, done: true };
+	return { counted: isHabitPossibleOn(habit, date, options), done: false };
 }
 
 /** Days `nextOccurrence` looks ahead (every schedule repeats within a year). */
@@ -163,7 +205,11 @@ export type HabitDatesProblem =
 	/** `start_date` (or a single date) before the earliest allowed date. */
 	| "date_out_of_range"
 	/** A single date before the habit's start: it would never happen. */
-	| "date_before_start";
+	| "date_before_start"
+	/** A due date more than `MAX_DEADLINE_DAYS` after today (2.13.0). */
+	| "due_date_too_far"
+	/** Moving a due date that already went by (2.13.0: it is locked). */
+	| "deadline_passed";
 
 /**
  * The earliest `start_date` a new habit may have. Weekday habits keep the
@@ -190,12 +236,45 @@ export function earliestStartDate(
 export function checkHabitDates(
 	habit: { schedule: StoredSchedule; start_date: CalendarDate },
 	earliest: CalendarDate,
-	{ checkStart = true }: { checkStart?: boolean } = {}
+	{
+		checkStart = true,
+		today,
+		previous,
+	}: {
+		checkStart?: boolean;
+		/** The user's today: a due date at most `MAX_DEADLINE_DAYS` after it. */
+		today?: CalendarDate;
+		/** The schedule before an edit: a past due date cannot move. */
+		previous?: StoredSchedule;
+	} = {}
 ): HabitDatesProblem | null {
 	if (checkStart && habit.start_date < earliest) return "date_out_of_range";
-	if (isSupportedSchedule(habit.schedule) && habit.schedule.type === "once") {
-		if (habit.schedule.date < earliest) return "date_out_of_range";
-		if (habit.schedule.date < habit.start_date) return "date_before_start";
+	if (!isSupportedSchedule(habit.schedule)) return null;
+	const { schedule } = habit;
+	if (schedule.type === "once") {
+		if (schedule.date < earliest) return "date_out_of_range";
+		if (schedule.date < habit.start_date) return "date_before_start";
+	}
+	if (schedule.type === "deadline") {
+		const before =
+			previous && isSupportedSchedule(previous) && previous.type === "deadline"
+				? previous.due_date
+				: null;
+		if (before !== null && today !== undefined && before < today) {
+			// Locked once it went by: keeping it is fine, moving it is not.
+			return schedule.due_date === before ? null : "deadline_passed";
+		}
+		if (schedule.due_date < earliest) return "date_out_of_range";
+		if (schedule.due_date < habit.start_date) return "date_before_start";
+		if (
+			today !== undefined &&
+			diffInDays(today, schedule.due_date) > MAX_DEADLINE_DAYS
+		) {
+			return "due_date_too_far";
+		}
 	}
 	return null;
 }
+
+/** Latest due date of a task, in days after today (2 years; 2.13.0). */
+export const MAX_DEADLINE_DAYS = 730;

@@ -1,9 +1,9 @@
 import type { CalendarDate, Completion } from "@habits/contracts";
 import { applyCompletionSet } from "@habits/core";
-import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { fromCompletionRow, toCompletionRow } from "../db/records.ts";
-import { completions } from "../db/schema.ts";
+import { completions, habits } from "../db/schema.ts";
 
 async function findCompletion(
 	db: Db,
@@ -68,7 +68,35 @@ export async function setCompletion(
 	return fromCompletionRow(row!);
 }
 
-/** Live (not un-checked) completions of the user between two dates. */
+/** First live completion of each deadline task of the user (2.13.0). */
+export async function listDeadlineFirsts(
+	db: Db,
+	userId: string
+): Promise<{ habit_id: string; date: CalendarDate }[]> {
+	return db
+		.select({
+			habit_id: completions.habit_id,
+			date: sql<CalendarDate>`min(${completions.date})`,
+		})
+		.from(completions)
+		.innerJoin(habits, eq(habits.id, completions.habit_id))
+		.where(
+			and(
+				eq(completions.user_id, userId),
+				eq(habits.user_id, userId),
+				isNull(completions.deleted_at),
+				sql`json_extract(${habits.schedule}, '$.type') = 'deadline'`
+			)
+		)
+		.groupBy(completions.habit_id);
+}
+
+/**
+ * Live (not un-checked) completions of the user between two dates, plus every
+ * live completion of the user's deadline tasks (2.13.0): they count through
+ * their first completion, which may be outside the range. Still one
+ * statement; users without deadline tasks read the same rows as before.
+ */
 export async function listLiveCompletions(
 	db: Db,
 	userId: string,
@@ -86,8 +114,21 @@ export async function listLiveCompletions(
 			and(
 				eq(completions.user_id, userId),
 				isNull(completions.deleted_at),
-				gte(completions.date, from),
-				lte(completions.date, to)
+				or(
+					and(gte(completions.date, from), lte(completions.date, to)),
+					inArray(
+						completions.habit_id,
+						db
+							.select({ id: habits.id })
+							.from(habits)
+							.where(
+								and(
+									eq(habits.user_id, userId),
+									sql`json_extract(${habits.schedule}, '$.type') = 'deadline'`
+								)
+							)
+					)
+				)
 			)
 		)
 		.orderBy(asc(completions.date));

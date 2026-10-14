@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { CalendarDate, Habit } from "@habits/contracts";
 import {
+	extrasOnlyText,
 	BACKFILL_DAYS,
 	completionRatio,
 	type DayEditState,
@@ -224,9 +225,9 @@ function DayContent({
 	return (
 		<>
 			{possible === 0 ? (
-				// Only overdue habits, none done yet: no "0 de 0" bar.
+				// Only overdue habits or deadline tasks not due: no "0 de 0" bar.
 				<Text className="text-sm text-night-muted">
-					Nada previsto para hoje além dos atrasados.
+					{extrasOnlyText(view.items)}
 				</Text>
 			) : (
 				<View className="gap-2">

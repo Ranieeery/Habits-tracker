@@ -99,8 +99,11 @@ export function useToggleCompletion(date: CalendarDate) {
 		},
 		onSettled: (_data, _error, _variables, _result, { client }) =>
 			Promise.all([
-				client.invalidateQueries({ queryKey: key }),
+				// Every cached day: a deadline task's completion moves its due
+				// date's failure (2.13.0); and the first completions (Passados).
+				client.invalidateQueries({ queryKey: queryKeys.days }),
 				client.invalidateQueries({ queryKey: queryKeys.summaries }),
+				client.invalidateQueries({ queryKey: queryKeys.deadlineFirsts }),
 			]),
 	});
 

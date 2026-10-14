@@ -1,5 +1,5 @@
 import type { CalendarDate, Habit } from "@habits/contracts";
-import { completionRatio, type DayItems } from "@habits/core";
+import { completionRatio, type DayItems, extrasOnlyText } from "@habits/core";
 import { Link } from "@tanstack/react-router";
 import { useId } from "react";
 import { buttonVariants } from "@/components/ui/button.tsx";
@@ -104,10 +104,8 @@ function TodayList({
 	return (
 		<>
 			{possible === 0 ? (
-				// Only overdue habits, none done yet: no "0 de 0" bar.
-				<p className="text-sm text-night-muted">
-					Nada previsto para hoje além dos atrasados.
-				</p>
+				// Only overdue habits or deadline tasks not due: no "0 de 0" bar.
+				<p className="text-sm text-night-muted">{extrasOnlyText(view.items)}</p>
 			) : (
 				<div className="flex flex-col gap-2">
 					<p className="text-sm text-night-muted tabular-nums">

@@ -52,6 +52,8 @@ describe("selectDigestContent", () => {
 				highlights: ["Trocar filtro"],
 				overdue: [],
 				tomorrow: ["Consulta dermatologista"],
+				dueToday: [],
+				dueTomorrow: [],
 			}
 		);
 	});
@@ -63,6 +65,8 @@ describe("selectDigestContent", () => {
 			highlights: ["Consulta dermatologista"],
 			overdue: [],
 			tomorrow: [],
+			dueToday: [],
+			dueTomorrow: [],
 		});
 	});
 
@@ -74,6 +78,8 @@ describe("selectDigestContent", () => {
 			highlights: [],
 			overdue: [],
 			tomorrow: [],
+			dueToday: [],
+			dueTomorrow: [],
 		});
 	});
 
@@ -85,6 +91,8 @@ describe("selectDigestContent", () => {
 			highlights: [],
 			overdue: [],
 			tomorrow: [],
+			dueToday: [],
+			dueTomorrow: [],
 		});
 	});
 });
@@ -95,6 +103,8 @@ const content: DigestContent = {
 	highlights: ["Trocar filtro"],
 	overdue: [],
 	tomorrow: ["Consulta dermatologista"],
+	dueToday: [],
+	dueTomorrow: [],
 };
 
 const base: ShouldSendDigestInput = {
@@ -187,6 +197,8 @@ describe("digestMessage", () => {
 					highlights: [],
 					overdue: [],
 					tomorrow: [],
+					dueToday: [],
+					dueTomorrow: [],
 				},
 				true
 			).body
@@ -199,6 +211,8 @@ describe("digestMessage", () => {
 					highlights: [],
 					overdue: [],
 					tomorrow: ["A", "B"],
+					dueToday: [],
+					dueTomorrow: [],
 				},
 				true
 			).body
@@ -234,6 +248,8 @@ describe("digestMessage", () => {
 				highlights: long,
 				overdue: [],
 				tomorrow: long,
+				dueToday: [],
+				dueTomorrow: [],
 			},
 			true
 		);
@@ -255,6 +271,8 @@ describe("overdue habits in the digest (2.8.0)", () => {
 			highlights: [],
 			overdue: ["Pagar condomínio"],
 			tomorrow: [],
+			dueToday: [],
+			dueTomorrow: [],
 		});
 		const lateDone = [{ habit_id: conta.id, date: TODAY, deleted_at: null }];
 		expect(
@@ -269,6 +287,8 @@ describe("overdue habits in the digest (2.8.0)", () => {
 			highlights: [],
 			overdue: ["Pagar condomínio"],
 			tomorrow: [],
+			dueToday: [],
+			dueTomorrow: [],
 		};
 		expect(shouldSendMorningDigest({ ...base, content: onlyOverdue })).toBe(
 			true
@@ -289,6 +309,8 @@ describe("overdue habits in the digest (2.8.0)", () => {
 					highlights: [],
 					overdue: ["A", "B"],
 					tomorrow: [],
+					dueToday: [],
+					dueTomorrow: [],
 				},
 				true
 			).body
@@ -312,6 +334,8 @@ describe("overdue habits in the digest (2.8.0)", () => {
 				highlights: [],
 				overdue: ["Pagar condomínio"],
 				tomorrow: [],
+				dueToday: [],
+				dueTomorrow: [],
 			},
 			false
 		);
@@ -331,6 +355,8 @@ describe("overdue habits in the digest (2.8.0)", () => {
 				highlights: long,
 				overdue: long,
 				tomorrow: long,
+				dueToday: [],
+				dueTomorrow: [],
 			},
 			true
 		);

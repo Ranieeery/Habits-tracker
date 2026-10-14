@@ -8,6 +8,7 @@ import {
 import {
 	BACKFILL_DAYS,
 	checkHabitDates,
+	deadlineOf,
 	earliestStartDate,
 	habitDatesError,
 	keyAfterLast,
@@ -30,6 +31,7 @@ import {
 	isReadableBy,
 } from "../http/schedule-version.ts";
 import { userToday } from "../http/today.ts";
+import { listDeadlineFirsts } from "../repos/completions.ts";
 import { uuidV7 } from "../lib/ids.ts";
 import {
 	deleteHabit,
@@ -119,19 +121,25 @@ const restoreRoute = createRoute({
 export const habitRoutes = router()
 	.openapi(listRoute, async (c) => {
 		const version = clientScheduleVersion(c);
-		const habits = await listHabits(c.var.db, c.var.userId);
-		return c.json(
-			{ habits: habits.filter((habit) => isReadableBy(habit, version)) },
-			200
+		const habits = (await listHabits(c.var.db, c.var.userId)).filter((habit) =>
+			isReadableBy(habit, version)
 		);
+		// 2.13.0: the first completion of each deadline task ("Passados"); one
+		// more query only for users who have such tasks.
+		if (!habits.some((habit) => deadlineOf(habit.schedule))) {
+			return c.json({ habits }, 200);
+		}
+		const firsts = await listDeadlineFirsts(c.var.db, c.var.userId);
+		return c.json({ habits, deadline_completions: firsts }, 200);
 	})
 	.openapi(createHabitRoute, async (c) => {
 		const body = c.req.valid("json");
 		const { now, today } = await userToday(c);
 		const earliest = earliestStartDate(body.schedule, today);
-		const problem = checkHabitDates(body, earliest);
-		if (problem)
-			return c.json({ error: habitDatesError(problem, earliest) }, 422);
+		const problem = checkHabitDates(body, earliest, { today });
+		if (problem) {
+			return c.json({ error: habitDatesError(problem, earliest, today) }, 422);
+		}
 		// Without a key (clients older than 2.4.0, or the web) it goes last.
 		const sort_key =
 			body.sort_key ?? keyAfterLast(await listHabits(c.var.db, c.var.userId));
@@ -164,9 +172,9 @@ export const habitRoutes = router()
 				const problem = checkHabitDates(
 					{ schedule, start_date: current.start_date },
 					earliest,
-					{ checkStart: false }
+					{ checkStart: false, today, previous: current.schedule }
 				);
-				return problem ? habitDatesError(problem, earliest) : null;
+				return problem ? habitDatesError(problem, earliest, today) : null;
 			}
 		);
 		if (!result) return c.json(errorBody("not_found", "Habit not found"), 404);

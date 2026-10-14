@@ -1,5 +1,6 @@
 import type { CalendarDate } from "@habits/contracts";
 import {
+	extrasOnlyText,
 	BACKFILL_DAYS,
 	completionRatio,
 	type DayItem,
@@ -186,10 +187,8 @@ function DayContent({
 	return (
 		<>
 			{possible === 0 ? (
-				// Only overdue habits, none done yet: no "0 de 0" bar.
-				<p className="text-sm text-night-muted">
-					Nada previsto para hoje além dos atrasados.
-				</p>
+				// Only overdue habits or deadline tasks not due: no "0 de 0" bar.
+				<p className="text-sm text-night-muted">{extrasOnlyText(items)}</p>
 			) : (
 				<div className="flex flex-col gap-2">
 					<Progress

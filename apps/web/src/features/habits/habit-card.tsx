@@ -3,7 +3,13 @@ import {
 	type Habit,
 	isSupportedSchedule,
 } from "@habits/contracts";
-import { formatRelativeDate, nextOccurrence } from "@habits/core";
+import {
+	deadlineLabel,
+	deadlineOf,
+	formatRelativeDate,
+	nextOccurrence,
+	overdueLabel,
+} from "@habits/core";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { cn } from "@/lib/utils.ts";
 import { ScheduleStrip } from "./schedule-summary.tsx";
@@ -19,6 +25,30 @@ export function NextBadge({
 	timeZone: string;
 }) {
 	if (habit.archived_at !== null) return null;
+	// A task with a deadline (2.13.0): how long is left, or overdue.
+	const deadline = deadlineOf(habit.schedule);
+	if (deadline) {
+		const label =
+			deadline.due_date < today
+				? {
+						text: overdueLabel(deadline.due_date, today).text,
+						dueToday: false,
+						late: true,
+					}
+				: { ...deadlineLabel(deadline.due_date, today), late: false };
+		return (
+			<span
+				className={cn(
+					"rounded-full px-2 py-0.5 text-xs font-semibold",
+					label.late || label.dueToday
+						? "bg-night-warning-surface text-night-warning"
+						: "bg-night-accent/15 text-night-accent-text"
+				)}
+			>
+				{label.text}
+			</span>
+		);
+	}
 	const next = nextOccurrence(habit, today, { timeZone });
 	if (next === null) return null;
 	if (next === today) {
