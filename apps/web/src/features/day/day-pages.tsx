@@ -25,7 +25,7 @@ import { useDayShortcuts } from "./use-day-shortcuts.ts";
 /** Always shows the user's current day, and follows it when the date turns. */
 export function TodayPage() {
 	const today = useToday();
-	return <DayView date={today} today={today} />;
+	return <DayView date={today} today={today} actions />;
 }
 
 /**

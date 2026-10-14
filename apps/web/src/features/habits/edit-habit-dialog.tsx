@@ -1,6 +1,4 @@
 import type { Habit } from "@habits/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import {
 	Dialog,
 	DialogContent,
@@ -8,14 +6,16 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { errorMessage } from "@/lib/errors.ts";
-import { invalidateHabitData, updateHabit } from "@/lib/queries.ts";
-import { isUnauthorized } from "@/lib/query-client.ts";
-import { useServices } from "@/lib/services.ts";
 import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
-import { HabitForm, type HabitFormValues } from "./habit-form.tsx";
+import { HabitForm } from "./habit-form.tsx";
+import { useEditHabit } from "./use-edit-habit.ts";
 
-/** Editing one habit in a dialog (2.12.0: from the habit's page). */
+/**
+ * Editing one habit in a dialog (2.12.0: from the habit's page; 2.15.0:
+ * also from a day's actions menu, without leaving the day). Saving is
+ * optimistic (`useEditHabit`); a failure keeps the dialog open with what was
+ * typed.
+ */
 export function EditHabitDialog({
 	habit,
 	open,
@@ -25,30 +25,9 @@ export function EditHabitDialog({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
-	const { api } = useServices();
-	const queryClient = useQueryClient();
 	const today = useToday();
 	const timeZone = useUserTimeZone();
-	const save = useMutation({
-		mutationFn: ({ name, description, schedule }: HabitFormValues) =>
-			updateHabit(api, habit.id, {
-				name,
-				description,
-				...(schedule && { schedule }),
-			}),
-		onSuccess: () => {
-			toast.success("Hábito atualizado");
-			onOpenChange(false);
-		},
-		onError: (error) => {
-			if (!isUnauthorized(error)) {
-				toast.error("Não foi possível salvar o hábito", {
-					description: errorMessage(error),
-				});
-			}
-		},
-		onSettled: () => invalidateHabitData(queryClient),
-	});
+	const save = useEditHabit(habit, () => onOpenChange(false));
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,7 +35,8 @@ export function EditHabitDialog({
 				<DialogHeader>
 					<DialogTitle>Editar hábito</DialogTitle>
 					<DialogDescription>
-						Mudar a repetição altera também a contagem dos dias passados.
+						Vale para todos os dias. Mudar a repetição altera também a contagem
+						dos dias passados.
 					</DialogDescription>
 				</DialogHeader>
 				{open && (

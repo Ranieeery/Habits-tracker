@@ -1,6 +1,12 @@
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import type * as React from "react";
 import { cn } from "@/lib/utils.ts";
+import {
+	MENU_CONTENT_CLASSES,
+	MENU_ITEM_CLASSES,
+	MENU_LABEL_CLASSES,
+	MENU_SEPARATOR_CLASSES,
+} from "./menu-styles.ts";
 
 // shadcn/ui dropdown menu (the parts the app uses), night tokens. Radix gives
 // the menu roles, arrow-key navigation, typeahead, Esc and focus return.
@@ -33,10 +39,7 @@ function DropdownMenuContent({
 				data-slot="dropdown-menu-content"
 				align={align}
 				sideOffset={sideOffset}
-				className={cn(
-					"z-50 min-w-48 rounded-xl border border-night-border bg-night-surface-overlay p-1 text-night-foreground shadow-xl shadow-night-bg/70",
-					className
-				)}
+				className={cn(MENU_CONTENT_CLASSES, className)}
 				{...props}
 			/>
 		</DropdownMenuPrimitive.Portal>
@@ -50,10 +53,33 @@ function DropdownMenuItem({
 	return (
 		<DropdownMenuPrimitive.Item
 			data-slot="dropdown-menu-item"
-			className={cn(
-				"flex min-h-touch cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-night-surface-raised [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-night-muted",
-				className
-			)}
+			className={cn(MENU_ITEM_CLASSES, className)}
+			{...props}
+		/>
+	);
+}
+
+function DropdownMenuLabel({
+	className,
+	...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Label>) {
+	return (
+		<DropdownMenuPrimitive.Label
+			data-slot="dropdown-menu-label"
+			className={cn(MENU_LABEL_CLASSES, className)}
+			{...props}
+		/>
+	);
+}
+
+function DropdownMenuSeparator({
+	className,
+	...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+	return (
+		<DropdownMenuPrimitive.Separator
+			data-slot="dropdown-menu-separator"
+			className={cn(MENU_SEPARATOR_CLASSES, className)}
 			{...props}
 		/>
 	);
@@ -63,5 +89,7 @@ export {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 };

@@ -183,6 +183,9 @@ export function DayView({
 								editable={editable}
 								editState={editState}
 								unlocked={unlocked}
+								// 2.15.0: the actions menu only on the Hoje tab, never on
+								// days opened from the history.
+								actions={inTabs}
 								onToggle={(habit, completed) => change(habit, completed)}
 							/>
 						)
@@ -275,6 +278,7 @@ function DayContent({
 	editable,
 	editState,
 	unlocked,
+	actions,
 	onToggle,
 }: {
 	date: CalendarDate;
@@ -282,6 +286,7 @@ function DayContent({
 	editable: boolean;
 	editState: DayEditState;
 	unlocked: boolean;
+	actions: boolean;
 	onToggle: (habit: Habit, completed: boolean) => void;
 }) {
 	const { completed, possible } = view.progress;
@@ -337,6 +342,7 @@ function DayContent({
 				date={date}
 				items={view.items}
 				disabled={!editable}
+				actions={actions}
 				onToggle={onToggle}
 			/>
 		</>

@@ -1,17 +1,25 @@
-import type { Habit } from "@habits/contracts";
+import type { CalendarDate, Habit } from "@habits/contracts";
 import {
-	type DeadlineLabel,
+	ARCHIVED_BADGE,
+	type DayItem,
+	deadlineDoneLabel,
+	deadlineLabel,
 	descriptionFirstLine,
 	hasDescription,
-	type OverdueLabel,
+	overdueLabel,
 } from "@habits/core";
-import { CalendarClock, CalendarRange } from "lucide-react";
-import { useId, useRef } from "react";
+import { ArchiveIcon, CalendarClock, CalendarRange } from "lucide-react";
+import { memo, useId, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DescriptionPopover } from "@/features/habits/description-popover.tsx";
 import { pulse, release } from "@/features/heatmap/pulse.ts";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion.ts";
 import { cn } from "@/lib/utils.ts";
+import {
+	type HabitActionHandler,
+	HabitActionsButton,
+	HabitRowMenu,
+} from "./habit-actions-menu.tsx";
 
 /**
  * One habit of a day with its checkbox: the whole row is the target (44px+).
@@ -19,37 +27,48 @@ import { cn } from "@/lib/utils.ts";
  * box and unchecking dips it (both skipped with reduced motion). An overdue
  * habit (2.8.0) carries the "Atrasado desde 11/10" badge (icon and text,
  * never color alone), read as "Nome, atrasado desde 11 de outubro".
+ * 2.15.0: with `onAction` (only on the Hoje tab, `/today`), the actions
+ * menu, from the always visible "more options" button at the end and from a
+ * right click inside the row; elsewhere (the history: the heatmap's panel
+ * and days opened from it) neither. Also the "Arquivado" badge of a habit
+ * archived today or later that a day still lists. Memoized: it takes the
+ * item from `dayItems` (memoized by the day) and stable handlers, and
+ * builds its labels itself.
  */
-export function DayHabitItem({
-	habit,
-	completed,
+export const DayHabitItem = memo(function DayHabitItem({
+	item,
+	date,
 	editable,
-	overdue = null,
-	due = null,
-	doneOn = null,
 	onToggle,
+	onAction,
 }: {
-	habit: Pick<Habit, "id" | "name"> & { description?: string };
-	completed: boolean;
+	item: DayItem;
+	date: CalendarDate;
 	editable: boolean;
-	overdue?: OverdueLabel | null;
-	/** An open deadline task (2.13.0): "Até 20/10 · faltam 7 dias". */
-	due?: DeadlineLabel | null;
-	/**
-	 * A deadline task first completed on another day (2.13.0): "Já concluída
-	 * em 22/10", shown checked and disabled (no second completion).
-	 */
-	doneOn?: { text: string; spoken: string } | null;
-	onToggle: (completed: boolean) => void;
+	onToggle: (habit: Habit, completed: boolean) => void;
+	/** The actions menu (only on the Hoje tab); absent elsewhere. */
+	onAction?: HabitActionHandler;
 }) {
+	const { habit, done: completed } = item;
+	const overdue =
+		item.overdueSince === null ? null : overdueLabel(item.overdueSince, date);
+	// An open deadline task (2.13.0): "Até 20/10 · faltam 7 dias".
+	const due = item.dueDate === null ? null : deadlineLabel(item.dueDate, date);
+	// A deadline task first completed on another day (2.13.0): "Já concluída
+	// em 22/10", shown checked and disabled (no second completion).
+	const doneOn =
+		item.completedOn === null
+			? null
+			: deadlineDoneLabel(item.completedOn, date);
 	const id = useId();
 	const lineId = useId();
 	// 2.12.0: the description's first line under the name.
-	const firstLine = descriptionFirstLine(habit.description ?? "");
+	const firstLine = descriptionFirstLine(habit.description);
 	const box = useRef<HTMLButtonElement>(null);
 	const reducedMotion = usePrefersReducedMotion();
+	const archived = habit.archived_at !== null;
 
-	return (
+	const row = (
 		<li className="flex items-center gap-1">
 			<label
 				htmlFor={id}
@@ -66,7 +85,13 @@ export function DayHabitItem({
 					// Explicit: a hidden text inside the label would be read with a
 					// space before the comma ("Nome , atrasado…").
 					// The description line is not part of the name: it describes it.
-					aria-label={[habit.name, overdue?.spoken, due?.spoken, doneOn?.spoken]
+					aria-label={[
+						habit.name,
+						overdue?.spoken,
+						due?.spoken,
+						doneOn?.spoken,
+						archived && "arquivado",
+					]
 						.filter(Boolean)
 						.join(", ")}
 					aria-describedby={firstLine ? lineId : undefined}
@@ -75,7 +100,7 @@ export function DayHabitItem({
 					onCheckedChange={(checked) => {
 						const value = checked === true;
 						if (!reducedMotion) (value ? pulse : release)(box.current);
-						onToggle(value);
+						onToggle(habit, value);
 					}}
 				/>
 				<span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -111,6 +136,15 @@ export function DayHabitItem({
 								{due.text}
 							</span>
 						)}
+						{archived && (
+							<span
+								aria-hidden="true"
+								className="inline-flex items-center gap-1 rounded-md border border-night-border-strong px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-night-muted"
+							>
+								<ArchiveIcon className="size-3.5 shrink-0" />
+								{ARCHIVED_BADGE}
+							</span>
+						)}
 						{doneOn && (
 							<span aria-hidden="true" className="text-xs text-night-muted">
 								{doneOn.text}
@@ -131,11 +165,15 @@ export function DayHabitItem({
 				</span>
 			</label>
 			{/* Its own target, outside the label: marking stays a click on the row. */}
-			{hasDescription(habit) && (
-				<DescriptionPopover
-					habit={{ ...habit, description: habit.description ?? "" }}
-				/>
-			)}
+			{hasDescription(habit) && <DescriptionPopover habit={habit} />}
+			{onAction && <HabitActionsButton habit={habit} onAction={onAction} />}
 		</li>
 	);
-}
+	return onAction ? (
+		<HabitRowMenu habit={habit} onAction={onAction}>
+			{row}
+		</HabitRowMenu>
+	) : (
+		row
+	);
+});

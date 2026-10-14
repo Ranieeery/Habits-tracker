@@ -12,28 +12,35 @@ import { useState } from "react";
 import { nightColors } from "@habits/design-tokens";
 import { Text, View } from "react-native";
 import { DescriptionSheet } from "@/features/habits/description-sheet.tsx";
+import { useHabitActionsSheet } from "./habit-actions-sheet.tsx";
 import { HabitRow } from "./habit-row.tsx";
 
 /**
  * A day's rows (`useDayItems`) in one `night-surface` panel: overdue habits
  * first with their badge, then the day's habits, then (today, 2.13.0) the
  * open deadline tasks under "Com prazo", by due date, with their badge.
+ * 2.15.0: with `actions` (only the Hoje tab), every row opens the habit's
+ * actions sheet (one per list); days opened from the history have none.
  */
 export function DayItemsList({
 	date,
 	items,
 	disabled,
+	actions = false,
 	onToggle,
 }: {
 	date: CalendarDate;
 	items: readonly DayItem[];
 	disabled: boolean;
+	actions?: boolean;
 	onToggle: (habit: Habit, completed: boolean) => void;
 }) {
 	const [described, setDescribed] = useState<Habit | null>(null);
+	const menu = useHabitActionsSheet();
 	return (
 		<View className="overflow-hidden rounded-xl border border-night-border bg-night-surface">
 			<DescriptionSheet habit={described} onClose={() => setDescribed(null)} />
+			{actions ? menu.sheet : null}
 			{items.map((item, index) => (
 				<View key={item.habit.id}>
 					{item.dueDate !== null && items[index - 1]?.dueDate == null ? (
@@ -77,6 +84,10 @@ export function DayItemsList({
 							hasDescription(item.habit)
 								? () => setDescribed(item.habit)
 								: undefined
+						}
+						archived={item.habit.archived_at !== null}
+						onShowActions={
+							actions ? (origin) => menu.show(item.habit, origin) : undefined
 						}
 						onToggle={(checked) => onToggle(item.habit, checked)}
 					/>

@@ -1,49 +1,52 @@
 import type { CalendarDate, Habit } from "@habits/contracts";
-import {
-	type DayItem,
-	deadlineDoneLabel,
-	deadlineLabel,
-	overdueLabel,
-} from "@habits/core";
+import type { DayItem } from "@habits/core";
 import { CalendarRange } from "lucide-react";
-import { useId } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
+import { EditHabitDialog } from "@/features/habits/edit-habit-dialog.tsx";
 import { DayHabitItem } from "./day-habit-item.tsx";
+import { useHabitActions } from "./use-habit-actions.ts";
 
 /**
  * A day's rows (`useDayItems`): overdue habits first with their badge, then
  * the day's habits, then (today, 2.13.0) the open deadline tasks under "Com
  * prazo", by due date. Shared by the day view and the heatmap's "Hoje" panel.
+ * 2.15.0: with `actions` (only the Hoje tab, `/today`), every row has the
+ * habit's actions menu, with one edit dialog for the whole list.
  */
 export function DayItemsList({
 	date,
 	items,
 	editable,
+	actions = false,
 	onToggle,
 }: {
 	date: CalendarDate;
 	items: readonly DayItem[];
 	editable: boolean;
+	actions?: boolean;
 	onToggle: (habit: Pick<Habit, "id" | "name">, completed: boolean) => void;
 }) {
 	const headingId = useId();
+	const menu = useHabitActions();
+	// The rows are memoized: hand them a toggle that never changes and calls
+	// the latest one the parent gave.
+	const latestToggle = useRef(onToggle);
+	useEffect(() => {
+		latestToggle.current = onToggle;
+	});
+	const toggle = useCallback(
+		(habit: Habit, completed: boolean) =>
+			latestToggle.current(habit, completed),
+		[]
+	);
 	const row = (item: DayItem) => (
 		<DayHabitItem
 			key={item.habit.id}
-			habit={item.habit}
-			completed={item.done}
+			item={item}
+			date={date}
 			editable={editable}
-			overdue={
-				item.overdueSince === null
-					? null
-					: overdueLabel(item.overdueSince, date)
-			}
-			due={item.dueDate === null ? null : deadlineLabel(item.dueDate, date)}
-			doneOn={
-				item.completedOn === null
-					? null
-					: deadlineDoneLabel(item.completedOn, date)
-			}
-			onToggle={(completed) => onToggle(item.habit, completed)}
+			onToggle={toggle}
+			onAction={actions ? menu.onAction : undefined}
 		/>
 	);
 	const dayRows = items.filter((item) => item.dueDate === null);
@@ -67,6 +70,13 @@ export function DayItemsList({
 					</h3>
 					<ul className="-mx-2 flex flex-col">{deadlineRows.map(row)}</ul>
 				</section>
+			)}
+			{actions && menu.editing && (
+				<EditHabitDialog
+					habit={menu.editing}
+					open={menu.open}
+					onOpenChange={menu.setOpen}
+				/>
 			)}
 		</div>
 	);

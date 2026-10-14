@@ -41,9 +41,15 @@ import { useDayItems } from "./use-day-items.ts";
 export function DayView({
 	date,
 	today,
+	actions = false,
 }: {
 	date: CalendarDate;
 	today: CalendarDate;
+	/**
+	 * The habit actions menu on each row (2.15.0): only on the Hoje tab
+	 * (`/today`), never on days opened from the history.
+	 */
+	actions?: boolean;
 }) {
 	const { day, view, toggle } = useDayItems(date);
 	const editState = getDayEditState(date, today);
@@ -104,6 +110,7 @@ export function DayView({
 			) : (
 				<DayContent
 					date={date}
+					actions={actions}
 					items={view.items}
 					progress={view.progress}
 					editable={editable}
@@ -167,6 +174,7 @@ function TodayEmptyState({ today }: { today: CalendarDate }) {
 
 function DayContent({
 	date,
+	actions,
 	items,
 	progress,
 	editable,
@@ -174,6 +182,7 @@ function DayContent({
 	bar,
 }: {
 	date: CalendarDate;
+	actions: boolean;
 	items: readonly DayItem[];
 	progress: DayProgress;
 	editable: boolean;
@@ -208,6 +217,7 @@ function DayContent({
 				date={date}
 				items={items}
 				editable={editable}
+				actions={actions}
 				onToggle={onToggle}
 			/>
 		</>

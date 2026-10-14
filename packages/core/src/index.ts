@@ -10,6 +10,7 @@ export * from "./deadline.ts";
 export * from "./description.ts";
 export * from "./digest.ts";
 export * from "./grid.ts";
+export * from "./habit-actions.ts";
 export * from "./habit-draft.ts";
 export * from "./ids.ts";
 export * from "./insights.ts";

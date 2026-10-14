@@ -263,7 +263,9 @@ describe("the preview day screen", () => {
 				request.url.includes("/v1/day?date=2026-10-14")
 			)
 		).toBe(false);
-	});
+		// The whole home screen mounts first (about 3 s in jsdom alone): with
+		// every package testing in parallel it can pass the default 5 s.
+	}, 15_000);
 
 	it("leaves out a deadline task already done", async () => {
 		renderApp("/day/2026-10-14", {

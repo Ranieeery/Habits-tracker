@@ -1,22 +1,14 @@
 import type { CalendarDate } from "@habits/contracts";
 import { newHabitNotice } from "@habits/core";
 import { useEffect, useRef, useState } from "react";
+import type { View } from "react-native";
 import {
 	AccessibilityInfo,
-	Modal,
-	Pressable,
 	ScrollView,
-	StyleSheet,
 	Text,
 	type TextInput,
 	useWindowDimensions,
-	View,
 } from "react-native";
-import {
-	KeyboardAvoidingView,
-	useKeyboardState,
-} from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
 import { useCreateHabit, useNewId } from "@/data/hooks.ts";
 import { useUserTimeZone } from "@/data/today.ts";
@@ -24,8 +16,8 @@ import {
 	HabitForm,
 	type HabitFormValues,
 } from "@/features/habits/habit-form.tsx";
-import { Button, IconButton } from "@/ui/button.tsx";
-import { DisplayText } from "@/ui/display-text.tsx";
+import { BottomSheet } from "@/ui/bottom-sheet.tsx";
+import { Button } from "@/ui/button.tsx";
 import { useToast } from "@/ui/toast.tsx";
 
 /**
@@ -33,16 +25,11 @@ import { useToast } from "@/ui/toast.tsx";
  * footer, in reach of the thumb) that opens a bottom sheet with the habits
  * form. The habit starts today and is written to the device database (the
  * outbox), so this works offline and the list shows it at once. The sheet is
- * a Modal: on Android its own window, which keeps TalkBack inside it; the
- * keyboard pushes it up (react-native-keyboard-controller follows Modals) and
- * the sheet shrinks to the space left above it, below the status bar, so the
- * form scrolls inside it instead of leaving the screen (2.10.1). Closing it
- * gives the accessibility focus back to the button.
+ * `BottomSheet` (the keyboard pushes it up and the form scrolls inside it,
+ * 2.10.1). Closing it gives the accessibility focus back to the button.
  */
 export function NewHabitSheet({ today }: { today: CalendarDate }) {
-	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
-	const keyboardVisible = useKeyboardState((state) => state.isVisible);
 	const toast = useToast();
 	const newId = useNewId();
 	const timeZone = useUserTimeZone();
@@ -121,77 +108,35 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 				onPress={open}
 				className="min-h-14"
 			/>
-			<Modal
+			<BottomSheet
 				visible={habitId !== null}
-				transparent
-				animationType="slide"
-				statusBarTranslucent
-				navigationBarTranslucent
-				onRequestClose={close}
+				title="Novo hábito"
+				onClose={close}
 				onShow={() => nameRef.current?.focus()}
 			>
-				<KeyboardAvoidingView behavior="padding" style={styles.fill}>
-					<View style={[styles.bottom, { paddingTop: insets.top + 8 }]}>
-						{/* Tapping outside closes; screen readers use "Fechar". */}
-						<Pressable
-							accessible={false}
-							importantForAccessibility="no"
-							onPress={close}
-							style={StyleSheet.absoluteFill}
-							className="bg-night-bg/70"
+				<Text className="text-sm text-night-muted">
+					Começa a contar na data escolhida e não muda os dias anteriores.
+				</Text>
+				{habitId !== null ? (
+					// The form grows with the repetition fields: it scrolls
+					// inside the sheet, and shrinks with it above the keyboard.
+					<ScrollView
+						style={{ maxHeight: height * 0.6, flexShrink: 1 }}
+						keyboardShouldPersistTaps="handled"
+					>
+						<HabitForm
+							key={habitId}
+							today={today}
+							timeZone={timeZone}
+							submitLabel="Criar hábito"
+							pending={create.isPending}
+							error={error}
+							nameRef={nameRef}
+							onSubmit={submit}
 						/>
-						<View
-							accessibilityViewIsModal
-							className="gap-4 rounded-t-2xl border-t border-night-border bg-night-surface px-4 pt-2"
-							style={{
-								flexShrink: 1,
-								// The keyboard already covers the navigation bar.
-								paddingBottom: (keyboardVisible ? 0 : insets.bottom) + 16,
-							}}
-						>
-							<View className="items-center py-1">
-								<View className="h-1 w-10 rounded-full bg-night-surface-raised" />
-							</View>
-							<View className="flex-row items-center justify-between gap-2">
-								<DisplayText
-									accessibilityRole="header"
-									className="flex-1 text-2xl tracking-tight text-night-foreground"
-								>
-									Novo hábito
-								</DisplayText>
-								<IconButton icon="close" label="Fechar" onPress={close} />
-							</View>
-							<Text className="text-sm text-night-muted">
-								Começa a contar na data escolhida e não muda os dias anteriores.
-							</Text>
-							{habitId !== null ? (
-								// The form grows with the repetition fields: it scrolls
-								// inside the sheet, and shrinks with it above the keyboard.
-								<ScrollView
-									style={{ maxHeight: height * 0.6, flexShrink: 1 }}
-									keyboardShouldPersistTaps="handled"
-								>
-									<HabitForm
-										key={habitId}
-										today={today}
-										timeZone={timeZone}
-										submitLabel="Criar hábito"
-										pending={create.isPending}
-										error={error}
-										nameRef={nameRef}
-										onSubmit={submit}
-									/>
-								</ScrollView>
-							) : null}
-						</View>
-					</View>
-				</KeyboardAvoidingView>
-			</Modal>
+					</ScrollView>
+				) : null}
+			</BottomSheet>
 		</>
 	);
 }
-
-const styles = StyleSheet.create({
-	fill: { flex: 1 },
-	bottom: { flex: 1, justifyContent: "flex-end" },
-});

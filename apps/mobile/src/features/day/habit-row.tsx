@@ -1,8 +1,16 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type { DeadlineLabel, OverdueLabel } from "@habits/core";
+import {
+	ARCHIVED_BADGE,
+	type DeadlineLabel,
+	habitMenuLabel,
+	type OverdueLabel,
+} from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
+import * as Haptics from "expo-haptics";
+import { type Ref, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { CheckboxBox } from "@/ui/checkbox.tsx";
+import { LONG_PRESS_MS } from "./long-press.ts";
 
 /**
  * One habit of a day (DESIGN.md "Linha de hábito"): the whole row is the
@@ -12,6 +20,14 @@ import { CheckboxBox } from "@/ui/checkbox.tsx";
  * habit (2.8.0) carries the "Atrasado desde 11/10" badge below the name
  * (icon and text, never color alone), read as "Nome, atrasado desde 11 de
  * outubro".
+ * 2.15.0: with `onShowActions` (only the Hoje tab), the "more options"
+ * button (⋮) at the end opens the habit's actions sheet, and so does holding
+ * the row for `LONG_PRESS_MS` (light haptic when it opens; releasing then
+ * never marks). A shorter press still marks. With it, read-only rows are not
+ * disabled (the long press must work), but a tap does nothing and they still
+ * read as disabled. Without it (days opened from the history), neither. An
+ * archived habit still listed (today or a past day) carries the "Arquivado"
+ * badge.
  */
 export function HabitRow({
 	name,
@@ -23,6 +39,8 @@ export function HabitRow({
 	doneOn = null,
 	descriptionLine = "",
 	onShowDescription,
+	archived = false,
+	onShowActions,
 	onToggle,
 }: {
 	name: string;
@@ -41,24 +59,49 @@ export function HabitRow({
 	descriptionLine?: string;
 	/** Present when the habit has a description (2.12.0): the note icon. */
 	onShowDescription?: () => void;
+	archived?: boolean;
+	/**
+	 * Opens the actions sheet (only on the Hoje tab); `origin` gets the focus
+	 * back on closing.
+	 */
+	onShowActions?: (origin: View | null) => void;
 	onToggle: (checked: boolean) => void;
 }) {
+	const more = useRef<View>(null);
+	const locked = disabled || doneOn !== null;
+	const showActions = (fromHold: boolean) => {
+		if (fromHold) {
+			void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		}
+		onShowActions?.(more.current);
+	};
 	return (
 		<View
 			className={`flex-row items-center ${divider ? "border-t border-night-border" : ""}`}
 		>
 			<Pressable
 				accessibilityRole="checkbox"
-				accessibilityLabel={[name, overdue?.spoken, due?.spoken, doneOn?.spoken]
+				accessibilityLabel={[
+					name,
+					overdue?.spoken,
+					due?.spoken,
+					doneOn?.spoken,
+					archived && "arquivado",
+				]
 					.filter(Boolean)
 					.join(", ")}
 				accessibilityState={{
 					checked: checked || doneOn !== null,
-					disabled: disabled || doneOn !== null,
+					disabled: locked,
 				}}
-				disabled={disabled || doneOn !== null}
-				onPress={() => onToggle(!checked)}
-				className={`min-h-14 flex-1 flex-row items-center gap-4 px-4 py-3 active:bg-night-surface-raised ${onShowDescription ? "pr-1" : ""}`}
+				// Without the menu the row is simply disabled when locked.
+				disabled={!onShowActions && locked}
+				onPress={() => {
+					if (!locked) onToggle(!checked);
+				}}
+				onLongPress={onShowActions ? () => showActions(true) : undefined}
+				delayLongPress={LONG_PRESS_MS}
+				className={`min-h-14 flex-1 flex-row items-center gap-4 py-3 pl-4 active:bg-night-surface-raised ${onShowDescription || onShowActions ? "pr-1" : "pr-4"}`}
 			>
 				<View className={doneOn ? "opacity-40" : ""}>
 					<CheckboxBox checked={checked || doneOn !== null} />
@@ -113,6 +156,21 @@ export function HabitRow({
 							</Text>
 						</View>
 					) : null}
+					{archived ? (
+						<View
+							importantForAccessibility="no-hide-descendants"
+							className="flex-row items-center gap-1 rounded-md border border-night-border-strong px-2 py-0.5"
+						>
+							<MaterialCommunityIcons
+								name="archive-outline"
+								size={14}
+								color={nightColors.muted}
+							/>
+							<Text className="text-xs font-medium text-night-muted">
+								{ARCHIVED_BADGE}
+							</Text>
+						</View>
+					) : null}
 					{doneOn ? (
 						<Text
 							importantForAccessibility="no"
@@ -129,7 +187,7 @@ export function HabitRow({
 					accessibilityRole="button"
 					accessibilityLabel={`Descrição de ${name}`}
 					onPress={onShowDescription}
-					className="mr-2 size-touch items-center justify-center rounded-md active:bg-night-surface-raised"
+					className={`size-touch items-center justify-center rounded-md active:bg-night-surface-raised ${onShowActions ? "" : "mr-2"}`}
 				>
 					<MaterialCommunityIcons
 						name="text-box-outline"
@@ -138,6 +196,46 @@ export function HabitRow({
 					/>
 				</Pressable>
 			) : null}
+			{/* Its own target too: opening the menu never marks the habit. */}
+			{onShowActions ? (
+				<MoreOptionsButton
+					ref={more}
+					name={name}
+					onPress={() => showActions(false)}
+				/>
+			) : null}
 		</View>
+	);
+}
+
+/**
+ * The always visible "more options" button (⋮) at a row's end (2.15.0):
+ * `night-muted`, a 44 dp target plus a small hit slop, its own target so it
+ * never marks the habit.
+ */
+export function MoreOptionsButton({
+	ref,
+	name,
+	onPress,
+}: {
+	ref?: Ref<View>;
+	name: string;
+	onPress: () => void;
+}) {
+	return (
+		<Pressable
+			ref={ref}
+			accessibilityRole="button"
+			accessibilityLabel={habitMenuLabel(name)}
+			onPress={onPress}
+			hitSlop={{ top: 6, bottom: 6, left: 2, right: 6 }}
+			className="mr-1 size-touch items-center justify-center rounded-md active:bg-night-surface-raised"
+		>
+			<MaterialCommunityIcons
+				name="dots-vertical"
+				size={22}
+				color={nightColors.muted}
+			/>
+		</Pressable>
 	);
 }
