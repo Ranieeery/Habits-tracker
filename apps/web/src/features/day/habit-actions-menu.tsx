@@ -1,8 +1,14 @@
 import type { Habit } from "@habits/contracts";
-import { type HabitActionId, habitActions, habitMenuLabel } from "@habits/core";
+import {
+	type HabitActionId,
+	habitActions,
+	habitMenuLabel,
+	type RescheduleAvailability,
+} from "@habits/core";
 import {
 	ArchiveIcon,
 	ArchiveRestoreIcon,
+	CalendarArrowUpIcon,
 	EllipsisVerticalIcon,
 	type LucideIcon,
 	NotebookTextIcon,
@@ -27,17 +33,31 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
 import { cn } from "@/lib/utils.ts";
+import type { OccurrenceTarget } from "./use-reschedule-habit.ts";
 
 /** The habit a menu acts on: what the rows of a day carry. */
 export type MenuHabit = Habit;
 
+/**
+ * "Adiar" on a row (2.16.0): whether it shows (core's
+ * `rescheduleAvailability`) and the occurrence it would move.
+ */
+export interface RescheduleMenu {
+	availability: RescheduleAvailability;
+	occurrence: OccurrenceTarget;
+	/** "Arquivar"/"Desarquivar" too (false on the preview days). */
+	archive?: boolean;
+}
+
 export type HabitActionHandler = (
 	habit: MenuHabit,
-	action: HabitActionId
+	action: HabitActionId,
+	occurrence?: OccurrenceTarget
 ) => void;
 
 const ICONS: Record<HabitActionId, LucideIcon> = {
 	edit: PencilIcon,
+	reschedule: CalendarArrowUpIcon,
 	description: NotebookTextIcon,
 	archive: ArchiveIcon,
 	unarchive: ArchiveRestoreIcon,
@@ -46,6 +66,7 @@ const ICONS: Record<HabitActionId, LucideIcon> = {
 interface MenuParts {
 	Item: ComponentType<{
 		className?: string;
+		"aria-disabled"?: boolean;
 		onSelect?: (event: Event) => void;
 		children: ReactNode;
 	}>;
@@ -77,10 +98,12 @@ const CONTEXT: MenuParts = {
 function HabitActionItems({
 	parts: { Item, Label, Separator },
 	habit,
+	reschedule,
 	onAction,
 }: {
 	parts: MenuParts;
 	habit: MenuHabit;
+	reschedule?: RescheduleMenu;
 	onAction: HabitActionHandler;
 }) {
 	return (
@@ -89,24 +112,41 @@ function HabitActionItems({
 				{habit.name}
 			</Label>
 			<Separator />
-			{habitActions(habit).map((action) => {
+			{habitActions(habit, reschedule?.availability, {
+				archive: reschedule?.archive ?? true,
+			}).map((action) => {
 				const Icon = ICONS[action.id];
+				// 2.16.0: shown but unavailable, with the reason as its note. Not
+				// Radix's `disabled` (arrows skip those, so a screen reader would
+				// never reach the reason): focusable, announced as unavailable,
+				// and selecting it does nothing (the menu stays open).
+				const unavailable = action.disabledReason !== undefined;
+				const note = action.disabledReason ?? action.hint;
 				return (
 					<Item
 						key={action.id}
-						onSelect={() => onAction(habit, action.id)}
+						aria-disabled={unavailable || undefined}
+						onSelect={(event) => {
+							if (unavailable) {
+								event.preventDefault();
+								return;
+							}
+							onAction(habit, action.id, reschedule?.occurrence);
+						}}
 						className={cn(
-							action.hint && "py-2",
+							note && "py-2",
+							unavailable &&
+								"cursor-not-allowed text-night-muted data-[highlighted]:bg-night-surface-raised",
 							action.careful &&
 								"text-night-warning [&_svg]:text-night-warning data-[highlighted]:bg-night-warning-surface"
 						)}
 					>
 						<Icon aria-hidden="true" />
-						{action.hint ? (
+						{note ? (
 							<span className="flex flex-col">
 								<span>{action.label}</span>
 								<span className="text-xs font-normal text-night-muted">
-									{action.hint}
+									{note}
 								</span>
 							</span>
 						) : (
@@ -127,9 +167,11 @@ function HabitActionItems({
  */
 export function HabitActionsButton({
 	habit,
+	reschedule,
 	onAction,
 }: {
 	habit: MenuHabit;
+	reschedule?: RescheduleMenu;
 	onAction: HabitActionHandler;
 }) {
 	return (
@@ -146,7 +188,12 @@ export function HabitActionsButton({
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-64">
-				<HabitActionItems parts={DROPDOWN} habit={habit} onAction={onAction} />
+				<HabitActionItems
+					parts={DROPDOWN}
+					habit={habit}
+					reschedule={reschedule}
+					onAction={onAction}
+				/>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
@@ -163,10 +210,12 @@ export function HabitActionsButton({
  */
 export function HabitRowMenu({
 	habit,
+	reschedule,
 	onAction,
 	children,
 }: {
 	habit: MenuHabit;
+	reschedule?: RescheduleMenu;
 	onAction: HabitActionHandler;
 	children: ReactNode;
 }) {
@@ -198,7 +247,12 @@ export function HabitRowMenu({
 					target?.focus();
 				}}
 			>
-				<HabitActionItems parts={CONTEXT} habit={habit} onAction={onAction} />
+				<HabitActionItems
+					parts={CONTEXT}
+					habit={habit}
+					reschedule={reschedule}
+					onAction={onAction}
+				/>
 			</ContextMenuContent>
 		</ContextMenu>
 	);

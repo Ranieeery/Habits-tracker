@@ -11,6 +11,7 @@ import {
 	type DayResponse,
 	type Habit,
 	isSupportedSchedule,
+	type MovedIn,
 	type StoredSchedule,
 } from "@habits/contracts";
 import {
@@ -24,8 +25,10 @@ import { type DayProgress, summarizeDay } from "./progress.ts";
 import {
 	isHabitPossibleOn,
 	type SchedulableHabit,
+	type ScheduleOptions,
 	type TimeZoneOptions,
 } from "./schedule.ts";
+import { hasMoves, moveTo, nextNominalAfter } from "./reschedule-index.ts";
 import { formatDayMonth } from "./schedule-text.ts";
 import { compareHabitOrder } from "./sort-key.ts";
 import { deadlineOn, firstCompletions } from "./deadline.ts";
@@ -67,6 +70,11 @@ export interface OverdueOccurrence {
 	since: CalendarDate;
 	/** Completed today: done, but still listed (checked) as overdue. */
 	completedToday: boolean;
+	/**
+	 * 2.16.0: the occurrence's nominal date when it was postponed (`since` is
+	 * then its effective date); absent otherwise.
+	 */
+	rescheduledFrom?: CalendarDate;
 }
 
 /**
@@ -82,12 +90,18 @@ export interface OverdueOccurrence {
  * - O is fulfilled by a completion in `[O, min(O + OVERDUE_DAYS, next
  *   occurrence - 1)]`, including one made on a past day; a completion before
  *   today removes the item, one today keeps it with `completedToday`.
+ * - 2.16.0: `isHabitPossibleOn` follows the postponed occurrences, so O is
+ *   the effective date of a postponed one and the failure counted there. Its
+ *   fulfillment starts at its nominal date, and with postponements the
+ *   windows end before the next **nominal** occurrence, so one completion
+ *   never fulfills two occurrences and an overdue item ends when the next
+ *   occurrence's nominal date arrives, even if that one was postponed.
  */
 export function overdueOccurrence(
 	habit: OverdueCandidate,
 	completedDates: ReadonlySet<CalendarDate>,
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): OverdueOccurrence | null {
 	if (habit.deleted_at !== null || habit.archived_at !== null) return null;
 	if (!isFixedDaySchedule(habit.schedule)) return null;
@@ -114,9 +128,24 @@ export function overdueOccurrence(
 		return { since, completedToday: completedDates.has(today) };
 	}
 
+	// 2.16.0: only habits with postponements take this path, so the others
+	// keep the exact rules (and CPU) of 2.8.0.
+	let start = since;
+	let rescheduledFrom: CalendarDate | null = null;
+	let boundary: CalendarDate | null = null;
+	if (hasMoves(habit.id, options.reschedules)) {
+		const moved = moveTo(habit, since, options.reschedules);
+		if (moved) {
+			start = moved.original;
+			rescheduledFrom = moved.original;
+		}
+		boundary = nextNominalAfter(habit, start);
+		if (boundary !== null && boundary <= today) return null;
+	}
+
 	let later = false;
 	for (const date of completedDates) {
-		if (date >= since && date < today) return null;
+		if (date >= start && date < today) return null;
 		if (date > today) later = true;
 	}
 	// A completion after today (the server accepts tomorrow) fulfills O only
@@ -125,6 +154,9 @@ export function overdueOccurrence(
 	// next occurrence is only looked for then (CPU in the cron).
 	if (later) {
 		let windowEnd = addDays(since, OVERDUE_DAYS);
+		if (boundary !== null && boundary <= windowEnd) {
+			windowEnd = addDays(boundary, -1);
+		}
 		for (let date = addDays(today, 1); date <= windowEnd;) {
 			if (isHabitPossibleOn(habit, date, options)) {
 				windowEnd = addDays(date, -1);
@@ -136,7 +168,11 @@ export function overdueOccurrence(
 			if (date > today && date <= windowEnd) return null;
 		}
 	}
-	return { since, completedToday: completedDates.has(today) };
+	return {
+		since,
+		completedToday: completedDates.has(today),
+		...(rescheduledFrom !== null && { rescheduledFrom }),
+	};
 }
 
 /** No time zone is more than 14 hours away from UTC. */
@@ -172,7 +208,7 @@ export function overdueOn<H extends OverdueCandidate & Pick<Habit, "sort_key">>(
 	habits: readonly H[],
 	completions: readonly CompletionFacts[],
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): OverdueItem<H>[] {
 	const datesByHabit = new Map<string, Set<CalendarDate>>();
 	for (const completion of completions) {
@@ -203,7 +239,7 @@ export function todayView(
 	habits: readonly Habit[],
 	completions: readonly CompletionFacts[],
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): DayResponse {
 	return {
 		...dayView(habits, completions, today, options),
@@ -211,6 +247,9 @@ export function todayView(
 			habit: item.habit,
 			since: item.since,
 			completed_today: item.completedToday,
+			...(item.rescheduledFrom !== undefined && {
+				rescheduled_from: item.rescheduledFrom,
+			}),
 		})),
 		// 2.13.0: open deadline tasks ("Com prazo"), by due date.
 		deadline: deadlineOn(habits, firstCompletions(completions), today).map(
@@ -231,7 +270,7 @@ export function pendingTodayCount(
 	habits: readonly (OverdueCandidate & Pick<Habit, "sort_key">)[],
 	completions: readonly CompletionFacts[],
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): number {
 	const { possible, completed } = summarizeDay(
 		habits,
@@ -258,6 +297,30 @@ export interface DayItem {
 	 * done late): "Já concluída em DD/MM", without a checkbox (2.13.0).
 	 */
 	completedOn: CalendarDate | null;
+	/**
+	 * 2.16.0: the nominal date of a postponed occurrence living on this day
+	 * ("Adiado de 20/10"), or of an overdue one that was postponed; absent
+	 * when it was not postponed.
+	 */
+	rescheduledFrom?: CalendarDate;
+	/** Its live postponements (absent = 0). */
+	rescheduleCount?: number;
+}
+
+/** The postponement fields of a row (none when it was not postponed). */
+export function movedInFields(moved: MovedIn | undefined): {
+	rescheduledFrom?: CalendarDate;
+	rescheduleCount?: number;
+} {
+	return moved
+		? { rescheduledFrom: moved.original_date, rescheduleCount: moved.count }
+		: {};
+}
+
+/** A habit whose occurrence left this day (2.16.0): "Adiado para 27/10". */
+export interface MovedOutItem {
+	habit: Habit;
+	toDate: CalendarDate;
 }
 
 export interface DayItems {
@@ -272,6 +335,11 @@ export interface DayItems {
 	 * same counting as `summarizeDay`.
 	 */
 	progress: DayProgress;
+	/**
+	 * 2.16.0: occurrences postponed away from this day (not in `items`);
+	 * absent when there is none.
+	 */
+	movedOut?: MovedOutItem[];
 }
 
 /**
@@ -286,6 +354,9 @@ export function dayItems(day: DayResponse): DayItems {
 	const elsewhere = new Map(
 		(day.deadline_done ?? []).map((item) => [item.habit_id, item.date])
 	);
+	const movedIn = new Map(
+		(day.moved_in ?? []).map((item) => [item.habit_id, item])
+	);
 	const overdueIds = new Set(overdue.map((item) => item.habit.id));
 	const deadlineIds = new Set(deadline.map((item) => item.habit.id));
 	const items: DayItem[] = [
@@ -295,6 +366,9 @@ export function dayItems(day: DayResponse): DayItems {
 			overdueSince: item.since,
 			dueDate: null,
 			completedOn: null,
+			...(item.rescheduled_from !== undefined && {
+				rescheduledFrom: item.rescheduled_from,
+			}),
 		})),
 		...day.possible_habits
 			.filter(
@@ -306,6 +380,7 @@ export function dayItems(day: DayResponse): DayItems {
 				overdueSince: null,
 				dueDate: null,
 				completedOn: elsewhere.get(habit.id) ?? null,
+				...movedInFields(movedIn.get(habit.id)),
 			})),
 		...deadline.map((item) => ({
 			habit: item.habit,
@@ -330,6 +405,13 @@ export function dayItems(day: DayResponse): DayItems {
 			possible: counted.length,
 			completed: counted.filter((item) => item.done).length,
 		},
+		...(day.moved_out !== undefined &&
+			day.moved_out.length > 0 && {
+				movedOut: day.moved_out.map((item) => ({
+					habit: item.habit,
+					toDate: item.to_date,
+				})),
+			}),
 	};
 }
 
@@ -340,15 +422,27 @@ export interface OverdueLabel {
 	spoken: string;
 }
 
+/**
+ * 2.16.0: with `rescheduledFrom` (a postponed occurrence that went overdue)
+ * the badge stays "Atrasado desde 27/10" and adds a discreet "· adiado".
+ */
 export function overdueLabel(
 	since: CalendarDate,
-	today: CalendarDate
+	today: CalendarDate,
+	rescheduledFrom: CalendarDate | null = null
 ): OverdueLabel {
 	const { year, month, day } = parseCalendarDate(since);
 	const sameYear = parseCalendarDate(today).year === year;
-	return {
+	const label = {
 		text: `Atrasado desde ${formatDayMonth(since, today)}`,
 		spoken: `atrasado desde ${day} de ${MONTH_NAMES[month - 1]}${sameYear ? "" : ` de ${year}`}`,
+	};
+	if (rescheduledFrom === null) return label;
+	const from = parseCalendarDate(rescheduledFrom);
+	const fromSameYear = parseCalendarDate(today).year === from.year;
+	return {
+		text: `${label.text} · adiado`,
+		spoken: `${label.spoken}, adiado de ${from.day} de ${MONTH_NAMES[from.month - 1]}${fromSameYear ? "" : ` de ${from.year}`}`,
 	};
 }
 

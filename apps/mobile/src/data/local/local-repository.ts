@@ -21,7 +21,13 @@ import {
 	firstCompletions,
 	dayView,
 	firstDayOfYear,
+	checkReschedule,
+	checkRescheduleUndo,
 	isWithinWriteWindow,
+	occurrenceState,
+	rescheduleBounds,
+	rescheduleIndex,
+	rescheduleProblemText,
 	keyAfterLast,
 	lastDayOfYear,
 	materialize,
@@ -46,6 +52,20 @@ export interface LocalRepositoryDeps {
 	onWrite: () => void;
 }
 
+/** A refused postponement as the screens see it (pt-BR reason). */
+function refused(problem: string, latest?: string, today?: string): DataError {
+	const kind =
+		problem === "limit_reached" || problem === "stale" || problem === "not_last"
+			? "conflict"
+			: problem === "too_far" ||
+				  problem === "crosses_next" ||
+				  problem === "occurrence_passed" ||
+				  problem === "undo_passed"
+				? "out_of_range"
+				: "invalid";
+	return new DataError(kind, rescheduleProblemText(problem, today, latest));
+}
+
 function invalid(error: unknown): DataError {
 	return new DataError("invalid", "Invalid data", { cause: error });
 }
@@ -66,9 +86,9 @@ export function createLocalRepository({
 	}
 
 	/** Server records plus the changes not yet confirmed by a full pull. */
-	async function view(range: DateRange | "habits") {
+	async function view(range: DateRange | "habits" | "all") {
 		const [mirror, outbox] = await Promise.all([
-			store.readMirror(range),
+			store.readMirror(range === "all" ? undefined : range),
 			store.readOutbox(),
 		]);
 		const replay = outbox
@@ -77,16 +97,30 @@ export function createLocalRepository({
 		const state = materialize(mirror, replay, { now: now(), newId });
 		const habits = [...state.habits.values()];
 		// Deadline tasks keep all their completions (their first one counts).
-		const deadlineIds = new Set(
-			habits.filter((habit) => deadlineOf(habit.schedule)).map((h) => h.id)
-		);
+		// Postponed occurrences too (2.16.0): one from the nominal date on
+		// fulfills it.
+		const reschedules = [...state.reschedules.values()];
+		const keptIds = new Set([
+			...habits.filter((habit) => deadlineOf(habit.schedule)).map((h) => h.id),
+			...reschedules
+				.filter((row) => row.deleted_at === null)
+				.map((row) => row.habit_id),
+		]);
 		const completions = [...state.completions.values()].filter(
 			(completion) =>
 				range !== "habits" &&
-				((completion.date >= range.from && completion.date <= range.to) ||
-					deadlineIds.has(completion.habit_id))
+				(range === "all" ||
+					(completion.date >= range.from && completion.date <= range.to) ||
+					keptIds.has(completion.habit_id))
 		);
-		return { habits, completions, state };
+		const live = completions.filter((c) => c.deleted_at === null);
+		return {
+			habits,
+			completions,
+			reschedules,
+			state,
+			index: rescheduleIndex(reschedules, live),
+		};
 	}
 
 	async function write(mutation: Mutation) {
@@ -200,19 +234,116 @@ export function createLocalRepository({
 			return Object.fromEntries(firstCompletions(completions));
 		},
 
+		async getReschedules() {
+			const { reschedules, completions } = await view({
+				from: "0000-01-01",
+				to: "0000-01-01",
+			});
+			return {
+				reschedules: reschedules.filter((row) => row.deleted_at === null),
+				completions: completions
+					.filter((c) => c.deleted_at === null)
+					.map(({ habit_id, date }) => ({
+						habit_id,
+						date,
+						deleted_at: null,
+					})),
+			};
+		},
+		async rescheduleHabit(habitId, request) {
+			const { timezone } = await settings();
+			const at = now();
+			const today = todayIn(timezone, at);
+			const { state } = await view("all");
+			const habit = state.habits.get(habitId);
+			if (!habit || habit.deleted_at !== null) {
+				throw new DataError("not_found", "Habit not found");
+			}
+			const rows = [...state.reschedules.values()].filter(
+				(row) => row.habit_id === habitId
+			);
+			const completedDates = [...state.completions.values()]
+				.filter((c) => c.habit_id === habitId && c.deleted_at === null)
+				.map((c) => c.date);
+			// The same rule the server runs, with today's local date (the
+			// mutation carries it: an offline postponement is judged by it).
+			const problem = checkReschedule({
+				habit,
+				rows,
+				completedDates,
+				request,
+				today,
+			});
+			if (problem) {
+				const bounds = rescheduleBounds(
+					habit,
+					occurrenceState(rows, habitId, request.original_date),
+					today
+				);
+				throw refused(problem, bounds?.max, today);
+			}
+			await write({
+				mutation_id: newId(),
+				created_at: at,
+				type: "reschedule.create",
+				habit_id: habitId,
+				...request,
+				action_date: today,
+			});
+			return {
+				...request,
+				habit_id: habitId,
+				created_at: at,
+				updated_at: at,
+				deleted_at: null,
+			};
+		},
+		async undoReschedule(habitId, rescheduleId) {
+			const { timezone } = await settings();
+			const at = now();
+			const today = todayIn(timezone, at);
+			const { state } = await view("habits");
+			const habit = state.habits.get(habitId);
+			const row = state.reschedules.get(rescheduleId);
+			if (!habit || !row || row.habit_id !== habitId) {
+				throw new DataError("not_found", "Reschedule not found");
+			}
+			if (row.deleted_at !== null) return;
+			const problem = checkRescheduleUndo({
+				habit,
+				rows: [...state.reschedules.values()],
+				row,
+				today,
+			});
+			if (problem) throw refused(problem, undefined, today);
+			await write({
+				mutation_id: newId(),
+				created_at: at,
+				type: "reschedule.undo",
+				habit_id: habitId,
+				reschedule_id: rescheduleId,
+				action_date: today,
+			});
+		},
+
 		async getDay(date) {
 			const { timezone } = await settings();
 			// Today also lists the overdue fixed-day habits (2.8.0), from the
 			// local completions of the last OVERDUE_DAYS, like the API does.
 			if (date === todayIn(timezone, now())) {
-				const { habits, completions } = await view(overdueRange(date));
+				const { habits, completions, index } = await view(overdueRange(date));
 				return todayView(sortHabits(habits), completions, date, {
 					timeZone: timezone,
+					reschedules: index,
 				});
 			}
-			const { habits, completions } = await view({ from: date, to: date });
+			const { habits, completions, index } = await view({
+				from: date,
+				to: date,
+			});
 			return dayView(sortHabits(habits), completions, date, {
 				timeZone: timezone,
+				reschedules: index,
 			});
 		},
 		async getYearSummary(year, { habitId } = {}) {
@@ -235,6 +366,7 @@ export function createLocalRepository({
 				year,
 				today,
 				timeZone: timezone,
+				reschedules: all.index,
 			});
 		},
 		async setCompletion(habitId, date, completed) {

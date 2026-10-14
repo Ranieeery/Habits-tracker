@@ -7,10 +7,13 @@ import {
 	descriptionFirstLine,
 	hasDescription,
 	overdueLabel,
+	rescheduleAvailability,
+	rescheduledLabel,
 } from "@habits/core";
 import { useState } from "react";
 import { nightColors } from "@habits/design-tokens";
 import { Text, View } from "react-native";
+import { useToday } from "@/data/today.ts";
 import { DescriptionSheet } from "@/features/habits/description-sheet.tsx";
 import { useHabitActionsSheet } from "./habit-actions-sheet.tsx";
 import { HabitRow } from "./habit-row.tsx";
@@ -21,6 +24,9 @@ import { HabitRow } from "./habit-row.tsx";
  * open deadline tasks under "Com prazo", by due date, with their badge.
  * 2.15.0: with `actions` (only the Hoje tab), every row opens the habit's
  * actions sheet (one per list); days opened from the history have none.
+ * 2.16.0: the sheet also offers "Adiar" on the rows whose occurrence lives
+ * on the day shown (core's `rescheduleAvailability`), and a postponed one
+ * carries "Adiado de 20/10".
  */
 export function DayItemsList({
 	date,
@@ -37,6 +43,7 @@ export function DayItemsList({
 }) {
 	const [described, setDescribed] = useState<Habit | null>(null);
 	const menu = useHabitActionsSheet();
+	const today = useToday();
 	return (
 		<View className="overflow-hidden rounded-xl border border-night-border bg-night-surface">
 			<DescriptionSheet habit={described} onClose={() => setDescribed(null)} />
@@ -69,7 +76,16 @@ export function DayItemsList({
 						overdue={
 							item.overdueSince === null
 								? null
-								: overdueLabel(item.overdueSince, date)
+								: overdueLabel(
+										item.overdueSince,
+										date,
+										item.rescheduledFrom ?? null
+									)
+						}
+						moved={
+							item.rescheduledFrom !== undefined && item.overdueSince === null
+								? rescheduledLabel(item.rescheduledFrom, today)
+								: null
 						}
 						due={
 							item.dueDate === null ? null : deadlineLabel(item.dueDate, date)
@@ -87,7 +103,24 @@ export function DayItemsList({
 						}
 						archived={item.habit.archived_at !== null}
 						onShowActions={
-							actions ? (origin) => menu.show(item.habit, origin) : undefined
+							actions
+								? (origin) =>
+										menu.show(item.habit, origin, {
+											availability: rescheduleAvailability(item.habit, {
+												date,
+												today,
+												overdue: item.overdueSince !== null,
+												done: item.done,
+												rescheduledFrom: item.rescheduledFrom ?? null,
+												count: item.rescheduleCount ?? 0,
+											}),
+											occurrence: {
+												original: item.rescheduledFrom ?? date,
+												effective: date,
+												count: item.rescheduleCount ?? 0,
+											},
+										})
+								: undefined
 						}
 						onToggle={(checked) => onToggle(item.habit, checked)}
 					/>

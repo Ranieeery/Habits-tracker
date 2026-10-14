@@ -1,6 +1,11 @@
 // How a mutation the server refused is shown in the failures list (pt-BR).
 import type { ApiErrorBody, Mutation } from "@habits/contracts";
-import { BACKFILL_DAYS, isCalendarDate } from "@habits/core";
+import {
+	BACKFILL_DAYS,
+	isCalendarDate,
+	isRescheduleProblem,
+	rescheduleProblemText,
+} from "@habits/core";
 import { formatShortDate } from "@/lib/format.ts";
 import type { OutboxEntry } from "../local/store.ts";
 import { DEPENDENCY_FAILED_CODE } from "./engine.ts";
@@ -33,6 +38,16 @@ export function failureReason(
 	error: Pick<ApiErrorBody, "code" | "details"> | null | undefined
 ): string {
 	const code = error?.code;
+	// 2.16.0: a refused postponement says why in core's words.
+	const reason = (error?.details as { reason?: unknown } | undefined)?.reason;
+	if (typeof reason === "string" && isRescheduleProblem(reason)) {
+		const latest = (error?.details as { latest?: unknown }).latest;
+		return rescheduleProblemText(
+			reason,
+			undefined,
+			typeof latest === "string" ? latest : undefined
+		);
+	}
 	if (code === "date_out_of_range") {
 		const earliest = earliestOf(error?.details);
 		if (earliest) {
@@ -86,6 +101,10 @@ export function describeMutation(
 			return `Restaurar ${nameOf(mutation.habit_id)}`;
 		case "completion.set":
 			return `${mutation.completed ? "Marcar" : "Desmarcar"} ${nameOf(mutation.habit_id)} em ${formatShortDate(mutation.date)}`;
+		case "reschedule.create":
+			return `Adiar ${nameOf(mutation.habit_id)} de ${formatShortDate(mutation.from_date)} para ${formatShortDate(mutation.to_date)}`;
+		case "reschedule.undo":
+			return `Desfazer o adiamento de ${nameOf(mutation.habit_id)}`;
 		default: {
 			const unknown: never = mutation;
 			return String(unknown);

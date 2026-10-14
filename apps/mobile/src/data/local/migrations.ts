@@ -63,6 +63,23 @@ export const MIGRATIONS: readonly string[] = [
 	`
 	ALTER TABLE habits ADD COLUMN description TEXT NOT NULL DEFAULT '';
 	`,
+	// 4 (2.16.0): postponed occurrences, mirrored like habits and completions.
+	// Rows the server already had are behind the cursor: the engine pulls
+	// everything again once (`mirror_version`).
+	`
+	CREATE TABLE reschedules (
+		id TEXT PRIMARY KEY NOT NULL,
+		habit_id TEXT NOT NULL,
+		original_date TEXT NOT NULL,
+		from_date TEXT NOT NULL,
+		to_date TEXT NOT NULL,
+		sequence INTEGER NOT NULL,
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL,
+		deleted_at INTEGER
+	);
+	CREATE INDEX reschedules_habit_idx ON reschedules (habit_id);
+	`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<number> {

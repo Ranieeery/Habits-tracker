@@ -15,9 +15,19 @@ import type {
 	Completion,
 	ErrorCode,
 	Habit,
+	HabitReschedule,
 	Mutation,
 	UpdateHabitRequest,
 } from "@habits/contracts";
+import {
+	checkReschedule,
+	checkRescheduleUndo,
+	newReschedule,
+	occurrenceState,
+	rescheduleBounds,
+	rescheduleError,
+	undoReschedule,
+} from "./reschedule.ts";
 import {
 	checkHabitDates,
 	earliestStartDate,
@@ -196,13 +206,21 @@ export interface SyncState {
 	habits: Map<string, Habit>;
 	/** By `completionKey`. */
 	completions: Map<string, Completion>;
+	/** Postponed occurrences (2.16.0), by id, tombstones included. */
+	reschedules: Map<string, HabitReschedule>;
 }
 
 export function syncState(
 	habits: Iterable<Habit>,
-	completions: Iterable<Completion>
+	completions: Iterable<Completion>,
+	reschedules: Iterable<HabitReschedule> = []
 ): SyncState {
-	const state: SyncState = { habits: new Map(), completions: new Map() };
+	const state: SyncState = {
+		habits: new Map(),
+		completions: new Map(),
+		reschedules: new Map(),
+	};
+	for (const row of reschedules) state.reschedules.set(row.id, row);
 	for (const habit of habits) state.habits.set(habit.id, habit);
 	for (const completion of completions) {
 		state.completions.set(
@@ -426,11 +444,112 @@ export function applyMutation(
 				changed: result.changed,
 			};
 		}
+		case "reschedule.create": {
+			const habit = liveHabit(state, mutation.habit_id);
+			if (!habit) return reject("not_found", "Habit not found");
+			const existing = state.reschedules.get(mutation.id);
+			if (existing) {
+				return existing.habit_id === mutation.habit_id
+					? { status: "applied", canonical_id: existing.id, changed: false }
+					: reject("conflict", "Reschedule id already in use");
+			}
+			if (ctx.isIdTaken?.(mutation.id)) {
+				return reject("conflict", "Reschedule id already in use");
+			}
+			const outside = actionDateError(mutation.action_date, ctx.today);
+			if (outside) return outside;
+			const rows = reschedulesOf(state, habit.id);
+			const problem = checkReschedule({
+				habit,
+				rows,
+				completedDates: completedDatesOf(state, habit.id),
+				request: mutation,
+				today: mutation.action_date,
+			});
+			if (problem) {
+				const bounds = rescheduleBounds(
+					habit,
+					occurrenceState(rows, habit.id, mutation.original_date),
+					mutation.action_date
+				);
+				return {
+					status: "rejected",
+					error: rescheduleError(problem, bounds),
+				};
+			}
+			state.reschedules.set(
+				mutation.id,
+				newReschedule({ ...mutation, habit_id: habit.id }, ctx.now)
+			);
+			return { status: "applied", canonical_id: mutation.id, changed: true };
+		}
+		case "reschedule.undo": {
+			const habit = liveHabit(state, mutation.habit_id);
+			if (!habit) return reject("not_found", "Habit not found");
+			const row = state.reschedules.get(mutation.reschedule_id);
+			if (!row || row.habit_id !== habit.id) {
+				return reject("not_found", "Reschedule not found");
+			}
+			if (row.deleted_at !== null) {
+				return { status: "applied", canonical_id: row.id, changed: false };
+			}
+			const outside = actionDateError(mutation.action_date, ctx.today);
+			if (outside) return outside;
+			const problem = checkRescheduleUndo({
+				habit,
+				rows: reschedulesOf(state, habit.id),
+				row,
+				today: mutation.action_date,
+			});
+			if (problem) {
+				return { status: "rejected", error: rescheduleError(problem) };
+			}
+			state.reschedules.set(row.id, undoReschedule(row, ctx.now).row);
+			return { status: "applied", canonical_id: row.id, changed: true };
+		}
 		default: {
 			const unknown: never = mutation;
 			throw new Error(`Unknown mutation: ${JSON.stringify(unknown)}`);
 		}
 	}
+}
+
+/**
+ * The device's date of a postponement (2.16.0) is accepted within the same
+ * window as completion dates (`[today - BACKFILL_DAYS, today + 1]`), so one
+ * made offline still applies when it syncs later; the rules then run with
+ * that date as "today". Without `today` (the app) nothing is checked here.
+ */
+function actionDateError(
+	actionDate: CalendarDate,
+	today: CalendarDate | undefined
+): ApplyOutcome | null {
+	if (today === undefined || isWithinWriteWindow(actionDate, today)) {
+		return null;
+	}
+	return reject(
+		"date_out_of_range",
+		"Action date is outside the accepted window",
+		writeWindow(today)
+	);
+}
+
+function reschedulesOf(state: SyncState, habitId: string): HabitReschedule[] {
+	const rows: HabitReschedule[] = [];
+	for (const row of state.reschedules.values()) {
+		if (row.habit_id === habitId) rows.push(row);
+	}
+	return rows;
+}
+
+function completedDatesOf(state: SyncState, habitId: string): CalendarDate[] {
+	const dates: CalendarDate[] = [];
+	for (const completion of state.completions.values()) {
+		if (completion.habit_id === habitId && completion.deleted_at === null) {
+			dates.push(completion.date);
+		}
+	}
+	return dates;
 }
 
 /**
@@ -440,11 +559,19 @@ export function applyMutation(
  * shows the server state for it.
  */
 export function materialize(
-	mirror: { habits: Iterable<Habit>; completions: Iterable<Completion> },
+	mirror: {
+		habits: Iterable<Habit>;
+		completions: Iterable<Completion>;
+		reschedules?: Iterable<HabitReschedule>;
+	},
 	pending: readonly Mutation[],
 	ctx: ApplyContext
 ): SyncState {
-	const state = syncState(mirror.habits, mirror.completions);
+	const state = syncState(
+		mirror.habits,
+		mirror.completions,
+		mirror.reschedules ?? []
+	);
 	for (const mutation of pending) applyMutation(state, mutation, ctx);
 	return state;
 }
@@ -458,6 +585,8 @@ export function habitDependency(mutation: Mutation): string | null {
 		case "habit.delete":
 		case "habit.restore":
 		case "completion.set":
+		case "reschedule.create":
+		case "reschedule.undo":
 			return mutation.habit_id;
 		default: {
 			const unknown: never = mutation;

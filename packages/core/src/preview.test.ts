@@ -21,8 +21,9 @@ import {
 import { dayStreaks } from "./streaks.ts";
 import { dayView, summarizeYear } from "./views.ts";
 import { todayIn } from "./window.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const TZ = { timeZone: "America/Sao_Paulo" };
+const TZ = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 
 let counter = 0;
 function habit(schedule: Schedule, overrides: Partial<Habit> = {}): Habit {

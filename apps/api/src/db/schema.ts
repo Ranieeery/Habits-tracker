@@ -118,6 +118,44 @@ export const completions = sqliteTable(
 	]
 );
 
+/**
+ * One postponement of one occurrence of a fixed-day habit (2.16.0, core
+ * `reschedule.ts`). Append-only: undoing sets `deleted_at`. The partial
+ * unique index keeps one live row per occurrence and sequence, so two
+ * devices can never both write the same postponement (the limit of
+ * `MAX_RESCHEDULES` holds offline too). Live rows are never purged: the
+ * nominal day depends on them forever.
+ */
+export const habitReschedules = sqliteTable(
+	"habit_reschedules",
+	{
+		id: id(),
+		user_id: userId(),
+		habit_id: text()
+			.notNull()
+			.references(() => habits.id, { onDelete: "cascade" }),
+		original_date: text().notNull(),
+		from_date: text().notNull(),
+		to_date: text().notNull(),
+		sequence: integer().notNull(),
+		...timestamps,
+		deleted_at: timestampMs(),
+		server_seq: serverSeq(),
+	},
+	(t) => [
+		index("habit_reschedules_user_habit_idx").on(t.user_id, t.habit_id),
+		index("habit_reschedules_user_seq_idx").on(t.user_id, t.server_seq),
+		uniqueIndex("habit_reschedules_live_unique")
+			.on(t.habit_id, t.original_date, t.sequence)
+			.where(sql`${t.deleted_at} IS NULL`),
+		check(
+			"habit_reschedules_dates_check",
+			sql`${isCalendarDate(t.original_date)} AND ${isCalendarDate(t.from_date)} AND ${isCalendarDate(t.to_date)} AND ${t.to_date} > ${t.from_date}`
+		),
+		check("habit_reschedules_sequence_check", sql`${t.sequence} >= 1`),
+	]
+);
+
 export const userSettings = sqliteTable(
 	"user_settings",
 	{
@@ -181,6 +219,7 @@ export const pushSubscriptions = sqliteTable(
 
 export type HabitRow = typeof habits.$inferSelect;
 export type CompletionRow = typeof completions.$inferSelect;
+export type HabitRescheduleRow = typeof habitReschedules.$inferSelect;
 export type UserSettingsRow = typeof userSettings.$inferSelect;
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
 

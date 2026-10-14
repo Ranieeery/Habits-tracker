@@ -689,3 +689,160 @@ describe("deleting habits (2.11.0)", () => {
 		expect(await repository.listHabits()).toEqual([]);
 	});
 });
+
+describe("postponing an occurrence (2.16.0)", () => {
+	/** "Pagar conta", on day 9 of every month, created by another device. */
+	function monthlyOnServer(server: FakeServer): string {
+		const id = uuidV7(NOW, randomBytes());
+		server.write({
+			mutation_id: uuidV7(NOW, randomBytes()),
+			created_at: NOW,
+			type: "habit.create",
+			id,
+			name: "Pagar conta",
+			schedule: { type: "monthly_days", days: [9] },
+			start_date: "2026-10-01",
+		});
+		return id;
+	}
+	const request = (id: string, to: string, sequence = 1, from = TODAY) => ({
+		id,
+		original_date: TODAY,
+		from_date: from,
+		to_date: to,
+		sequence,
+	});
+
+	it("postpones offline at once, and syncs the next day judged by the day it was made", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = monthlyOnServer(server);
+		const { engine, repository, store, newId, setNow } = await setup({
+			server,
+		});
+		await engine.sync("launch");
+
+		engine.setOnline(false);
+		await repository.rescheduleHabit(habitId, request(newId(), "2026-10-16"));
+		expect((await repository.getDay(TODAY)).possible_habits).toEqual([]);
+		const moved = await repository.getDay("2026-10-16");
+		expect(moved.possible_habits.map((h) => h.id)).toEqual([habitId]);
+		expect(moved.moved_in).toEqual([
+			{ habit_id: habitId, original_date: TODAY, count: 1 },
+		]);
+		const [entry] = await store.readOutbox();
+		expect(entry?.mutation).toMatchObject({
+			type: "reschedule.create",
+			action_date: TODAY,
+		});
+
+		// Back online on the next day: E (today) already went by, but the
+		// rule runs with the action's date.
+		setNow(NOW + DAY_MS);
+		engine.setOnline(true);
+		await engine.sync("manual");
+		expect(engine.getStatus()).toMatchObject({ pending: 0, failed: 0 });
+		expect([...server.state.reschedules.values()]).toEqual([
+			expect.objectContaining({ habit_id: habitId, to_date: "2026-10-16" }),
+		]);
+		expect((await repository.getReschedules()).reschedules).toHaveLength(1);
+	});
+
+	it("checks the limit locally, with core's reason", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = monthlyOnServer(server);
+		const { engine, repository, newId } = await setup({ server });
+		await engine.sync("launch");
+		await repository.rescheduleHabit(habitId, request(newId(), "2026-10-10"));
+		await repository.rescheduleHabit(
+			habitId,
+			request(newId(), "2026-10-11", 2, "2026-10-10")
+		);
+		await expect(
+			repository.rescheduleHabit(
+				habitId,
+				request(newId(), "2026-10-12", 3, "2026-10-11")
+			)
+		).rejects.toMatchObject({
+			kind: "conflict",
+			message: "Limite de 2 adiamentos atingido",
+		});
+		await expect(
+			repository.rescheduleHabit(habitId, request(newId(), "2026-11-09"))
+		).rejects.toMatchObject({ kind: "conflict" });
+	});
+
+	it("two devices: the second postponement fails for good and the screen goes back to the server", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = monthlyOnServer(server);
+		const { engine, repository, newId } = await setup({ server });
+		await engine.sync("launch");
+
+		engine.setOnline(false);
+		await repository.rescheduleHabit(habitId, request(newId(), "2026-10-20"));
+		// Meanwhile the other phone postponed the same occurrence.
+		server.write({
+			mutation_id: uuidV7(NOW, randomBytes()),
+			created_at: NOW,
+			type: "reschedule.create",
+			habit_id: habitId,
+			...request(uuidV7(NOW, randomBytes()), "2026-10-14"),
+			action_date: TODAY,
+		});
+
+		engine.setOnline(true);
+		await engine.sync("manual");
+		expect(engine.getStatus()).toMatchObject({ pending: 0, failed: 1 });
+		// The failed one is no longer replayed: the server's date shows.
+		expect(
+			(await repository.getDay("2026-10-14")).possible_habits.map((h) => h.id)
+		).toEqual([habitId]);
+		expect((await repository.getDay("2026-10-20")).possible_habits).toEqual([]);
+	});
+
+	it("undo before syncing leaves the server untouched", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = monthlyOnServer(server);
+		const { engine, repository, newId } = await setup({ server });
+		await engine.sync("launch");
+		engine.setOnline(false);
+		const id = newId();
+		await repository.rescheduleHabit(habitId, request(id, "2026-10-16"));
+		await repository.undoReschedule(habitId, id);
+		expect(
+			(await repository.getDay(TODAY)).possible_habits.map((h) => h.id)
+		).toEqual([habitId]);
+		engine.setOnline(true);
+		await engine.sync("manual");
+		expect(server.state.reschedules.get(id)?.deleted_at).toBe(NOW);
+		expect(
+			(await repository.getDay(TODAY)).possible_habits.map((h) => h.id)
+		).toEqual([habitId]);
+	});
+
+	it("pulls everything once more when the mirror predates postponements", async () => {
+		const server = createFakeServer(NOW);
+		const habitId = monthlyOnServer(server);
+		const store = createLocalStore(async () => openNodeDatabase());
+		const first = await setup({ server, store });
+		await first.engine.sync("launch");
+		// A mirror pulled by 2.15.0: no `mirror_version`, and a postponement
+		// the web wrote before this build is behind the cursor.
+		await store.setMeta("mirror_version", null);
+		server.write({
+			mutation_id: uuidV7(NOW, randomBytes()),
+			created_at: NOW,
+			type: "reschedule.create",
+			habit_id: habitId,
+			...request(uuidV7(NOW, randomBytes()), "2026-10-14"),
+			action_date: TODAY,
+		});
+		await first.engine.sync("manual");
+		expect(server.calls.pull.at(-1)).toBeNull();
+		expect((await store.getMeta("mirror_version")) ?? "").toBe("2");
+		expect(
+			(await first.repository.getDay("2026-10-14")).possible_habits.map(
+				(h) => h.id
+			)
+		).toEqual([habitId]);
+	});
+});

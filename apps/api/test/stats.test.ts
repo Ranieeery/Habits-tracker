@@ -1,7 +1,12 @@
 // GET /v1/day and /v1/summary against the dev seed, compared with what
 // `@habits/core` computes from the same records.
 import type { DayResponse, SummaryResponse } from "@habits/contracts";
-import { eachDay, isHabitPossibleOn, summarizeDay } from "@habits/core";
+import {
+	eachDay,
+	isHabitPossibleOn,
+	NO_RESCHEDULES,
+	summarizeDay,
+} from "@habits/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { hashPassword } from "../src/auth/password.ts";
 import { applySeed } from "../src/db/seed/apply.ts";
@@ -14,7 +19,7 @@ import {
 import { bearerOf, db, makeApi, resetDb, signIn } from "./helpers.ts";
 
 const seed = buildSeed();
-const options = { timeZone: SEED_TIME_ZONE };
+const options = { timeZone: SEED_TIME_ZONE, reschedules: NO_RESCHEDULES };
 // Midday of the seed's "today" in São Paulo.
 const api = makeApi(`${seed.today}T15:00:00Z`);
 let headers: Record<string, string>;

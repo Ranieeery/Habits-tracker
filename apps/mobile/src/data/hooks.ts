@@ -4,13 +4,19 @@
 import type {
 	CalendarDate,
 	CreateHabitRequest,
+	CreateRescheduleRequest,
 	Habit,
+	ReschedulesResponse,
 	SummaryDay,
 	UpdateHabitRequest,
 } from "@habits/contracts";
 import {
 	moveHabit,
+	NO_RESCHEDULES,
 	parseCalendarDate,
+	type RescheduleIndex,
+	rescheduleIndex,
+	type ScheduleOptions,
 	type SortKeyChange,
 	withSortKeys,
 } from "@habits/core";
@@ -22,7 +28,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { SessionState } from "./auth.ts";
 import {
 	type CompletionChange,
@@ -32,6 +38,7 @@ import {
 import { unregisterThisDevice } from "./push-registration.ts";
 import type { DayData } from "./repository.ts";
 import { prepareLocalData, useServices } from "./services.ts";
+import { useUserTimeZone } from "./today.ts";
 import { unregisterBackgroundSync } from "./sync/background.ts";
 
 export {
@@ -51,6 +58,8 @@ export const queryKeys = {
 	days: ["day"] as const,
 	day: (date: CalendarDate) => ["day", date] as const,
 	summaries: ["summary"] as const,
+	/** Live postponed occurrences (2.16.0) and their habits' completions. */
+	reschedules: ["reschedules"] as const,
 	summary: (year: number, habitId?: string) =>
 		habitId === undefined
 			? (["summary", year] as const)
@@ -63,6 +72,7 @@ export function invalidateHabitData(queryClient: QueryClient) {
 		queryClient.invalidateQueries({ queryKey: queryKeys.habits }),
 		queryClient.invalidateQueries({ queryKey: queryKeys.days }),
 		queryClient.invalidateQueries({ queryKey: queryKeys.summaries }),
+		queryClient.invalidateQueries({ queryKey: queryKeys.reschedules }),
 	]);
 }
 
@@ -255,6 +265,71 @@ export function useUpdateHabit() {
 	});
 }
 
+// One index per loaded response, shared by every card that reads it.
+const indexes = new WeakMap<ReschedulesResponse, RescheduleIndex>();
+function indexFor(data: ReschedulesResponse): RescheduleIndex {
+	let index = indexes.get(data);
+	if (!index) {
+		index = rescheduleIndex(data.reschedules, data.completions);
+		indexes.set(data, index);
+	}
+	return index;
+}
+
+/**
+ * The postponed occurrences (2.16.0) as core's index, with the time zone: what
+ * the screens that compute from the habits list pass to core (cards,
+ * "Próximos", the habit form). None until they load.
+ */
+export function useScheduleOptions(): ScheduleOptions {
+	const { repository } = useServices();
+	const timeZone = useUserTimeZone();
+	const query = useQuery({
+		queryKey: queryKeys.reschedules,
+		queryFn: () => repository.getReschedules(),
+	});
+	const { data } = query;
+	return useMemo(
+		() => ({
+			timeZone,
+			reschedules: data ? indexFor(data) : NO_RESCHEDULES,
+		}),
+		[timeZone, data]
+	);
+}
+
+/** Postpones one occurrence (2.16.0), through the outbox (offline too). */
+export function useRescheduleHabit() {
+	const { repository } = useServices();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({
+			habitId,
+			request,
+		}: {
+			habitId: string;
+			request: CreateRescheduleRequest;
+		}) => repository.rescheduleHabit(habitId, request),
+		onSuccess: () => invalidateHabitData(queryClient),
+	});
+}
+
+/** Undoes the last postponement of an occurrence ("Desfazer"). */
+export function useUndoReschedule() {
+	const { repository } = useServices();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({
+			habitId,
+			rescheduleId,
+		}: {
+			habitId: string;
+			rescheduleId: string;
+		}) => repository.undoReschedule(habitId, rescheduleId),
+		onSuccess: () => invalidateHabitData(queryClient),
+	});
+}
+
 /** Deletes an archived habit (2.11.0), through the outbox (offline too). */
 export function useDeleteHabit() {
 	const { repository } = useServices();
@@ -432,6 +507,8 @@ export function useToggleCompletion(
 			return Promise.all([
 				client.invalidateQueries({ queryKey: queryKeys.days }),
 				client.invalidateQueries({ queryKey: queryKeys.summaries }),
+				// 2.16.0: a completion can fulfill a postponed occurrence early.
+				client.invalidateQueries({ queryKey: queryKeys.reschedules }),
 				client.invalidateQueries({
 					queryKey: [...queryKeys.habits, "deadline-firsts"],
 				}),

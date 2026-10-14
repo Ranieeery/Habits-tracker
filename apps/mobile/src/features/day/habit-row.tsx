@@ -27,7 +27,8 @@ import { LONG_PRESS_MS } from "./long-press.ts";
  * disabled (the long press must work), but a tap does nothing and they still
  * read as disabled. Without it (days opened from the history), neither. An
  * archived habit still listed (today or a past day) carries the "Arquivado"
- * badge.
+ * badge. 2.16.0: a postponed occurrence on its new day carries "Adiado de
+ * 20/10" (icon and text, neutral), read with the name.
  */
 export function HabitRow({
 	name,
@@ -40,6 +41,7 @@ export function HabitRow({
 	descriptionLine = "",
 	onShowDescription,
 	archived = false,
+	moved = null,
 	onShowActions,
 	onToggle,
 }: {
@@ -60,6 +62,8 @@ export function HabitRow({
 	/** Present when the habit has a description (2.12.0): the note icon. */
 	onShowDescription?: () => void;
 	archived?: boolean;
+	/** 2.16.0: "Adiado de 20/10". */
+	moved?: { text: string; spoken: string } | null;
 	/**
 	 * Opens the actions sheet (only on the Hoje tab); `origin` gets the focus
 	 * back on closing.
@@ -85,6 +89,7 @@ export function HabitRow({
 					name,
 					overdue?.spoken,
 					due?.spoken,
+					moved?.spoken,
 					doneOn?.spoken,
 					archived && "arquivado",
 				]
@@ -153,6 +158,21 @@ export function HabitRow({
 								className={`text-xs font-medium ${due.dueToday ? "text-night-warning" : "text-night-accent-text"}`}
 							>
 								{due.text}
+							</Text>
+						</View>
+					) : null}
+					{moved ? (
+						<View
+							importantForAccessibility="no-hide-descendants"
+							className="flex-row items-center gap-1 rounded-md border border-night-border-strong px-2 py-0.5"
+						>
+							<MaterialCommunityIcons
+								name="calendar-arrow-right"
+								size={14}
+								color={nightColors.muted}
+							/>
+							<Text className="text-xs font-medium text-night-muted">
+								{moved.text}
 							</Text>
 						</View>
 					) : null}

@@ -4,8 +4,8 @@ import { nightColors } from "@habits/design-tokens";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Text, View } from "react-native";
 import Animated, { FadeInDown, ReduceMotion } from "react-native-reanimated";
-import { isSettled, useHabits } from "@/data/hooks.ts";
-import { useToday, useUserTimeZone } from "@/data/today.ts";
+import { isSettled, useHabits, useScheduleOptions } from "@/data/hooks.ts";
+import { useToday } from "@/data/today.ts";
 import { Backdrop } from "@/ui/backdrop.tsx";
 import { Button } from "@/ui/button.tsx";
 import { DescriptionText } from "@/ui/description-text.tsx";
@@ -32,7 +32,7 @@ export function HabitAboutScreen() {
 	const router = useRouter();
 	const habits = useHabits();
 	const today = useToday();
-	const timeZone = useUserTimeZone();
+	const scheduleOptions = useScheduleOptions();
 	useHideSplashWhen(isSettled(habits));
 	const habit = habits.data?.find((item) => item.id === id);
 	const edit = () => router.push(`/habit/${id}`);
@@ -71,7 +71,7 @@ export function HabitAboutScreen() {
 							/>
 						);
 					}
-					const badge = nextBadge(found, today, timeZone);
+					const badge = nextBadge(found, today, scheduleOptions);
 					return (
 						<View className="gap-8">
 							<Animated.View entering={HEADER_ENTER}>

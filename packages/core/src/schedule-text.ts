@@ -11,7 +11,7 @@ import {
 	isHabitPossibleOn,
 	nextOccurrence,
 	type SchedulableHabit,
-	type TimeZoneOptions,
+	type ScheduleOptions,
 } from "./schedule.ts";
 
 /** Short pt-BR weekday names, Sunday = 0. */
@@ -181,7 +181,7 @@ export function repeatSummary(
 export function newHabitNotice(
 	habit: SchedulableHabit,
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): string | null {
 	if (isHabitPossibleOn(habit, today, options)) return null;
 	const { schedule } = habit;

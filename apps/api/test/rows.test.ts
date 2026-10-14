@@ -3,6 +3,7 @@
 import type {
 	Completion,
 	Habit,
+	HabitReschedule,
 	PushSubscription,
 	UserSettings,
 } from "@habits/contracts";
@@ -16,6 +17,7 @@ import {
 } from "../src/db/records.ts";
 import type {
 	CompletionRow,
+	HabitRescheduleRow,
 	HabitRow,
 	PushSubscriptionRow,
 	UserSettingsRow,
@@ -36,6 +38,9 @@ describe("row types", () => {
 		expectTypeOf<
 			Omit<UserSettingsRow, "user_id">
 		>().toEqualTypeOf<UserSettings>();
+		expectTypeOf<
+			Omit<HabitRescheduleRow, "user_id" | "server_seq">
+		>().toEqualTypeOf<HabitReschedule>();
 	});
 
 	it("store every field of every push subscription kind", () => {

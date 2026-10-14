@@ -1,5 +1,5 @@
 import type { CalendarDate } from "@habits/contracts";
-import { newHabitNotice } from "@habits/core";
+import { NO_RESCHEDULES, newHabitNotice } from "@habits/core";
 import { useEffect, useRef, useState } from "react";
 import type { View } from "react-native";
 import {
@@ -83,7 +83,10 @@ export function NewHabitSheet({ today }: { today: CalendarDate }) {
 				onSuccess: (habit) => {
 					sending.current = false;
 					setHabitId(null);
-					const notice = newHabitNotice(habit, today, { timeZone });
+					const notice = newHabitNotice(habit, today, {
+						timeZone,
+						reschedules: NO_RESCHEDULES,
+					});
 					if (notice) toast("success", notice);
 				},
 				onError: (failure) => {

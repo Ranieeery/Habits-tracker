@@ -15,6 +15,7 @@ import { errorName, log } from "./lib/log.ts";
 import { completionRoutes } from "./routes/completions.ts";
 import { habitRoutes } from "./routes/habits.ts";
 import { pushRoutes } from "./routes/push.ts";
+import { rescheduleRoutes } from "./routes/reschedules.ts";
 import { settingsRoutes } from "./routes/settings.ts";
 import { statsRoutes } from "./routes/stats.ts";
 import { syncRoutes } from "./routes/sync.ts";
@@ -112,6 +113,7 @@ export function createApp({
 
 	return app
 		.route("/", habitRoutes)
+		.route("/", rescheduleRoutes)
 		.route("/", completionRoutes)
 		.route("/", statsRoutes)
 		.route("/", settingsRoutes)

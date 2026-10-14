@@ -1,8 +1,7 @@
 import type { CalendarDate } from "@habits/contracts";
 import { formatRelativeDate, UPCOMING_DAYS, upcoming } from "@habits/core";
 import { Text, View } from "react-native";
-import { useHabits } from "@/data/hooks.ts";
-import { useUserTimeZone } from "@/data/today.ts";
+import { useHabits, useScheduleOptions } from "@/data/hooks.ts";
 
 /**
  * "Próximos" on today's screen (read-only): the coming dates of habits that
@@ -11,9 +10,10 @@ import { useUserTimeZone } from "@/data/today.ts";
  */
 export function UpcomingSection({ today }: { today: CalendarDate }) {
 	const habits = useHabits();
-	const timeZone = useUserTimeZone();
+	const options = useScheduleOptions();
 	if (!habits.data) return null;
-	const items = upcoming(habits.data, today, { timeZone });
+	// 2.16.0: a postponed occurrence shows on its new date.
+	const items = upcoming(habits.data, today, options);
 	if (items.length === 0) return null;
 
 	return (

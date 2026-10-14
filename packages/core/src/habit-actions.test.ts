@@ -12,6 +12,7 @@ describe("habit actions", () => {
 	it("keeps one ordered list with every label", () => {
 		expect(HABIT_ACTIONS.map((action) => [action.id, action.label])).toEqual([
 			["edit", "Editar hábito"],
+			["reschedule", "Adiar"],
 			["description", "Ver descrição completa"],
 			["archive", "Arquivar"],
 			["unarchive", "Desarquivar"],

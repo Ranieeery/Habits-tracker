@@ -4,7 +4,7 @@ import { firstCompletions } from "./deadline.ts";
 import {
 	countOn,
 	type SchedulableHabit,
-	type TimeZoneOptions,
+	type ScheduleOptions,
 } from "./schedule.ts";
 
 /** Heatmap intensity levels, 0 (nothing done) to 5. */
@@ -45,7 +45,7 @@ export function summarizeDay(
 	habits: readonly (SchedulableHabit & Pick<Habit, "id">)[],
 	completions: readonly Pick<Completion, "habit_id" | "date" | "deleted_at">[],
 	date: CalendarDate,
-	options: TimeZoneOptions,
+	options: ScheduleOptions,
 	first: ReadonlyMap<string, CalendarDate> = firstCompletions(completions)
 ): DayProgress {
 	const done = new Set(

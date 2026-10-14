@@ -6,6 +6,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog.tsx";
+import { useScheduleOptions } from "@/lib/use-schedule-options.ts";
 import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
 import { HabitForm } from "./habit-form.tsx";
 import { useEditHabit } from "./use-edit-habit.ts";
@@ -27,6 +28,7 @@ export function EditHabitDialog({
 }) {
 	const today = useToday();
 	const timeZone = useUserTimeZone();
+	const { options } = useScheduleOptions();
 	const save = useEditHabit(habit, () => onOpenChange(false));
 
 	return (
@@ -45,6 +47,7 @@ export function EditHabitDialog({
 						initial={habit}
 						today={today}
 						timeZone={timeZone}
+						reschedules={options.reschedules}
 						submitLabel="Salvar"
 						pending={save.isPending}
 						onSubmit={(values) => save.mutate(values)}

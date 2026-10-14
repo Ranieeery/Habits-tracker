@@ -3,7 +3,7 @@ import { type CalendarDate, eachDay } from "./dates.ts";
 import {
 	countOn,
 	type SchedulableHabit,
-	type TimeZoneOptions,
+	type ScheduleOptions,
 } from "./schedule.ts";
 
 export interface Streaks {
@@ -52,7 +52,7 @@ export function habitStreaks(
 	habit: SchedulableHabit,
 	completedDates: Iterable<CalendarDate>,
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): Streaks {
 	const done = new Set(completedDates);
 	// A deadline task counts only through its first completion (2.13.0).

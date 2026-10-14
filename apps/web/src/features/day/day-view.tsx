@@ -23,6 +23,7 @@ import {
 import { habitsQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
 import { DayItemsList } from "./day-items-list.tsx";
+import { MovedOutNotes } from "./moved-out-notes.tsx";
 import { NewHabitDialog } from "./new-habit-dialog.tsx";
 import { PastDayBar } from "./past-day-bar.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
@@ -137,6 +138,11 @@ export function DayView({
 						)
 					}
 				/>
+			)}
+
+			{/* 2.16.0: on the Hoje tab, today's occurrences postponed away. */}
+			{actions && isToday && view && (
+				<MovedOutNotes items={view.movedOut} today={today} />
 			)}
 
 			{isToday && <UpcomingSection today={today} />}

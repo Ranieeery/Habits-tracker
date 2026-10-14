@@ -10,6 +10,7 @@ import {
 	isReminderDue,
 	overdueRange,
 	pendingTodayCount,
+	rescheduleIndex,
 	reminderMessage,
 	selectDigestContent,
 	shouldSendMorningDigest,
@@ -31,6 +32,7 @@ import {
 } from "../push/expo.ts";
 import { errorName, log } from "../lib/log.ts";
 import { listLiveCompletions } from "../repos/completions.ts";
+import { listLiveReschedules } from "../repos/reschedules.ts";
 import { listHabits } from "../repos/habits.ts";
 import { deletePushSubscriptions, listPushTargets } from "../repos/push.ts";
 import {
@@ -131,17 +133,21 @@ export async function runReminderJob(
 
 		// Decide with the data before claiming: a run with nothing to send leaves
 		// the day unclaimed (a single date added later today still gets in).
-		// The completions cover the overdue window (2.8.0): same query.
+		// The completions cover the overdue window (2.8.0): same query. The
+		// postponed occurrences (2.16.0) are one more small query.
 		const range = overdueRange(today);
-		const [habits, completions] = await Promise.all([
+		const [habits, completions, reschedules] = await Promise.all([
 			listHabits(db, candidate.user_id),
 			listLiveCompletions(db, candidate.user_id, range.from, range.to),
+			listLiveReschedules(db, candidate.user_id),
 		]);
+		const options = {
+			timeZone,
+			reschedules: rescheduleIndex(reschedules, completions),
+		};
 		const outgoing: Outgoing[] = [];
 		if (digestDue.due) {
-			const content = selectDigestContent(habits, completions, today, {
-				timeZone,
-			});
+			const content = selectDigestContent(habits, completions, today, options);
 			const wanted = shouldSendMorningDigest({
 				nowMs: now,
 				timeZone,
@@ -163,9 +169,12 @@ export async function runReminderJob(
 		}
 		if (reminderDue.due) {
 			// Today's pending habits plus the overdue ones not done yet.
-			const pendingCount = pendingTodayCount(habits, completions, today, {
-				timeZone,
-			});
+			const pendingCount = pendingTodayCount(
+				habits,
+				completions,
+				today,
+				options
+			);
 			const wanted = shouldSendReminder({
 				nowMs: now,
 				timeZone,

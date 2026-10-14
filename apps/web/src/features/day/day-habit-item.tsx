@@ -7,9 +7,16 @@ import {
 	descriptionFirstLine,
 	hasDescription,
 	overdueLabel,
+	rescheduleAvailability,
+	rescheduledLabel,
 } from "@habits/core";
-import { ArchiveIcon, CalendarClock, CalendarRange } from "lucide-react";
-import { memo, useId, useRef } from "react";
+import {
+	ArchiveIcon,
+	CalendarArrowUpIcon,
+	CalendarClock,
+	CalendarRange,
+} from "lucide-react";
+import { memo, useId, useMemo, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DescriptionPopover } from "@/features/habits/description-popover.tsx";
 import { pulse, release } from "@/features/heatmap/pulse.ts";
@@ -19,6 +26,7 @@ import {
 	type HabitActionHandler,
 	HabitActionsButton,
 	HabitRowMenu,
+	type RescheduleMenu,
 } from "./habit-actions-menu.tsx";
 
 /**
@@ -33,17 +41,23 @@ import {
  * and days opened from it) neither. Also the "Arquivado" badge of a habit
  * archived today or later that a day still lists. Memoized: it takes the
  * item from `dayItems` (memoized by the day) and stable handlers, and
- * builds its labels itself.
+ * builds its labels itself. 2.16.0: a postponed occurrence living on this
+ * day carries "Adiado de 20/10" (icon and text; an overdue one keeps
+ * "Atrasado desde" with a discreet "· adiado"), and the menu offers "Adiar"
+ * as core's `rescheduleAvailability` says.
  */
 export const DayHabitItem = memo(function DayHabitItem({
 	item,
 	date,
+	today,
 	editable,
 	onToggle,
 	onAction,
 }: {
 	item: DayItem;
 	date: CalendarDate;
+	/** The user's today (for "Adiar" and the badges' years). */
+	today: CalendarDate;
 	editable: boolean;
 	onToggle: (habit: Habit, completed: boolean) => void;
 	/** The actions menu (only on the Hoje tab); absent elsewhere. */
@@ -51,7 +65,32 @@ export const DayHabitItem = memo(function DayHabitItem({
 }) {
 	const { habit, done: completed } = item;
 	const overdue =
-		item.overdueSince === null ? null : overdueLabel(item.overdueSince, date);
+		item.overdueSince === null
+			? null
+			: overdueLabel(item.overdueSince, date, item.rescheduledFrom ?? null);
+	// 2.16.0: "Adiado de 20/10" (an overdue one says it in its own badge).
+	const moved =
+		item.rescheduledFrom !== undefined && overdue === null
+			? rescheduledLabel(item.rescheduledFrom, today)
+			: null;
+	const reschedule = useMemo(
+		(): RescheduleMenu => ({
+			availability: rescheduleAvailability(item.habit, {
+				date,
+				today,
+				overdue: item.overdueSince !== null,
+				done: item.done,
+				rescheduledFrom: item.rescheduledFrom ?? null,
+				count: item.rescheduleCount ?? 0,
+			}),
+			occurrence: {
+				original: item.rescheduledFrom ?? date,
+				effective: date,
+				count: item.rescheduleCount ?? 0,
+			},
+		}),
+		[item, date, today]
+	);
 	// An open deadline task (2.13.0): "Até 20/10 · faltam 7 dias".
 	const due = item.dueDate === null ? null : deadlineLabel(item.dueDate, date);
 	// A deadline task first completed on another day (2.13.0): "Já concluída
@@ -89,6 +128,7 @@ export const DayHabitItem = memo(function DayHabitItem({
 						habit.name,
 						overdue?.spoken,
 						due?.spoken,
+						moved?.spoken,
 						doneOn?.spoken,
 						archived && "arquivado",
 					]
@@ -136,6 +176,15 @@ export const DayHabitItem = memo(function DayHabitItem({
 								{due.text}
 							</span>
 						)}
+						{moved && (
+							<span
+								aria-hidden="true"
+								className="inline-flex items-center gap-1 rounded-md border border-night-border-strong px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-night-muted"
+							>
+								<CalendarArrowUpIcon className="size-3.5 shrink-0" />
+								{moved.text}
+							</span>
+						)}
 						{archived && (
 							<span
 								aria-hidden="true"
@@ -166,11 +215,17 @@ export const DayHabitItem = memo(function DayHabitItem({
 			</label>
 			{/* Its own target, outside the label: marking stays a click on the row. */}
 			{hasDescription(habit) && <DescriptionPopover habit={habit} />}
-			{onAction && <HabitActionsButton habit={habit} onAction={onAction} />}
+			{onAction && (
+				<HabitActionsButton
+					habit={habit}
+					reschedule={reschedule}
+					onAction={onAction}
+				/>
+			)}
 		</li>
 	);
 	return onAction ? (
-		<HabitRowMenu habit={habit} onAction={onAction}>
+		<HabitRowMenu habit={habit} reschedule={reschedule} onAction={onAction}>
 			{row}
 		</HabitRowMenu>
 	) : (

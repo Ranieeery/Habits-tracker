@@ -10,6 +10,7 @@ export * from "./errors.ts";
 export * from "./habit.ts";
 export * from "./primitives.ts";
 export * from "./push.ts";
+export * from "./reschedule.ts";
 export * from "./schedule.ts";
 export * from "./settings.ts";
 export * from "./summary.ts";

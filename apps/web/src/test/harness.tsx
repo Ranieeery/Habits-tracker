@@ -94,6 +94,8 @@ export function defaultRoutes(
 	return {
 		"GET /v1/settings": () => json({ settings: SETTINGS }),
 		"GET /v1/habits": () => json({ habits: [] }),
+		// 2.16.0: no postponed occurrences unless a test adds them.
+		"GET /v1/reschedules": () => json({ reschedules: [], completions: [] }),
 		"GET /v1/summary": () =>
 			json({ year: 2026, days: [] satisfies SummaryDay[] }),
 		"GET /v1/day": (request) =>

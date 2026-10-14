@@ -12,8 +12,10 @@ import {
 	formatSchedule,
 	nextOccurrence,
 	weekdayOf,
+	type ScheduleOptions,
 } from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
+import { useScheduleOptions } from "@/data/hooks.ts";
 import type { ReactNode } from "react";
 import { Text, View } from "react-native";
 import { PressableScale } from "@/ui/pressable-scale.tsx";
@@ -99,8 +101,15 @@ export function ScheduleStrip({
 	);
 }
 
-/** "Hoje" when it happens today, otherwise when it happens next. */
-export function nextBadge(habit: Habit, today: CalendarDate, timeZone: string) {
+/**
+ * "Hoje" when it happens today, otherwise when it happens next (2.16.0: on
+ * the effective date of a postponed occurrence).
+ */
+export function nextBadge(
+	habit: Habit,
+	today: CalendarDate,
+	options: ScheduleOptions
+) {
 	if (habit.archived_at !== null) return null;
 	// A task with a deadline (2.13.0): how long is left, or overdue.
 	const deadline = deadlineOf(habit.schedule);
@@ -114,7 +123,7 @@ export function nextBadge(habit: Habit, today: CalendarDate, timeZone: string) {
 		const label = deadlineLabel(deadline.due_date, today);
 		return { today: label.dueToday, text: label.text };
 	}
-	const next = nextOccurrence(habit, today, { timeZone });
+	const next = nextOccurrence(habit, today, options);
 	if (next === null) return null;
 	return next === today
 		? { today: true, text: "Hoje" }
@@ -129,21 +138,20 @@ export function nextBadge(habit: Habit, today: CalendarDate, timeZone: string) {
 export function HabitCard({
 	habit,
 	today,
-	timeZone,
 	muted = false,
 	actions,
 	onPress,
 }: {
 	habit: Habit;
 	today: CalendarDate;
-	timeZone: string;
 	/** Past single dates and archived habits. */
 	muted?: boolean;
 	actions?: ReactNode;
 	onPress?: () => void;
 }) {
+	const options = useScheduleOptions();
 	const supported = isSupportedSchedule(habit.schedule);
-	const badge = supported && !muted ? nextBadge(habit, today, timeZone) : null;
+	const badge = supported && !muted ? nextBadge(habit, today, options) : null;
 	const scheduleText = supported
 		? formatSchedule(habit.schedule, { today })
 		: "incompatível com esta versão";

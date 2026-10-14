@@ -7,6 +7,7 @@ import {
 	useDeleteHabit,
 	useHabits,
 	useRestoreHabit,
+	useScheduleOptions,
 	useUpdateHabit,
 } from "@/data/hooks.ts";
 import { useToday, useUserTimeZone } from "@/data/today.ts";
@@ -66,6 +67,7 @@ export function EditHabitScreen() {
 	const habits = useHabits();
 	const today = useToday();
 	const timeZone = useUserTimeZone();
+	const { reschedules } = useScheduleOptions();
 	const update = useUpdateHabit();
 	const remove = useDeleteHabit();
 	const restore = useRestoreHabit();
@@ -142,6 +144,7 @@ export function EditHabitScreen() {
 								initial={habit}
 								today={today}
 								timeZone={timeZone}
+								reschedules={reschedules}
 								submitLabel="Salvar"
 								pending={update.isPending}
 								onSubmit={(values) =>

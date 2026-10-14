@@ -6,7 +6,7 @@ import { addDays, type CalendarDate } from "./dates.ts";
 import {
 	occurrencesBetween,
 	type SchedulableHabit,
-	type TimeZoneOptions,
+	type ScheduleOptions,
 } from "./schedule.ts";
 import { compareHabitOrder } from "./sort-key.ts";
 
@@ -18,7 +18,7 @@ export interface UpcomingItem<H> {
 	habit: H;
 }
 
-export interface UpcomingOptions extends TimeZoneOptions {
+export interface UpcomingOptions extends ScheduleOptions {
 	/** Days after `today` to include (default `UPCOMING_DAYS`). */
 	days?: number;
 }

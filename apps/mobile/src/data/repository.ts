@@ -6,8 +6,11 @@ import type {
 	CalendarDate,
 	PushTestResponse,
 	CreateHabitRequest,
+	CreateRescheduleRequest,
 	DayResponse,
 	Habit,
+	HabitReschedule,
+	ReschedulesResponse,
 	SummaryDay,
 	UpdateHabitRequest,
 	UpdateUserSettingsRequest,
@@ -38,6 +41,24 @@ export interface HabitsRepository {
 	 * done tasks go to "Passados".
 	 */
 	getDeadlineFirsts(): Promise<Record<string, CalendarDate>>;
+
+	/**
+	 * The live postponed occurrences (2.16.0) and the completions of their
+	 * habits: what core's index needs for the screens computed here (cards,
+	 * "Próximos", the habit form).
+	 */
+	getReschedules(): Promise<ReschedulesResponse>;
+	/**
+	 * Postpones one occurrence (2.16.0), checked with core's
+	 * `checkReschedule` against today: `DataError` `conflict` (limit, another
+	 * device), `out_of_range` or `invalid`, with the pt-BR reason as message.
+	 */
+	rescheduleHabit(
+		habitId: string,
+		request: CreateRescheduleRequest
+	): Promise<HabitReschedule>;
+	/** Undoes the last postponement of an occurrence. */
+	undoReschedule(habitId: string, rescheduleId: string): Promise<void>;
 
 	/** Habits possible on a local date and which of them were completed. */
 	getDay(date: CalendarDate): Promise<DayData>;

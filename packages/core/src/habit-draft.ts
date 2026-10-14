@@ -14,7 +14,7 @@ import {
 import {
 	nextOccurrence,
 	type SchedulableHabit,
-	type TimeZoneOptions,
+	type ScheduleOptions,
 } from "./schedule.ts";
 import { latestDueDate } from "./deadline.ts";
 import { formatRelativeDate, repeatSummary } from "./schedule-text.ts";
@@ -278,18 +278,22 @@ export interface DraftPreview {
 	next: string | null;
 }
 
-/** What the form shows before saving, from a valid draft. */
+/**
+ * What the form shows before saving, from a valid draft. `id` (an edited
+ * habit) lets the next date follow its postponed occurrences (2.16.0); a new
+ * habit has none.
+ */
 export function previewHabit(
-	habit: Pick<SchedulableHabit, "schedule" | "start_date">,
+	habit: Pick<SchedulableHabit, "schedule" | "start_date"> & { id?: string },
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): DraftPreview {
 	// A task's summary already says its due date.
 	const next =
 		isSupportedSchedule(habit.schedule) && habit.schedule.type === "deadline"
 			? null
 			: nextOccurrence(
-					{ ...habit, archived_at: null, deleted_at: null },
+					{ ...habit, id: habit.id ?? "", archived_at: null, deleted_at: null },
 					today,
 					options
 				);

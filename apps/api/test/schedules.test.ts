@@ -236,7 +236,11 @@ describe("clients that only understand weekday schedules", () => {
 		expect(old.has_more).toBe(false);
 		// Nothing left behind the cursor for the old client.
 		const next = await pull(true, `?cursor=${old.cursor}`);
-		expect(next.changes).toEqual({ habits: [], completions: [] });
+		expect(next.changes).toEqual({
+			habits: [],
+			completions: [],
+			reschedules: [],
+		});
 
 		const current = await pull(false);
 		expect(current.changes.habits).toHaveLength(2);

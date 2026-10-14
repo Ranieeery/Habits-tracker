@@ -15,7 +15,7 @@ import {
 	countOn,
 	isHabitPossibleOn,
 	type SchedulableHabit,
-	type TimeZoneOptions,
+	type ScheduleOptions,
 } from "./schedule.ts";
 import { todayIn } from "./window.ts";
 
@@ -60,7 +60,7 @@ export function selectDigestContent(
 	habits: readonly DigestHabit[],
 	completions: readonly CompletionFacts[],
 	today: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): DigestContent {
 	const done = new Set(
 		completions

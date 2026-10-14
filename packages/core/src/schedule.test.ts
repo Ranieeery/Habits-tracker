@@ -5,12 +5,14 @@ import {
 	matchesSchedule,
 	type SchedulableHabit,
 } from "./schedule.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
 const everyDay = { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] } as const;
-const sp = { timeZone: "America/Sao_Paulo" };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 
 function habit(overrides: Partial<SchedulableHabit> = {}): SchedulableHabit {
 	return {
+		id: "h",
 		schedule: { type: "weekdays", days: [...everyDay.days] },
 		start_date: "2026-01-01",
 		archived_at: null,
@@ -55,7 +57,10 @@ describe("isHabitPossibleOn", () => {
 		const archived = habit({ archived_at: Date.UTC(2026, 0, 10, 1) });
 		// Same instant is already 2026-01-10 10:00 in Tokyo.
 		expect(
-			isHabitPossibleOn(archived, "2026-01-10", { timeZone: "Asia/Tokyo" })
+			isHabitPossibleOn(archived, "2026-01-10", {
+				reschedules: NO_RESCHEDULES,
+				timeZone: "Asia/Tokyo",
+			})
 		).toBe(true);
 		expect(isHabitPossibleOn(archived, "2026-01-10", sp)).toBe(false);
 	});

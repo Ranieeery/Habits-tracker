@@ -39,6 +39,7 @@ import {
 } from "@/lib/queries.ts";
 import { isUnauthorized } from "@/lib/query-client.ts";
 import { useServices } from "@/lib/services.ts";
+import { useScheduleOptions } from "@/lib/use-schedule-options.ts";
 import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
 import { cn } from "@/lib/utils.ts";
 import { DeleteHabitButton } from "./delete-habit-button.tsx";
@@ -74,6 +75,7 @@ export function HabitsPage() {
 	const queryClient = useQueryClient();
 	const today = useToday();
 	const timeZone = useUserTimeZone();
+	const { options: scheduleOptions } = useScheduleOptions();
 	const habits = useQuery(habitsQuery(api));
 	const firsts = useQuery(deadlineFirstsQuery(api));
 	const [editing, setEditing] = useState<Editing>(null);
@@ -196,7 +198,6 @@ export function HabitsPage() {
 						<ActiveList
 							habits={active ?? []}
 							today={today}
-							timeZone={timeZone}
 							archiving={archive.isPending}
 							onEdit={(habit) => setEditing({ mode: "edit", habit })}
 							onArchive={(habit) =>
@@ -216,7 +217,6 @@ export function HabitsPage() {
 										key={habit.id}
 										habit={habit}
 										today={today}
-										timeZone={timeZone}
 										muted
 										actions={editAndArchive(habit)}
 									/>
@@ -236,7 +236,6 @@ export function HabitsPage() {
 										key={habit.id}
 										habit={habit}
 										today={today}
-										timeZone={timeZone}
 										muted
 										actions={
 											<>
@@ -289,6 +288,11 @@ export function HabitsPage() {
 							initial={editing.mode === "edit" ? editing.habit : undefined}
 							today={today}
 							timeZone={timeZone}
+							reschedules={
+								editing.mode === "edit"
+									? scheduleOptions.reschedules
+									: undefined
+							}
 							autoFocusName={editing.mode === "create"}
 							submitLabel={editing.mode === "edit" ? "Salvar" : "Criar"}
 							pending={save.isPending}
@@ -309,14 +313,12 @@ export function HabitsPage() {
 function ActiveList({
 	habits,
 	today,
-	timeZone,
 	archiving,
 	onEdit,
 	onArchive,
 }: {
 	habits: Habit[];
 	today: string;
-	timeZone: string;
 	archiving: boolean;
 	onEdit: (habit: Habit) => void;
 	onArchive: (habit: Habit) => void;
@@ -382,7 +384,6 @@ function ActiveList({
 							)}
 							habit={habit}
 							today={today}
-							timeZone={timeZone}
 							handle={
 								<button
 									type="button"

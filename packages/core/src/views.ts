@@ -5,12 +5,15 @@ import type {
 	Completion,
 	DayResponse,
 	Habit,
+	MovedIn,
+	MovedOut,
 	SummaryDay,
 } from "@habits/contracts";
 import { eachDay, firstDayOfYear, lastDayOfYear } from "./dates.ts";
 import { deadlineDoneElsewhere, firstCompletions } from "./deadline.ts";
 import { summarizeDay } from "./progress.ts";
-import { countOn, type TimeZoneOptions } from "./schedule.ts";
+import { hasMoves, moveFrom, moveTo } from "./reschedule-index.ts";
+import { countOn, type ScheduleOptions } from "./schedule.ts";
 
 type CompletionFacts = Pick<Completion, "habit_id" | "date" | "deleted_at">;
 
@@ -22,7 +25,7 @@ export function dayView(
 	habits: readonly Habit[],
 	completions: readonly CompletionFacts[],
 	date: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): DayResponse {
 	const first = firstCompletions(completions);
 	const done = new Set(
@@ -50,6 +53,24 @@ export function dayView(
 		.filter(([, count]) => count.counted)
 		.map(([habit]) => habit);
 	const elsewhere = deadlineDoneElsewhere(possible, first, date);
+	// 2.16.0: postponed occurrences that live on this day ("Adiado de") and
+	// the ones that left it ("Adiado para", never a failure here).
+	const movedIn: MovedIn[] = [];
+	const movedOut: MovedOut[] = [];
+	for (const habit of habits) {
+		if (habit.deleted_at !== null || !hasMoves(habit.id, options.reschedules))
+			continue;
+		const into = moveTo(habit, date, options.reschedules);
+		if (into && possible.includes(habit)) {
+			movedIn.push({
+				habit_id: habit.id,
+				original_date: into.original,
+				count: into.count,
+			});
+		}
+		const away = moveFrom(habit, date, options.reschedules);
+		if (away) movedOut.push({ habit, to_date: away.effective });
+	}
 	return {
 		date,
 		possible_habits: possible,
@@ -58,10 +79,12 @@ export function dayView(
 			.map(([habit]) => habit.id),
 		// 2.13.0: a missed due date whose task was done later.
 		...(elsewhere.length > 0 && { deadline_done: elsewhere }),
+		...(movedIn.length > 0 && { moved_in: movedIn }),
+		...(movedOut.length > 0 && { moved_out: movedOut }),
 	};
 }
 
-export interface YearSummaryOptions extends TimeZoneOptions {
+export interface YearSummaryOptions extends ScheduleOptions {
 	year: number;
 	/** The user's today: later dates are left out. */
 	today: CalendarDate;
@@ -74,7 +97,7 @@ export interface YearSummaryOptions extends TimeZoneOptions {
 export function summarizeYear(
 	habits: readonly Habit[],
 	completions: readonly CompletionFacts[],
-	{ year, today, timeZone }: YearSummaryOptions
+	{ year, today, timeZone, reschedules }: YearSummaryOptions
 ): SummaryDay[] {
 	const from = firstDayOfYear(year);
 	const yearEnd = lastDayOfYear(year);
@@ -97,7 +120,7 @@ export function summarizeYear(
 			habits,
 			byDate.get(date) ?? [],
 			date,
-			{ timeZone },
+			{ timeZone, reschedules },
 			first
 		);
 		if (progress.possible > 0) days.push({ date, ...progress });

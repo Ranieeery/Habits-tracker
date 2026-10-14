@@ -9,9 +9,10 @@ import {
 	shouldSendMorningDigest,
 	type ShouldSendDigestInput,
 } from "./digest.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
 const SP = "America/Sao_Paulo"; // UTC-3, no DST
-const sp = { timeZone: SP };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: SP };
 const TODAY = "2026-11-19"; // Thursday
 
 /** An instant given as São Paulo wall-clock time. */

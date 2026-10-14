@@ -497,7 +497,11 @@ describe("GET /v1/sync/pull", () => {
 		const body = JSON.stringify(pages);
 		expect(recordIds(pages)).not.toContain(habit.id);
 		expect(body).not.toContain("ExponentPushToken");
-		expect(Object.keys(pages[0]!.changes)).toEqual(["habits", "completions"]);
+		expect(Object.keys(pages[0]!.changes)).toEqual([
+			"habits",
+			"completions",
+			"reschedules",
+		]);
 		expect(recordIds((await pullAll(alice)).pages)).toEqual([habit.id]);
 	});
 

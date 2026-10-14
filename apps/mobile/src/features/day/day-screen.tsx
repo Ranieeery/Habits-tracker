@@ -37,6 +37,7 @@ import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { EditDayFooter } from "./edit-day-sheet.tsx";
 import { DayItemsList } from "./day-items-list.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
+import { MovedOutNotes } from "./moved-out-notes.tsx";
 import { PreviewList } from "./preview-list.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
 import { useDayItems } from "./use-day-items.ts";
@@ -161,7 +162,7 @@ export function DayView({
 				<QueryState query={day} loadingLabel="Carregando o dia…">
 					{() =>
 						planned !== null ? (
-							<PreviewContent items={planned} />
+							<PreviewContent items={planned} date={date} today={today} />
 						) : view === null ? null : view.items.length === 0 && isToday ? (
 							<TodayEmptyState />
 						) : view.items.length === 0 ? (
@@ -191,6 +192,10 @@ export function DayView({
 						)
 					}
 				</QueryState>
+				{/* 2.16.0: occurrences postponed away (the Hoje tab, previews). */}
+				{(inTabs && isToday) || preview ? (
+					<MovedOutNotes items={view?.movedOut} today={today} />
+				) : null}
 			</Animated.View>
 			{isToday ? <UpcomingSection today={today} /> : null}
 		</Screen>
@@ -221,7 +226,15 @@ function TooFar() {
 }
 
 /** A preview day (2.14.0): the read-only notice, then what is planned. */
-function PreviewContent({ items }: { items: ReturnType<typeof previewItems> }) {
+function PreviewContent({
+	items,
+	date,
+	today,
+}: {
+	items: ReturnType<typeof previewItems>;
+	date: CalendarDate;
+	today: CalendarDate;
+}) {
 	return (
 		<>
 			<View className="flex-row items-center gap-2">
@@ -240,7 +253,7 @@ function PreviewContent({ items }: { items: ReturnType<typeof previewItems> }) {
 					description="Hábitos aparecem nos dias em que se repetem."
 				/>
 			) : (
-				<PreviewList items={items} />
+				<PreviewList items={items} date={date} today={today} />
 			)}
 		</>
 	);

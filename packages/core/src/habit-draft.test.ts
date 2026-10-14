@@ -6,9 +6,10 @@ import {
 	type HabitDraft,
 	previewHabit,
 } from "./habit-draft.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
 const TODAY = "2026-10-11"; // Sunday
-const sp = { timeZone: "America/Sao_Paulo" };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 
 const draft = (changes: Partial<HabitDraft>): HabitDraft => ({
 	...emptyDraft(TODAY),

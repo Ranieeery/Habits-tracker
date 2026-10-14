@@ -18,7 +18,11 @@ import {
 	isDeadlinePast,
 	latestDueDate,
 	MONTH_NAMES,
+	NO_RESCHEDULES,
+	orphanedReschedules,
+	orphanNotice,
 	previewHabit,
+	type RescheduleIndex,
 	REPEAT_KINDS,
 	type RepeatKind,
 	UNSUPPORTED_SCHEDULE_TEXT,
@@ -49,6 +53,8 @@ export interface HabitFormValues {
 
 /** An existing habit being edited. */
 export interface HabitFormInitial {
+	/** An edited habit's id: its postponed occurrences (2.16.0). */
+	id?: string;
 	name: string;
 	description?: string;
 	schedule: StoredSchedule;
@@ -198,6 +204,7 @@ export function HabitForm({
 	initial,
 	today,
 	timeZone,
+	reschedules = NO_RESCHEDULES,
 	submitLabel,
 	pending = false,
 	autoFocusName = false,
@@ -208,6 +215,12 @@ export function HabitForm({
 	initial?: HabitFormInitial;
 	today: CalendarDate;
 	timeZone: string;
+	/**
+	 * The user's postponed occurrences (2.16.0), for an edited habit: the
+	 * preview's next date and the notice about the ones a new repetition
+	 * leaves without effect. A new habit has none.
+	 */
+	reschedules?: RescheduleIndex;
 	submitLabel: string;
 	pending?: boolean;
 	/** Focus the name when the form appears (dialogs opened for creating). */
@@ -247,12 +260,34 @@ export function HabitForm({
 	};
 
 	const built = draft ? buildFromDraft(draft, { today, editing }) : null;
+	const scheduleOptions = { timeZone, reschedules };
 	const preview =
 		built?.ok === true
 			? previewHabit(
-					{ schedule: built.schedule, start_date: built.start_date },
+					{
+						id: initial?.id,
+						schedule: built.schedule,
+						start_date: built.start_date,
+					},
 					today,
-					{ timeZone }
+					scheduleOptions
+				)
+			: null;
+	// 2.16.0: postponements the new repetition would leave without effect.
+	const orphanText =
+		initial?.id !== undefined && built?.ok === true
+			? orphanNotice(
+					orphanedReschedules(
+						{
+							id: initial.id,
+							schedule: initial.schedule,
+							start_date: initial.start_date,
+						},
+						{ schedule: built.schedule, start_date: built.start_date },
+						scheduleOptions.reschedules
+					),
+					{ schedule: built.schedule, start_date: built.start_date },
+					today
 				)
 			: null;
 
@@ -288,7 +323,7 @@ export function HabitForm({
 			values.schedule !== undefined &&
 			!sameSchedule(initial.schedule, values.schedule) &&
 			initial.start_date < today;
-		if (reschedules) setConfirming(values);
+		if (reschedules || orphanText !== null) setConfirming(values);
 		else onSubmit(values);
 	};
 
@@ -547,8 +582,13 @@ export function HabitForm({
 					role="alert"
 					className="rounded-md border border-night-warning/50 bg-night-warning-surface px-3 py-2 text-sm text-night-warning"
 				>
-					Mudar a repetição recalcula os dias passados do heatmap. Dias já
-					marcados continuam contando.
+					{initial !== undefined && initial.start_date < today && (
+						<>
+							Mudar a repetição recalcula os dias passados do heatmap. Dias já
+							marcados continuam contando.
+						</>
+					)}
+					{orphanText && <span className="block">{orphanText}</span>}
 				</p>
 			)}
 			<div className="flex flex-wrap gap-2">

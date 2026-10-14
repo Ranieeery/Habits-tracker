@@ -16,7 +16,7 @@ import {
 	useHabits,
 	useReorderHabit,
 } from "@/data/hooks.ts";
-import { useLoadedSettings, useToday } from "@/data/today.ts";
+import { useToday } from "@/data/today.ts";
 import { TabHeader } from "@/features/shell/tab-header.tsx";
 import { Button, IconButton } from "@/ui/button.tsx";
 import { DisplayText } from "@/ui/display-text.tsx";
@@ -50,7 +50,6 @@ export function HabitsScreen() {
 	const habits = useHabits();
 	const firsts = useDeadlineFirsts();
 	const today = useToday();
-	const { timezone } = useLoadedSettings();
 	const toast = useToast();
 	const [showPast, setShowPast] = useState(false);
 	const [reordering, setReordering] = useState(false);
@@ -139,7 +138,6 @@ export function HabitsScreen() {
 												<HabitCard
 													habit={habit}
 													today={today}
-													timeZone={timezone}
 													onPress={reordering ? undefined : () => open(habit)}
 													actions={
 														reordering ? (
@@ -194,7 +192,6 @@ export function HabitsScreen() {
 													key={habit.id}
 													habit={habit}
 													today={today}
-													timeZone={timezone}
 													muted
 													onPress={() => open(habit)}
 												/>
@@ -217,7 +214,6 @@ export function HabitsScreen() {
 												key={habit.id}
 												habit={habit}
 												today={today}
-												timeZone={timezone}
 												muted
 												onPress={() => open(habit)}
 											/>

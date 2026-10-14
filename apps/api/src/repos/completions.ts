@@ -3,7 +3,7 @@ import { applyCompletionSet } from "@habits/core";
 import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { fromCompletionRow, toCompletionRow } from "../db/records.ts";
-import { completions, habits } from "../db/schema.ts";
+import { completions, habitReschedules, habits } from "../db/schema.ts";
 
 async function findCompletion(
 	db: Db,
@@ -91,11 +91,47 @@ export async function listDeadlineFirsts(
 		.groupBy(completions.habit_id);
 }
 
+/** Habits of the user with a live postponement (2.16.0). */
+const postponedHabitIds = (db: Db, userId: string) =>
+	db
+		.select({ id: habitReschedules.habit_id })
+		.from(habitReschedules)
+		.where(
+			and(
+				eq(habitReschedules.user_id, userId),
+				isNull(habitReschedules.deleted_at)
+			)
+		);
+
+/**
+ * Every live completion of the habits with a live postponement (2.16.0): one
+ * from the occurrence's nominal date on fulfills it, so the index needs them.
+ */
+export async function listRescheduleCompletions(
+	db: Db,
+	userId: string
+): Promise<{ habit_id: string; date: CalendarDate; deleted_at: null }[]> {
+	const rows = await db
+		.select({ habit_id: completions.habit_id, date: completions.date })
+		.from(completions)
+		.where(
+			and(
+				eq(completions.user_id, userId),
+				isNull(completions.deleted_at),
+				inArray(completions.habit_id, postponedHabitIds(db, userId))
+			)
+		)
+		.orderBy(asc(completions.date));
+	return rows.map((row) => ({ ...row, deleted_at: null }));
+}
+
 /**
  * Live (not un-checked) completions of the user between two dates, plus every
  * live completion of the user's deadline tasks (2.13.0): they count through
  * their first completion, which may be outside the range. Still one
  * statement; users without deadline tasks read the same rows as before.
+ * 2.16.0: also every live completion of the habits with a live postponement
+ * (one between its nominal and effective dates fulfills the occurrence).
  */
 export async function listLiveCompletions(
 	db: Db,
@@ -127,7 +163,8 @@ export async function listLiveCompletions(
 									sql`json_extract(${habits.schedule}, '$.type') = 'deadline'`
 								)
 							)
-					)
+					),
+					inArray(completions.habit_id, postponedHabitIds(db, userId))
 				)
 			)
 		)

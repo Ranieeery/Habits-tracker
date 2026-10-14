@@ -1,5 +1,10 @@
 import type { CalendarDate, DayResponse, Schedule } from "@habits/contracts";
-import { deadlineOf, newHabit, newHabitNotice } from "@habits/core";
+import {
+	deadlineOf,
+	NO_RESCHEDULES,
+	newHabit,
+	newHabitNotice,
+} from "@habits/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -39,7 +44,12 @@ export function useCreateHabitToday(today: CalendarDate) {
 			// The server gives it the key after the last habit; until then an
 			// empty key also sorts last.
 			const habit = newHabit({ ...input, sort_key: "" }, now());
-			if (newHabitNotice(habit, today, { timeZone }) !== null) {
+			if (
+				newHabitNotice(habit, today, {
+					timeZone,
+					reschedules: NO_RESCHEDULES,
+				}) !== null
+			) {
 				return { previous: undefined };
 			}
 			// A refetch in flight would overwrite the optimistic value.
@@ -75,7 +85,10 @@ export function useCreateHabitToday(today: CalendarDate) {
 			if (context?.previous) queryClient.setQueryData(key, context.previous);
 		},
 		onSuccess: (habit) => {
-			const notice = newHabitNotice(habit, today, { timeZone });
+			const notice = newHabitNotice(habit, today, {
+				timeZone,
+				reschedules: NO_RESCHEDULES,
+			});
 			if (notice) toast.success(notice);
 		},
 		onSettled: () => {

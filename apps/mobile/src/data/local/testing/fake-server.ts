@@ -4,6 +4,7 @@
 import type {
 	Completion,
 	Habit,
+	HabitReschedule,
 	Mutation,
 	MutationResult,
 	SyncPullResponse,
@@ -45,7 +46,7 @@ export interface FakeServer extends SyncTransport {
 export function createFakeServer(nowMs: number): FakeServer {
 	let now = nowMs;
 	let seq = 0;
-	const seqOf = new Map<string, number>(); // "h:<id>" | "c:<id>"
+	const seqOf = new Map<string, number>(); // "h:<id>" | "c:<id>" | "r:<id>"
 	const processed = new Map<string, string>();
 	const failures: Record<string, TransportFailure[]> = {
 		push: [],
@@ -70,6 +71,7 @@ export function createFakeServer(nowMs: number): FakeServer {
 		}
 		const before = new Map(state.completions);
 		const habitsBefore = new Map(state.habits);
+		const reschedulesBefore = new Map(state.reschedules);
 		const outcome = applyMutation(state, mutation, {
 			now,
 			today: todayIn(TIME_ZONE, now),
@@ -87,6 +89,9 @@ export function createFakeServer(nowMs: number): FakeServer {
 		}
 		for (const [key, completion] of state.completions) {
 			if (before.get(key) !== completion) bump(`c:${completion.id}`);
+		}
+		for (const [id, row] of state.reschedules) {
+			if (reschedulesBefore.get(id) !== row) bump(`r:${id}`);
 		}
 		processed.set(mutation.mutation_id, outcome.canonical_id);
 		return {
@@ -144,18 +149,25 @@ export function createFakeServer(nowMs: number): FakeServer {
 				return {
 					cursor: "1.0",
 					has_more: true,
-					changes: { habits: [], completions: [] },
+					changes: { habits: [], completions: [], reschedules: [] },
 					reset: true,
 				};
 			}
 			const after = cursor ? Number(cursor.slice(2)) : 0;
-			const records: { seq: number; habit?: Habit; completion?: Completion }[] =
-				[];
+			const records: {
+				seq: number;
+				habit?: Habit;
+				completion?: Completion;
+				reschedule?: HabitReschedule;
+			}[] = [];
 			for (const habit of state.habits.values()) {
 				records.push({ seq: seqOf.get(`h:${habit.id}`)!, habit });
 			}
 			for (const completion of state.completions.values()) {
 				records.push({ seq: seqOf.get(`c:${completion.id}`)!, completion });
+			}
+			for (const reschedule of state.reschedules.values()) {
+				records.push({ seq: seqOf.get(`r:${reschedule.id}`)!, reschedule });
 			}
 			const newer = records
 				.filter((record) => record.seq > after)
@@ -169,6 +181,9 @@ export function createFakeServer(nowMs: number): FakeServer {
 					habits: page.flatMap((r) => (r.habit ? [r.habit] : [])),
 					completions: page.flatMap((r) =>
 						r.completion ? [r.completion] : []
+					),
+					reschedules: page.flatMap((r) =>
+						r.reschedule ? [r.reschedule] : []
 					),
 				},
 			};

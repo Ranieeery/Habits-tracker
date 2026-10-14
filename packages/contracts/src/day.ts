@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Habit } from "./habit.ts";
 import { CalendarDate, Uuid } from "./primitives.ts";
+import { MovedIn, MovedOut } from "./reschedule.ts";
 
 export const DayQuery = z.object({ date: CalendarDate });
 export type DayQuery = z.infer<typeof DayQuery>;
@@ -19,6 +20,11 @@ export const OverdueHabit = z.object({
 	 * back as overdue.
 	 */
 	completed_today: z.boolean(),
+	/**
+	 * 2.16.0, additive: the occurrence's nominal date when it was postponed
+	 * (`since` is then its effective date).
+	 */
+	rescheduled_from: CalendarDate.optional(),
 });
 export type OverdueHabit = z.infer<typeof OverdueHabit>;
 
@@ -63,5 +69,15 @@ export const DayResponse = z.object({
 	deadline: z.array(DeadlineHabit).optional(),
 	/** Listed deadline tasks first completed on another day (2.13.0). */
 	deadline_done: z.array(DeadlineDone).optional(),
+	/**
+	 * 2.16.0, additive: listed habits whose occurrence lives on this day
+	 * because it was postponed ("Adiado de 20/10").
+	 */
+	moved_in: z.array(MovedIn).optional(),
+	/**
+	 * 2.16.0, additive: habits whose occurrence was due on this day and was
+	 * postponed (not listed, never a failure here): "Adiado para 27/10".
+	 */
+	moved_out: z.array(MovedOut).optional(),
 });
 export type DayResponse = z.infer<typeof DayResponse>;

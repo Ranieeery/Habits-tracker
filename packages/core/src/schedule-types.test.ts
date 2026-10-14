@@ -14,15 +14,17 @@ import {
 	occurrencesBetween,
 	type SchedulableHabit,
 } from "./schedule.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const sp = { timeZone: "America/Sao_Paulo" };
-const tokyo = { timeZone: "Asia/Tokyo" };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
+const tokyo = { reschedules: NO_RESCHEDULES, timeZone: "Asia/Tokyo" };
 
 function habit(
 	schedule: StoredSchedule,
 	overrides: Partial<SchedulableHabit> = {}
 ): SchedulableHabit {
 	return {
+		id: "h",
 		schedule,
 		start_date: "2024-01-01",
 		archived_at: null,

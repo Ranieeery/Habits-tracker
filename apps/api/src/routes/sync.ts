@@ -125,13 +125,24 @@ export const syncRoutes = router()
 
 		const habitIds = new Set<string>();
 		const proposedIds = new Set<string>();
+		// 2.16.0: habits being postponed need every completion (one from the
+		// occurrence's nominal date on fulfills it).
+		const historyIds = new Set<string>();
 		for (const { mutation } of valid) {
 			if (mutation.type === "habit.create") {
 				habitIds.add(mutation.id);
 				proposedIds.add(mutation.id);
 			} else {
 				habitIds.add(mutation.habit_id);
-				if (mutation.type === "completion.set") proposedIds.add(mutation.id);
+				if (
+					mutation.type === "completion.set" ||
+					mutation.type === "reschedule.create"
+				) {
+					proposedIds.add(mutation.id);
+				}
+				if (mutation.type === "reschedule.create") {
+					historyIds.add(mutation.habit_id);
+				}
 			}
 		}
 		const processed = await findProcessedMutations(
@@ -141,11 +152,21 @@ export const syncRoutes = router()
 		);
 		const window = writeWindow(today);
 		const [records, taken] = await Promise.all([
-			loadSyncRecords(db, userId, [...habitIds], window),
+			loadSyncRecords(db, userId, [...habitIds], window, [...historyIds]),
 			findTakenIds(db, [...proposedIds]),
 		]);
 
-		const state = syncState(records.habits, records.completions);
+		const state = syncState(
+			records.habits,
+			records.completions,
+			records.reschedules
+		);
+		const existingReschedules = new Set(
+			records.reschedules.map((row) => row.id)
+		);
+		// A proposed id that is this user's own row is not "taken".
+		for (const id of existingReschedules) taken.delete(id);
+		const changedReschedules = new Set<string>();
 		const existingHabits = new Set(records.habits.map((habit) => habit.id));
 		const createdHabits: string[] = [];
 		const habitChanges = new Map<string, HabitFieldChanges>();
@@ -218,6 +239,12 @@ export const syncRoutes = router()
 					appliedCompletionKeys.set(index, key);
 					break;
 				}
+				case "reschedule.create":
+					changedReschedules.add(mutation.id);
+					break;
+				case "reschedule.undo":
+					changedReschedules.add(mutation.reschedule_id);
+					break;
 			}
 		}
 
@@ -232,6 +259,9 @@ export const syncRoutes = router()
 				})),
 				completions: [...changedCompletions].map((key) =>
 					state.completions.get(key)!
+				),
+				reschedules: [...changedReschedules].map((id) =>
+					state.reschedules.get(id)!
 				),
 				processed: processedNow,
 			},
@@ -253,7 +283,7 @@ export const syncRoutes = router()
 		const reset = (): SyncPullResponse => ({
 			cursor: encodeCursor(0),
 			has_more: true,
-			changes: { habits: [], completions: [] },
+			changes: { habits: [], completions: [], reschedules: [] },
 			reset: true,
 		});
 		if (after === null) return c.json(reset(), 200);
@@ -272,6 +302,10 @@ export const syncRoutes = router()
 				kind: "completion" as const,
 				record,
 			})),
+			...page.reschedules.map((record) => ({
+				kind: "reschedule" as const,
+				record,
+			})),
 		].sort((a, b) => a.record.server_seq - b.record.server_seq);
 		const delivered = merged.slice(0, limit);
 		// The cursor follows every row read, so leaving rows out below never
@@ -286,7 +320,7 @@ export const syncRoutes = router()
 		const response: SyncPullResponse = {
 			cursor: encodeCursor(last ? last.record.server_seq : after),
 			has_more: merged.length > limit,
-			changes: { habits: [], completions: [] },
+			changes: { habits: [], completions: [], reschedules: [] },
 			remaining: Math.max(0, page.total - delivered.length),
 		};
 		for (const item of delivered) {
@@ -296,9 +330,12 @@ export const syncRoutes = router()
 			if (item.kind === "habit") {
 				const { server_seq: _, ...habit } = item.record;
 				response.changes.habits.push(habit);
-			} else {
+			} else if (item.kind === "completion") {
 				const { server_seq: _, ...completion } = item.record;
 				response.changes.completions.push(completion);
+			} else {
+				const { server_seq: _, ...reschedule } = item.record;
+				response.changes.reschedules.push(reschedule);
 			}
 		}
 		return c.json(response, 200);

@@ -15,10 +15,11 @@ import {
 import { heatmapLevel, completionRatio } from "./progress.ts";
 import { habitStreaks } from "./streaks.ts";
 import { summarizeYear } from "./views.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
 const SP = "America/Sao_Paulo"; // UTC-3, no DST
 const TOKYO = "Asia/Tokyo"; // UTC+9
-const sp = { timeZone: SP };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: SP };
 
 /** An instant given as São Paulo wall-clock time. */
 const spAt = (date: string, time = "12:00") =>
@@ -303,7 +304,12 @@ describe("overdueOccurrence", () => {
 		// 2026-10-15 22:00 in São Paulo is already 10:00 of the 16th in Tokyo.
 		const late = habit("late", { created_at: spAt("2026-10-15", "22:00") });
 		expect(occurrence(late, "2026-10-17", [], sp)?.since).toBe("2026-10-15");
-		expect(occurrence(late, "2026-10-17", [], { timeZone: TOKYO })).toBeNull();
+		expect(
+			occurrence(late, "2026-10-17", [], {
+				reschedules: NO_RESCHEDULES,
+				timeZone: TOKYO,
+			})
+		).toBeNull();
 	});
 });
 
@@ -458,6 +464,7 @@ describe("counting with overdue habits (no double counting)", () => {
 			summarizeYear(habits, completions, {
 				year: 2026,
 				today,
+				reschedules: NO_RESCHEDULES,
 				timeZone: SP,
 			}).map((day) => [day.date, day])
 		);

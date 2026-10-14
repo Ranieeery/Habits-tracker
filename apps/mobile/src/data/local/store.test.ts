@@ -223,3 +223,57 @@ describe("local migration 3 (2.12.0)", () => {
 		expect(habit?.description).toBe("**Duna**\n- cap 12");
 	});
 });
+
+describe("local migration 4 (2.16.0)", () => {
+	const row = {
+		id: id(50),
+		habit_id: HABIT,
+		original_date: "2026-10-09",
+		from_date: "2026-10-09",
+		to_date: "2026-10-16",
+		sequence: 1,
+		created_at: 1,
+		updated_at: 1,
+		deleted_at: null,
+	};
+
+	it("adds the postponements table to a version 3 database", async () => {
+		const db = openNodeDatabase();
+		await db.exec(
+			`BEGIN; ${MIGRATIONS[0]} ${MIGRATIONS[1]} ${MIGRATIONS[2]} PRAGMA user_version = 3; COMMIT;`
+		);
+		expect(await migrate(db)).toBe(4);
+		expect(
+			await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM reschedules")
+		).toEqual({ n: 0 });
+	});
+
+	it("mirrors pulled postponements, keeps their habit's completions in any range, and resets", async () => {
+		const store = createLocalStore(async () => openNodeDatabase());
+		await store.ensureUser("user-1");
+		await store.applyPullPage({
+			cursor: "1.2",
+			has_more: false,
+			changes: {
+				habits: [],
+				completions: [completion(1, { date: "2026-10-12" })],
+				reschedules: [row],
+			},
+		});
+		const mirror = await store.readMirror({
+			from: "2026-10-16",
+			to: "2026-10-16",
+		});
+		expect(mirror.reschedules).toEqual([row]);
+		// Outside the range, but it may fulfill the occurrence early.
+		expect(mirror.completions.map((c) => c.date)).toEqual(["2026-10-12"]);
+		// An older API sends no key: nothing breaks.
+		await store.applyPullPage({
+			cursor: "1.3",
+			has_more: false,
+			changes: { habits: [], completions: [] },
+		});
+		await store.resetMirror();
+		expect((await store.readMirror()).reschedules).toEqual([]);
+	});
+});

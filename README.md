@@ -326,6 +326,8 @@ pnpm --filter api run deploy
 pnpm --filter web run deploy
 ```
 
+2.16.0 (adiar ocorrência) traz a migration `0008_habit_reschedules.sql` (só aditiva): backup, `db:migrate:remote`, API, web e depois o OTA (mesmo fingerprint). Atualize o celular **antes** de usar "Adiar": um app 2.15.0 não conhece os adiamentos e continua mostrando o hábito (e a falha) no dia original.
+
 ### Rollback
 
 **Workers** (cada deploy, e cada `wrangler secret put`, cria uma versão; dá para voltar entre as 100 últimas):

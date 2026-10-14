@@ -4,6 +4,7 @@ import { type ApiClient, unwrap } from "@habits/api-client";
 import type {
 	CalendarDate,
 	CreateHabitRequest,
+	CreateRescheduleRequest,
 	DayResponse,
 	UpdateHabitRequest,
 	UpdateUserSettingsRequest,
@@ -22,6 +23,8 @@ export const queryKeys = {
 	/** First completion of each deadline task (2.13.0, "Passados"). */
 	deadlineFirsts: ["habits", "deadline-firsts"] as const,
 	summary: (year: number) => ["summary", year] as const,
+	/** Live postponed occurrences (2.16.0) and their habits' completions. */
+	reschedules: ["reschedules"] as const,
 };
 
 export function sessionQuery(auth: AuthService) {
@@ -56,6 +59,17 @@ export function deadlineFirstsQuery(api: ApiClient) {
 				deadline_completions.map((item) => [item.habit_id, item.date])
 			);
 		},
+	});
+}
+
+/**
+ * The user's live postponements and the completions of their habits (2.16.0),
+ * for what the web computes locally (the preview days, cards, "Próximos").
+ */
+export function reschedulesQuery(api: ApiClient) {
+	return queryOptions({
+		queryKey: queryKeys.reschedules,
+		queryFn: () => unwrap(api.v1.reschedules.$get()),
 	});
 }
 
@@ -118,6 +132,37 @@ export async function deleteHabit(api: ApiClient, habitId: string) {
 	).habit;
 }
 
+/** Postpones one occurrence (2.16.0); 409/422 with `details.reason`. */
+export async function createReschedule(
+	api: ApiClient,
+	habitId: string,
+	body: CreateRescheduleRequest
+) {
+	return (
+		await unwrap(
+			api.v1.habits[":habit_id"].reschedules.$post({
+				param: { habit_id: habitId },
+				json: body,
+			})
+		)
+	).reschedule;
+}
+
+/** Undoes the last postponement of an occurrence (a tombstone). */
+export async function undoReschedule(
+	api: ApiClient,
+	habitId: string,
+	rescheduleId: string
+) {
+	return (
+		await unwrap(
+			api.v1.habits[":habit_id"].reschedules[":reschedule_id"].$delete({
+				param: { habit_id: habitId, reschedule_id: rescheduleId },
+			})
+		)
+	).reschedule;
+}
+
 /** Undoes a deletion: the habit comes back archived, with its history. */
 export async function restoreHabit(api: ApiClient, habitId: string) {
 	return (
@@ -142,6 +187,7 @@ export function invalidateHabitData(queryClient: QueryClient) {
 		queryClient.invalidateQueries({ queryKey: queryKeys.habits }),
 		queryClient.invalidateQueries({ queryKey: queryKeys.days }),
 		queryClient.invalidateQueries({ queryKey: queryKeys.summaries }),
+		queryClient.invalidateQueries({ queryKey: queryKeys.reschedules }),
 	]);
 }
 

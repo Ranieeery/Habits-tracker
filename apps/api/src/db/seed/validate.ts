@@ -1,5 +1,5 @@
 import { Completion, Habit, Schedule, UserSettings } from "@habits/contracts";
-import { isHabitPossibleOn } from "@habits/core";
+import { isHabitPossibleOn, NO_RESCHEDULES } from "@habits/core";
 import type { Seed } from "./build.ts";
 
 /**
@@ -29,7 +29,12 @@ export function validateSeed(seed: Seed): Seed {
 		if (completion.date > seed.today) {
 			throw new Error(`Seed completion ${key} is after ${seed.today}`);
 		}
-		if (!isHabitPossibleOn(habit, completion.date, { timeZone })) {
+		if (
+			!isHabitPossibleOn(habit, completion.date, {
+				timeZone,
+				reschedules: NO_RESCHEDULES,
+			})
+		) {
 			throw new Error(`Seed completion ${key} is on a date not possible`);
 		}
 		seen.add(key);

@@ -19,6 +19,8 @@ export * from "./overview.ts";
 export * from "./preview.ts";
 export * from "./progress.ts";
 export * from "./reminders.ts";
+export * from "./reschedule.ts";
+export * from "./reschedule-index.ts";
 export * from "./schedule.ts";
 export * from "./schedule-text.ts";
 export * from "./sort-key.ts";

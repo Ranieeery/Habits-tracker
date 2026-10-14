@@ -1,8 +1,9 @@
 import type { Completion, Habit } from "@habits/contracts";
 import { describe, expect, it } from "vitest";
 import { dayView, summarizeYear } from "./views.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const options = { timeZone: "America/Sao_Paulo" };
+const options = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 
 function habit(id: string, overrides: Partial<Habit> = {}): Habit {
 	return {

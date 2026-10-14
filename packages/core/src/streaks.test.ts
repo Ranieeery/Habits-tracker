@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { SchedulableHabit } from "./schedule.ts";
 import { dayStreaks, habitStreaks } from "./streaks.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const sp = { timeZone: "America/Sao_Paulo" };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 
 function daily(start_date: string): SchedulableHabit {
 	return {
+		id: "h",
 		schedule: { type: "weekdays", days: [0, 1, 2, 3, 4, 5, 6] },
 		start_date,
 		archived_at: null,

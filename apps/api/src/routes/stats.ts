@@ -9,6 +9,7 @@ import {
 	firstDayOfYear,
 	lastDayOfYear,
 	overdueRange,
+	rescheduleIndex,
 	summarizeYear,
 	todayView,
 } from "@habits/core";
@@ -18,6 +19,7 @@ import { commonErrors, jsonResponse } from "../http/errors.ts";
 import { userToday } from "../http/today.ts";
 import { listLiveCompletions } from "../repos/completions.ts";
 import { listHabits } from "../repos/habits.ts";
+import { listLiveReschedules } from "../repos/reschedules.ts";
 
 const tags = ["stats"];
 
@@ -51,12 +53,21 @@ export const statsRoutes = router()
 		// completions of the last OVERDUE_DAYS: same query, wider range.
 		const isToday = date === today;
 		const range = isToday ? overdueRange(today) : { from: date, to: date };
-		const [habits, completions] = await Promise.all([
+		// 2.16.0: the postponed occurrences (the completions of their habits
+		// come with the same statement).
+		const [habits, completions, reschedules] = await Promise.all([
 			listHabits(db, userId),
 			listLiveCompletions(db, userId, range.from, range.to),
+			listLiveReschedules(db, userId),
 		]);
 		const view = isToday ? todayView : dayView;
-		return c.json(view(habits, completions, date, { timeZone }), 200);
+		return c.json(
+			view(habits, completions, date, {
+				timeZone,
+				reschedules: rescheduleIndex(reschedules, completions),
+			}),
+			200
+		);
 	})
 	.openapi(summaryRoute, async (c) => {
 		const { year } = c.req.valid("query");
@@ -67,10 +78,16 @@ export const statsRoutes = router()
 		const to = today < yearEnd ? today : yearEnd;
 		if (to < from) return c.json({ year, days: [] }, 200);
 
-		const [habits, completions] = await Promise.all([
+		const [habits, completions, reschedules] = await Promise.all([
 			listHabits(db, userId),
 			listLiveCompletions(db, userId, from, to),
+			listLiveReschedules(db, userId),
 		]);
-		const days = summarizeYear(habits, completions, { year, today, timeZone });
+		const days = summarizeYear(habits, completions, {
+			year,
+			today,
+			timeZone,
+			reschedules: rescheduleIndex(reschedules, completions),
+		});
 		return c.json({ year, days }, 200);
 	});

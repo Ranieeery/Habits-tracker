@@ -15,6 +15,12 @@ import { blockedBy, habitDependency, orderOutbox } from "@habits/core";
 import type { LocalStore } from "../local/store.ts";
 import { classifyFailure, type SyncTransport } from "./transport.ts";
 
+/**
+ * What the local mirror holds (2.16.0: 2, with postponed occurrences). A
+ * mirror pulled by an older build is pulled again once, keeping the outbox.
+ */
+export const MIRROR_VERSION = 2;
+
 export const PUSH_BATCH_SIZE = 50;
 export const PULL_PAGE_SIZE = 200;
 export const BACKOFF_BASE_MS = 5_000;
@@ -291,6 +297,17 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
 				changed = true;
 			}
 			await store.setMeta("schedule_version", String(SCHEDULE_VERSION));
+		}
+		// 2.16.0: postponements the server had before this build are behind
+		// the cursor of a mirror pulled without them: pull everything once.
+		const mirrorWith = Number((await store.getMeta("mirror_version")) ?? 1);
+		if (mirrorWith < MIRROR_VERSION) {
+			if (cursor !== null) {
+				await store.resetMirror();
+				cursor = null;
+				changed = true;
+			}
+			await store.setMeta("mirror_version", String(MIRROR_VERSION));
 		}
 		for (;;) {
 			const page = await transport.pull(cursor, PULL_PAGE_SIZE);

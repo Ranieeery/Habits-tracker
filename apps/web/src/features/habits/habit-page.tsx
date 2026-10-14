@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { habitsQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
-import { useToday, useUserTimeZone } from "@/lib/use-today.ts";
+import { useToday } from "@/lib/use-today.ts";
 import { EditHabitDialog } from "./edit-habit-dialog.tsx";
 import { NextBadge } from "./habit-card.tsx";
 import { ScheduleStrip } from "./schedule-summary.tsx";
@@ -34,7 +34,6 @@ const ENTER =
 export function HabitPage({ habitId }: { habitId: string }) {
 	const { api } = useServices();
 	const today = useToday();
-	const timeZone = useUserTimeZone();
 	const habits = useQuery(habitsQuery(api));
 	const [editing, setEditing] = useState(false);
 	const descriptionTitle = useId();
@@ -101,7 +100,7 @@ export function HabitPage({ habitId }: { habitId: string }) {
 						{isSupportedSchedule(habit.schedule) && (
 							<div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">
 								<ScheduleStrip habit={habit} today={today} muted={false} />
-								<NextBadge habit={habit} today={today} timeZone={timeZone} />
+								<NextBadge habit={habit} today={today} />
 							</div>
 						)}
 					</header>

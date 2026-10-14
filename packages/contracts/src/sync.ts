@@ -9,6 +9,7 @@ import {
 	UpdateHabitRequest,
 } from "./habit.ts";
 import { CalendarDate, TimestampMs, Uuid } from "./primitives.ts";
+import { CreateRescheduleRequest, HabitReschedule } from "./reschedule.ts";
 import { Schedule } from "./schedule.ts";
 
 export const SYNC_PROTOCOL_VERSION = 1;
@@ -104,12 +105,45 @@ export const CompletionSetMutation = z.object({
 });
 export type CompletionSetMutation = z.infer<typeof CompletionSetMutation>;
 
+/**
+ * Postpones one occurrence of a fixed-day habit (2.16.0), like `POST
+ * /v1/habits/{habit_id}/reschedules`. `action_date` is the device's local
+ * date when the user acted: the server checks the rules against it (accepted
+ * within `BACKFILL_DAYS` of its own today), so a postponement made offline
+ * on the occurrence's day still applies when it syncs the next day. A new
+ * type: an older API rejects it alone (`validation_error`).
+ */
+export const RescheduleCreateMutation = z.object({
+	...MutationBase,
+	type: z.literal("reschedule.create"),
+	habit_id: Uuid,
+	...CreateRescheduleRequest.shape,
+	action_date: CalendarDate,
+});
+export type RescheduleCreateMutation = z.infer<typeof RescheduleCreateMutation>;
+
+/**
+ * Undoes the last postponement of an occurrence (2.16.0, a tombstone), like
+ * `DELETE /v1/habits/{habit_id}/reschedules/{reschedule_id}`, checked
+ * against `action_date` like `reschedule.create`.
+ */
+export const RescheduleUndoMutation = z.object({
+	...MutationBase,
+	type: z.literal("reschedule.undo"),
+	habit_id: Uuid,
+	reschedule_id: Uuid,
+	action_date: CalendarDate,
+});
+export type RescheduleUndoMutation = z.infer<typeof RescheduleUndoMutation>;
+
 export const Mutation = z.discriminatedUnion("type", [
 	HabitCreateMutation,
 	HabitUpdateMutation,
 	HabitDeleteMutation,
 	HabitRestoreMutation,
 	CompletionSetMutation,
+	RescheduleCreateMutation,
+	RescheduleUndoMutation,
 ]);
 export type Mutation = z.infer<typeof Mutation>;
 export type MutationType = Mutation["type"];
@@ -177,6 +211,8 @@ export type SyncPullQuery = z.infer<typeof SyncPullQuery>;
 export const SyncChanges = z.object({
 	habits: z.array(Habit),
 	completions: z.array(Completion),
+	/** 2.16.0: absent from older APIs; older apps drop the key. */
+	reschedules: z.array(HabitReschedule).default([]),
 });
 export type SyncChanges = z.infer<typeof SyncChanges>;
 

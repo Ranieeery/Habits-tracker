@@ -4,7 +4,8 @@
 import type { CalendarDate, DayResponse, Habit } from "@habits/contracts";
 import { addDays } from "./dates.ts";
 import { deadlineOf } from "./deadline.ts";
-import type { TimeZoneOptions } from "./schedule.ts";
+import type { ScheduleOptions } from "./schedule.ts";
+import { movedInFields } from "./overdue.ts";
 import { dayView } from "./views.ts";
 
 /** Days after today the heatmap shows as read-only future cells. */
@@ -37,11 +38,13 @@ export function previewDayView(
 	habits: readonly Habit[],
 	deadlineFirsts: Readonly<Record<string, CalendarDate>>,
 	date: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): DayResponse {
 	const completions = Object.entries(deadlineFirsts).map(
 		([habit_id, first]) => ({ habit_id, date: first, deleted_at: null })
 	);
+	// 2.16.0: the postponed occurrences come in `options.reschedules`, built
+	// with the completions of their habits (an early completion settles one).
 	return dayView(habits, completions, date, options);
 }
 
@@ -50,6 +53,10 @@ export interface PreviewItem {
 	habit: Habit;
 	/** A deadline task due on this day ("Vence neste dia"). */
 	dueOnDay: boolean;
+	/** 2.16.0: a postponed occurrence's nominal date ("Adiado de 20/10"). */
+	rescheduledFrom?: CalendarDate;
+	/** Its live postponements (absent = 0). */
+	rescheduleCount?: number;
 }
 
 /**
@@ -57,8 +64,12 @@ export interface PreviewItem {
  * day, in the user's order). Read only: no completion state.
  */
 export function previewItems(day: DayResponse): PreviewItem[] {
+	const movedIn = new Map(
+		(day.moved_in ?? []).map((item) => [item.habit_id, item])
+	);
 	return day.possible_habits.map((habit) => ({
 		habit,
 		dueOnDay: deadlineOf(habit.schedule)?.due_date === day.date,
+		...movedInFields(movedIn.get(habit.id)),
 	}));
 }

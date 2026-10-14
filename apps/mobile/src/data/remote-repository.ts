@@ -20,6 +20,27 @@ async function call<T>(request: () => Promise<T>): Promise<T> {
 
 export function createRemoteRepository(api: ApiClient): HabitsRepository {
 	return {
+		getReschedules: () => call(async () => unwrap(api.v1.reschedules.$get())),
+		rescheduleHabit: (habitId, request) =>
+			call(
+				async () =>
+					(
+						await unwrap(
+							api.v1.habits[":habit_id"].reschedules.$post({
+								param: { habit_id: habitId },
+								json: request,
+							})
+						)
+					).reschedule
+			),
+		undoReschedule: (habitId, rescheduleId) =>
+			call(async () => {
+				await unwrap(
+					api.v1.habits[":habit_id"].reschedules[":reschedule_id"].$delete({
+						param: { habit_id: habitId, reschedule_id: rescheduleId },
+					})
+				);
+			}),
 		getSettings: () =>
 			call(async () => (await unwrap(api.v1.settings.$get())).settings),
 		updateSettings: (changes) =>

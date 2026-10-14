@@ -3,9 +3,14 @@
 // another user's record id) and `listSyncUsers` (the cron's purge loop).
 //
 // Statement budget (D1 Free: 50 queries per invocation; each statement of a
-// batch is counted): a push reads at most ~6 times and writes in one batch of
-// chunked multi-row statements; a pull is one batch of 6 reads.
-import type { CalendarDate, Completion, Habit } from "@habits/contracts";
+// batch is counted): a push reads at most ~8 times and writes in one batch of
+// chunked multi-row statements; a pull is one batch of 8 reads.
+import type {
+	CalendarDate,
+	Completion,
+	Habit,
+	HabitReschedule,
+} from "@habits/contracts";
 import { completionKey } from "@habits/core";
 import {
 	and,
@@ -17,6 +22,7 @@ import {
 	isNotNull,
 	lt,
 	lte,
+	or,
 	sql,
 } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
@@ -25,11 +31,14 @@ import type { Db } from "../db/client.ts";
 import {
 	fromCompletionRow,
 	fromHabitRow,
+	fromRescheduleRow,
 	toCompletionRow,
 	toHabitRow,
+	toRescheduleRow,
 } from "../db/records.ts";
 import {
 	completions,
+	habitReschedules,
 	habits,
 	processedMutations,
 	syncState,
@@ -63,18 +72,33 @@ export async function findProcessedMutations(
 
 /**
  * The user's habits with these ids (deleted ones included) and their
- * completions within the dates a push may write.
+ * completions within the dates a push may write. 2.16.0: also every
+ * postponement row of those habits, and for `historyIds` (habits with a
+ * postponement in the push) every completion, since one from the
+ * occurrence's nominal date on fulfills it.
  */
 export async function loadSyncRecords(
 	db: Db,
 	userId: string,
 	habitIds: readonly string[],
-	window: { from: CalendarDate; to: CalendarDate }
-): Promise<{ habits: Habit[]; completions: Completion[] }> {
+	window: { from: CalendarDate; to: CalendarDate },
+	historyIds: readonly string[] = []
+): Promise<{
+	habits: Habit[];
+	completions: Completion[];
+	reschedules: HabitReschedule[];
+}> {
 	const habitRows = [];
 	const completionRows = [];
+	const rescheduleRows = [];
+	const history = new Set(historyIds);
 	for (const ids of chunk(habitIds, 1, 3)) {
-		const [h, c] = await db.batch([
+		const full = ids.filter((id) => history.has(id));
+		const inWindow = and(
+			gte(completions.date, window.from),
+			lte(completions.date, window.to)
+		);
+		const [h, c, r] = await db.batch([
 			db
 				.select()
 				.from(habits)
@@ -86,17 +110,29 @@ export async function loadSyncRecords(
 					and(
 						eq(completions.user_id, userId),
 						inArray(completions.habit_id, ids),
-						gte(completions.date, window.from),
-						lte(completions.date, window.to)
+						full.length > 0
+							? or(inWindow, inArray(completions.habit_id, full))
+							: inWindow
+					)
+				),
+			db
+				.select()
+				.from(habitReschedules)
+				.where(
+					and(
+						eq(habitReschedules.user_id, userId),
+						inArray(habitReschedules.habit_id, ids)
 					)
 				),
 		]);
 		habitRows.push(...h);
 		completionRows.push(...c);
+		rescheduleRows.push(...r);
 	}
 	return {
 		habits: habitRows.map(fromHabitRow),
 		completions: completionRows.map(fromCompletionRow),
+		reschedules: rescheduleRows.map(fromRescheduleRow),
 	};
 }
 
@@ -110,14 +146,18 @@ export async function findTakenIds(
 ): Promise<Set<string>> {
 	const taken = new Set<string>();
 	for (const part of chunk(ids, 1)) {
-		const [h, c] = await db.batch([
+		const [h, c, r] = await db.batch([
 			db.select({ id: habits.id }).from(habits).where(inArray(habits.id, part)),
 			db
 				.select({ id: completions.id })
 				.from(completions)
 				.where(inArray(completions.id, part)),
+			db
+				.select({ id: habitReschedules.id })
+				.from(habitReschedules)
+				.where(inArray(habitReschedules.id, part)),
 		]);
-		for (const row of [...h, ...c]) taken.add(row.id);
+		for (const row of [...h, ...c, ...r]) taken.add(row.id);
 	}
 	return taken;
 }
@@ -127,6 +167,8 @@ export interface SyncWrites {
 	habitUpdates: { habit: Habit; changes: HabitFieldChanges }[];
 	/** Final state of every completion written (new or changed). */
 	completions: Completion[];
+	/** Postponements written (2.16.0): new rows and undone ones. */
+	reschedules?: HabitReschedule[];
 	processed: { mutation_id: string; canonical_id: string }[];
 }
 
@@ -181,6 +223,27 @@ export async function writeSyncChanges(
 	);
 	const firstCompletion = statements.length;
 	statements.push(...completionStatements);
+	// A new row that hits the live unique index (another device wrote the
+	// same postponement meanwhile) aborts the batch: a transient 500, and the
+	// retry answers it as a conflict.
+	for (const rows of chunk(
+		writes.reschedules ?? [],
+		columnCount(habitReschedules)
+	)) {
+		statements.push(
+			db
+				.insert(habitReschedules)
+				.values(rows.map((row) => toRescheduleRow(userId, row)))
+				.onConflictDoUpdate({
+					target: habitReschedules.id,
+					set: {
+						updated_at: sql`excluded.updated_at`,
+						deleted_at: sql`excluded.deleted_at`,
+					},
+					setWhere: sql`${habitReschedules.user_id} = excluded.user_id`,
+				})
+		);
+	}
 	for (const rows of chunk(writes.processed, columnCount(processedMutations))) {
 		statements.push(
 			db
@@ -221,6 +284,7 @@ export interface ChangesPage {
 	position: SyncPosition;
 	habits: (Habit & { server_seq: number })[];
 	completions: (Completion & { server_seq: number })[];
+	reschedules: (HabitReschedule & { server_seq: number })[];
 	/** Rows with a seq above the cursor, this page included. */
 	total: number;
 	/** Every habit of the user (deleted included) with its schedule. */
@@ -245,6 +309,8 @@ export async function readChanges(
 		habitCount,
 		completionCount,
 		scheduleRows,
+		rescheduleRows,
+		rescheduleCount,
 	] = await db.batch([
 		db
 			.select({ seq: syncState.seq, purgedSeq: syncState.purged_seq })
@@ -286,6 +352,26 @@ export async function readChanges(
 			.select({ id: habits.id, schedule: habits.schedule })
 			.from(habits)
 			.where(eq(habits.user_id, userId)),
+		db
+			.select()
+			.from(habitReschedules)
+			.where(
+				and(
+					eq(habitReschedules.user_id, userId),
+					gt(habitReschedules.server_seq, afterSeq)
+				)
+			)
+			.orderBy(habitReschedules.server_seq)
+			.limit(limit + 1),
+		db
+			.select({ n: count() })
+			.from(habitReschedules)
+			.where(
+				and(
+					eq(habitReschedules.user_id, userId),
+					gt(habitReschedules.server_seq, afterSeq)
+				)
+			),
 	]);
 	return {
 		position: state[0] ?? { seq: 0, purgedSeq: 0 },
@@ -297,7 +383,14 @@ export async function readChanges(
 			...fromCompletionRow(row),
 			server_seq: row.server_seq,
 		})),
-		total: (habitCount[0]?.n ?? 0) + (completionCount[0]?.n ?? 0),
+		reschedules: rescheduleRows.map((row) => ({
+			...fromRescheduleRow(row),
+			server_seq: row.server_seq,
+		})),
+		total:
+			(habitCount[0]?.n ?? 0) +
+			(completionCount[0]?.n ?? 0) +
+			(rescheduleCount[0]?.n ?? 0),
 		schedules: scheduleRows,
 	};
 }
@@ -334,6 +427,12 @@ export async function purgeExpired(
 		eq(completions.user_id, userId),
 		sql`((${completions.deleted_at} IS NOT NULL AND ${completions.deleted_at} < ${cutoff}) OR ${completions.habit_id} IN ${deadHabitIds})`
 	);
+	// 2.16.0: undone postponements (tombstones) expire like the others; live
+	// ones only leave with their purged habit (the nominal day needs them).
+	const deadReschedule = and(
+		eq(habitReschedules.user_id, userId),
+		sql`((${habitReschedules.deleted_at} IS NOT NULL AND ${habitReschedules.deleted_at} < ${cutoff}) OR ${habitReschedules.habit_id} IN ${deadHabitIds})`
+	);
 	await db.batch([
 		db
 			.update(syncState)
@@ -344,10 +443,14 @@ export async function purgeExpired(
 					.where(deadHabit)}), 0), coalesce((${db
 					.select({ seq: sql`max(${completions.server_seq})` })
 					.from(completions)
-					.where(deadCompletion)}), 0))`,
+					.where(deadCompletion)}), 0), coalesce((${db
+					.select({ seq: sql`max(${habitReschedules.server_seq})` })
+					.from(habitReschedules)
+					.where(deadReschedule)}), 0))`,
 			})
 			.where(eq(syncState.user_id, userId)),
 		db.delete(completions).where(deadCompletion),
+		db.delete(habitReschedules).where(deadReschedule),
 		db.delete(habits).where(deadHabit),
 		db
 			.delete(processedMutations)

@@ -7,6 +7,7 @@ import {
 	type CalendarDate,
 	type Completion,
 	type Habit,
+	type HabitReschedule,
 	type Mutation,
 	type MutationResult,
 	type SyncChanges,
@@ -31,6 +32,8 @@ export interface OutboxEntry {
 export interface Mirror {
 	habits: Habit[];
 	completions: Completion[];
+	/** Postponed occurrences (2.16.0), tombstones included. */
+	reschedules: HabitReschedule[];
 }
 
 export interface DateRange {
@@ -50,6 +53,11 @@ type MetaKey =
 	| "initial_sync_done"
 	/** `SCHEDULE_VERSION` the mirror was pulled with (absent: 1, before 2.2.0). */
 	| "schedule_version"
+	/**
+	 * `MIRROR_VERSION` the mirror was pulled with (absent: 1, before 2.16.0:
+	 * no postponements).
+	 */
+	| "mirror_version"
 	| "settings"
 	| "lock_owner"
 	| "lock_until";
@@ -72,6 +80,8 @@ const HABIT_COLUMNS =
 	"id, name, description, schedule, start_date, archived_at, sort_key, created_at, updated_at, deleted_at";
 const COMPLETION_COLUMNS =
 	"id, habit_id, date, completed_at, created_at, updated_at, deleted_at";
+const RESCHEDULE_COLUMNS =
+	"id, habit_id, original_date, from_date, to_date, sequence, created_at, updated_at, deleted_at";
 
 function toHabit({ schedule, ...row }: HabitRow): Habit {
 	return { ...row, schedule: JSON.parse(schedule) as Habit["schedule"] };
@@ -109,7 +119,12 @@ async function setMetaIn(
 	}
 }
 
-async function writeMirror(tx: SqlExecutor, changes: SyncChanges) {
+/** A pulled page: `reschedules` is absent from an API older than 2.16.0. */
+type PulledChanges = Omit<SyncChanges, "reschedules"> & {
+	reschedules?: readonly HabitReschedule[];
+};
+
+async function writeMirror(tx: SqlExecutor, changes: PulledChanges) {
 	for (const habit of changes.habits) {
 		await tx.run(
 			`INSERT OR REPLACE INTO habits (${HABIT_COLUMNS}) VALUES (${placeholders(10)})`,
@@ -141,6 +156,30 @@ async function writeMirror(tx: SqlExecutor, changes: SyncChanges) {
 				completion.created_at,
 				completion.updated_at,
 				completion.deleted_at,
+			]
+		);
+	}
+	// Absent from an API older than 2.16.0.
+	await writeReschedules(tx, changes.reschedules ?? []);
+}
+
+async function writeReschedules(
+	tx: SqlExecutor,
+	rows: readonly HabitReschedule[]
+) {
+	for (const row of rows) {
+		await tx.run(
+			`INSERT OR REPLACE INTO reschedules (${RESCHEDULE_COLUMNS}) VALUES (${placeholders(9)})`,
+			[
+				row.id,
+				row.habit_id,
+				row.original_date,
+				row.from_date,
+				row.to_date,
+				row.sequence,
+				row.created_at,
+				row.updated_at,
+				row.deleted_at,
 			]
 		);
 	}
@@ -205,7 +244,7 @@ export interface LocalStore {
 	 * drops the `applied` entries: the mirror now has their result.
 	 */
 	applyPullPage(page: {
-		changes: SyncChanges;
+		changes: PulledChanges;
 		cursor: string;
 		has_more: boolean;
 	}): Promise<void>;
@@ -251,7 +290,13 @@ export function createLocalStore(open: () => Promise<SqlDatabase>): LocalStore {
 		)?.value ?? null;
 
 	const wipeWith = async (tx: SqlExecutor) => {
-		for (const table of ["habits", "completions", "outbox", "meta"]) {
+		for (const table of [
+			"habits",
+			"completions",
+			"reschedules",
+			"outbox",
+			"meta",
+		]) {
 			await tx.run(`DELETE FROM ${table}`);
 		}
 	};
@@ -284,15 +329,19 @@ export function createLocalStore(open: () => Promise<SqlDatabase>): LocalStore {
 					`SELECT ${HABIT_COLUMNS} FROM habits ORDER BY created_at, id`
 				)
 			).map(toHabit);
-			if (range === "habits") return { habits, completions: [] };
+			const reschedules = await database.all<HabitReschedule>(
+				`SELECT ${RESCHEDULE_COLUMNS} FROM reschedules ORDER BY habit_id, original_date, sequence`
+			);
+			if (range === "habits") return { habits, completions: [], reschedules };
 			const params: SqlValue[] = range ? [range.from, range.to] : [];
 			// Deadline tasks (2.13.0) count through their first completion,
-			// whatever the range: all of theirs come along.
+			// whatever the range, and a postponed occurrence (2.16.0) is
+			// fulfilled by one from its nominal date on: all of theirs come along.
 			const completions = await database.all<Completion>(
-				`SELECT ${COMPLETION_COLUMNS} FROM completions${range ? " WHERE date BETWEEN ? AND ? OR habit_id IN (SELECT id FROM habits WHERE json_extract(schedule, '$.type') = 'deadline')" : ""} ORDER BY date`,
+				`SELECT ${COMPLETION_COLUMNS} FROM completions${range ? " WHERE date BETWEEN ? AND ? OR habit_id IN (SELECT id FROM habits WHERE json_extract(schedule, '$.type') = 'deadline') OR habit_id IN (SELECT habit_id FROM reschedules WHERE deleted_at IS NULL)" : ""} ORDER BY date`,
 				params
 			);
-			return { habits, completions };
+			return { habits, completions, reschedules };
 		},
 		async readOutbox() {
 			return readOutboxWith(await db());
@@ -444,6 +493,7 @@ export function createLocalStore(open: () => Promise<SqlDatabase>): LocalStore {
 			).transaction(async (tx) => {
 				await tx.run("DELETE FROM habits");
 				await tx.run("DELETE FROM completions");
+				await tx.run("DELETE FROM reschedules");
 				await setMetaIn(tx, "cursor", null);
 			});
 		},

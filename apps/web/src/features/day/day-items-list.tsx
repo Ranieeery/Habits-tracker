@@ -3,7 +3,9 @@ import type { DayItem } from "@habits/core";
 import { CalendarRange } from "lucide-react";
 import { useCallback, useEffect, useId, useRef } from "react";
 import { EditHabitDialog } from "@/features/habits/edit-habit-dialog.tsx";
+import { useToday } from "@/lib/use-today.ts";
 import { DayHabitItem } from "./day-habit-item.tsx";
+import { RescheduleDialog } from "./reschedule-dialog.tsx";
 import { useHabitActions } from "./use-habit-actions.ts";
 
 /**
@@ -11,7 +13,9 @@ import { useHabitActions } from "./use-habit-actions.ts";
  * the day's habits, then (today, 2.13.0) the open deadline tasks under "Com
  * prazo", by due date. Shared by the day view and the heatmap's "Hoje" panel.
  * 2.15.0: with `actions` (only the Hoje tab, `/today`), every row has the
- * habit's actions menu, with one edit dialog for the whole list.
+ * habit's actions menu, with one edit dialog for the whole list; 2.16.0:
+ * also "Adiar" (one postponement dialog for the list) on the rows whose
+ * occurrence lives on the day shown.
  */
 export function DayItemsList({
 	date,
@@ -28,6 +32,7 @@ export function DayItemsList({
 }) {
 	const headingId = useId();
 	const menu = useHabitActions();
+	const today = useToday();
 	// The rows are memoized: hand them a toggle that never changes and calls
 	// the latest one the parent gave.
 	const latestToggle = useRef(onToggle);
@@ -44,6 +49,7 @@ export function DayItemsList({
 			key={item.habit.id}
 			item={item}
 			date={date}
+			today={today}
 			editable={editable}
 			onToggle={toggle}
 			onAction={actions ? menu.onAction : undefined}
@@ -76,6 +82,14 @@ export function DayItemsList({
 					habit={menu.editing}
 					open={menu.open}
 					onOpenChange={menu.setOpen}
+				/>
+			)}
+			{actions && menu.postponing && (
+				<RescheduleDialog
+					habit={menu.postponing.habit}
+					occurrence={menu.postponing.occurrence}
+					open={menu.postponeOpen}
+					onOpenChange={menu.setPostponeOpen}
 				/>
 			)}
 		</div>

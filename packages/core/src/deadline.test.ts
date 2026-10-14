@@ -35,8 +35,9 @@ import {
 import { dayStreaks, habitStreaks } from "./streaks.ts";
 import { upcoming } from "./upcoming.ts";
 import { dayView, summarizeYear } from "./views.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const TZ = { timeZone: "America/Sao_Paulo" };
+const TZ = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 
 let counter = 0;
 const uuid = () =>
@@ -229,10 +230,19 @@ describe("counting a deadline task", () => {
 	it("does not depend on the time zone for calendar dates", () => {
 		const t = task(D);
 		for (const timeZone of ["Asia/Tokyo", "Pacific/Honolulu", "UTC"]) {
-			expect(countOn(t, D, false, { timeZone }, null).counted).toBe(true);
-			expect(countOn(t, "2026-10-19", false, { timeZone }, null).counted).toBe(
-				false
-			);
+			expect(
+				countOn(t, D, false, { reschedules: NO_RESCHEDULES, timeZone }, null)
+					.counted
+			).toBe(true);
+			expect(
+				countOn(
+					t,
+					"2026-10-19",
+					false,
+					{ reschedules: NO_RESCHEDULES, timeZone },
+					null
+				).counted
+			).toBe(false);
 		}
 	});
 });

@@ -17,6 +17,7 @@ import {
 	type HeatmapLevel,
 	initialSortKeys,
 	isHabitPossibleOn,
+	NO_RESCHEDULES,
 	parseCalendarDate,
 } from "@habits/core";
 import { saoPauloInstant, unitHash, uuidV7 } from "./deterministic.ts";
@@ -170,6 +171,16 @@ const SCHEDULED_TODAY: readonly {
 		schedule: () => ({ type: "monthly_days", days: [20] }),
 	},
 	{
+		// 2.16.0: a day of the month that falls on the reference day, so
+		// "Adiar" shows on today (the single date above covers a preview day).
+		key: "bill",
+		name: "Pagar conta (teste)",
+		schedule: (today) => ({
+			type: "monthly_days",
+			days: [parseCalendarDate(today).day],
+		}),
+	},
+	{
 		// 2.13.0: a task with a deadline a week ahead ("Com prazo" on today).
 		key: "report",
 		name: "Entregar relatório (teste)",
@@ -301,7 +312,7 @@ export function buildSeed({
 
 	for (const date of eachDay(firstDate, today)) {
 		const possible = habits.filter((habit) =>
-			isHabitPossibleOn(habit, date, { timeZone })
+			isHabitPossibleOn(habit, date, { timeZone, reschedules: NO_RESCHEDULES })
 		);
 		if (possible.length === 0) continue;
 

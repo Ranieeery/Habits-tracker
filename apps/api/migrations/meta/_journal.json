@@ -57,6 +57,13 @@
       "when": 1791927499169,
       "tag": "0007_habit_description",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792001955973,
+      "tag": "0008_habit_reschedules",
+      "breakpoints": true
     }
   ]
 }

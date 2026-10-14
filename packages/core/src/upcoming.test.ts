@@ -1,8 +1,9 @@
 import type { Habit } from "@habits/contracts";
 import { describe, expect, it } from "vitest";
 import { upcoming } from "./upcoming.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const sp = { timeZone: "America/Sao_Paulo" };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 const TODAY = "2026-10-11"; // Sunday
 
 function habit(name: string, overrides: Partial<Habit>): Habit {

@@ -158,3 +158,50 @@ describe("failureReason", () => {
 		expect(failureReason(null)).toBe("O servidor recusou a alteração.");
 	});
 });
+
+describe("postponements (2.16.0)", () => {
+	const create: Mutation = {
+		mutation_id: "00000000-0000-7000-8000-0000000000a1",
+		created_at: 1,
+		type: "reschedule.create",
+		id: "00000000-0000-7000-8000-0000000000b1",
+		habit_id: HABIT,
+		original_date: "2026-10-09",
+		from_date: "2026-10-09",
+		to_date: "2026-10-16",
+		sequence: 1,
+		action_date: "2026-10-09",
+	};
+
+	it("names the change and says why in core's words", () => {
+		expect(describeMutation(create, names)).toBe(
+			"Adiar “Ler” de 09/10 para 16/10"
+		);
+		expect(
+			describeMutation(
+				{
+					mutation_id: "00000000-0000-7000-8000-0000000000a2",
+					created_at: 1,
+					type: "reschedule.undo",
+					habit_id: HABIT,
+					reschedule_id: "00000000-0000-7000-8000-0000000000b1",
+					action_date: "2026-10-09",
+				},
+				names
+			)
+		).toBe("Desfazer o adiamento de “Ler”");
+		expect(
+			failureReason({ code: "conflict", details: { reason: "limit_reached" } })
+		).toBe("Limite de 2 adiamentos atingido");
+		expect(
+			failureReason({ code: "conflict", details: { reason: "stale" } })
+		).toBe("A ocorrência mudou em outro aparelho.");
+		// Other reasons keep their old text.
+		expect(
+			failureReason({
+				code: "validation_error",
+				details: { reason: "deadline_passed" },
+			})
+		).toBe("Os dados da alteração são inválidos.");
+	});
+});

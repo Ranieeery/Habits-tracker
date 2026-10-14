@@ -24,6 +24,10 @@ import {
 	formatDayMonthYear,
 	isDeadlinePast,
 	latestDueDate,
+	NO_RESCHEDULES,
+	orphanedReschedules,
+	orphanNotice,
+	type RescheduleIndex,
 } from "@habits/core";
 import { type Ref, useState } from "react";
 import { Alert, Text, type TextInput, View } from "react-native";
@@ -48,6 +52,8 @@ export interface HabitFormValues {
 
 /** An existing habit being edited. */
 export interface HabitFormInitial {
+	/** An edited habit's id: its postponed occurrences (2.16.0). */
+	id?: string;
 	name: string;
 	description?: string;
 	schedule: StoredSchedule;
@@ -130,6 +136,7 @@ export function HabitForm({
 	initial,
 	today,
 	timeZone,
+	reschedules = NO_RESCHEDULES,
 	submitLabel,
 	pending = false,
 	error,
@@ -140,6 +147,12 @@ export function HabitForm({
 	initial?: HabitFormInitial;
 	today: CalendarDate;
 	timeZone: string;
+	/**
+	 * The user's postponed occurrences (2.16.0), for an edited habit: the
+	 * preview's next date and the notice about the ones a new repetition
+	 * leaves without effect. A new habit has none.
+	 */
+	reschedules?: RescheduleIndex;
 	submitLabel: string;
 	pending?: boolean;
 	/** A failure to save, shown above the button; the typed values stay. */
@@ -170,12 +183,34 @@ export function HabitForm({
 		initial && isDeadlinePast(initial.schedule, today)
 			? (draftFromHabit(initial, today)?.due ?? null)
 			: null;
+	const scheduleOptions = { timeZone, reschedules };
 	const preview =
 		built?.ok === true
 			? previewHabit(
-					{ schedule: built.schedule, start_date: built.start_date },
+					{
+						id: initial?.id,
+						schedule: built.schedule,
+						start_date: built.start_date,
+					},
 					today,
-					{ timeZone }
+					scheduleOptions
+				)
+			: null;
+	// 2.16.0: postponements the new repetition would leave without effect.
+	const orphanText =
+		initial?.id !== undefined && built?.ok === true
+			? orphanNotice(
+					orphanedReschedules(
+						{
+							id: initial.id,
+							schedule: initial.schedule,
+							start_date: initial.start_date,
+						},
+						{ schedule: built.schedule, start_date: built.start_date },
+						reschedules
+					),
+					{ schedule: built.schedule, start_date: built.start_date },
+					today
 				)
 			: null;
 
@@ -203,18 +238,24 @@ export function HabitForm({
 						description: trimmed,
 						start_date: initial?.start_date ?? today,
 					};
-		const reschedules =
+		const changesPast =
 			initial !== undefined &&
 			values.schedule !== undefined &&
 			!sameSchedule(initial.schedule, values.schedule) &&
 			initial.start_date < today;
-		if (!reschedules) {
+		if (!changesPast && orphanText === null) {
 			onSubmit(values);
 			return;
 		}
 		Alert.alert(
 			"Mudar a repetição?",
-			"Mudar a repetição recalcula os dias passados do heatmap. Dias já marcados continuam contando.",
+			[
+				changesPast &&
+					"Mudar a repetição recalcula os dias passados do heatmap. Dias já marcados continuam contando.",
+				orphanText,
+			]
+				.filter(Boolean)
+				.join("\n\n"),
 			[
 				{ text: "Cancelar", style: "cancel" },
 				{ text: "Salvar", onPress: () => onSubmit(values) },

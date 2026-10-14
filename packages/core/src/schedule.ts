@@ -6,19 +6,22 @@ import {
 import {
 	addDays,
 	type CalendarDate,
-	daysInMonth,
 	diffInDays,
-	isLeapYear,
 	localDateAt,
-	parseCalendarDate,
-	weekdayOf,
 } from "./dates.ts";
+import { moveFrom, moveTo, type RescheduleIndex } from "./reschedule-index.ts";
+import { matchesSchedule } from "./schedule-match.ts";
 import { BACKFILL_DAYS } from "./window.ts";
 
-/** The habit fields schedule evaluation needs (API rows and local DB rows). */
+export { matchesSchedule } from "./schedule-match.ts";
+
+/**
+ * The habit fields schedule evaluation needs (API rows and local DB rows);
+ * the id finds its postponed occurrences (2.16.0).
+ */
 export type SchedulableHabit = Pick<
 	Habit,
-	"schedule" | "start_date" | "archived_at" | "deleted_at"
+	"id" | "schedule" | "start_date" | "archived_at" | "deleted_at"
 >;
 
 export interface TimeZoneOptions {
@@ -27,60 +30,29 @@ export interface TimeZoneOptions {
 }
 
 /**
- * Whether the schedule recurs on `date`, ignoring start and archive dates. A
- * schedule this build does not understand never matches.
- *
- * - `monthly_days`: a day the month does not have falls on its last day.
- * - `yearly`: February 29 falls on February 28 in years that are not leap.
+ * What every rule that decides whether a habit is possible on a date needs:
+ * the time zone and, since 2.16.0, the user's postponed occurrences. Required
+ * on purpose, so no caller can leave them out; `NO_RESCHEDULES` only where
+ * none can exist (a habit being created) and in tests.
  */
-export function matchesSchedule(
-	schedule: StoredSchedule,
-	date: CalendarDate
-): boolean {
-	if (!isSupportedSchedule(schedule)) return false;
-	switch (schedule.type) {
-		case "weekdays":
-			return schedule.days.includes(weekdayOf(date));
-		case "interval": {
-			const elapsed = diffInDays(schedule.anchor_date, date);
-			return elapsed >= 0 && elapsed % schedule.every === 0;
-		}
-		case "monthly_days": {
-			const { year, month, day } = parseCalendarDate(date);
-			const last = daysInMonth(year, month);
-			return schedule.days.some((wanted) => Math.min(wanted, last) === day);
-		}
-		case "once":
-			return schedule.date === date;
-		// The due date is the deadline's only "occurrence" (when it counts as a
-		// failure if still open; `countOn`).
-		case "deadline":
-			return schedule.due_date === date;
-		case "yearly": {
-			const { year, month, day } = parseCalendarDate(date);
-			if (month !== schedule.month) return false;
-			const wanted =
-				schedule.month === 2 && schedule.day === 29 && !isLeapYear(year)
-					? 28
-					: schedule.day;
-			return day === wanted;
-		}
-		default: {
-			const unknown: never = schedule;
-			throw new Error(`Unknown schedule type: ${String(unknown)}`);
-		}
-	}
+export interface ScheduleOptions extends TimeZoneOptions {
+	reschedules: RescheduleIndex;
 }
 
 /**
  * Whether the habit counts on `date`: not deleted, started on or before it,
  * not archived before it, and scheduled for it. A habit archived during day D
  * still counts on D (it was not archived before D started).
+ *
+ * 2.16.0: a postponed occurrence (single date, days of the month) is not
+ * possible on its nominal date (no failure there) and is possible on its
+ * effective date instead, unless a completion between the two fulfilled it
+ * early. The archive cutoff applies to the effective date.
  */
 export function isHabitPossibleOn(
 	habit: SchedulableHabit,
 	date: CalendarDate,
-	{ timeZone }: TimeZoneOptions
+	{ timeZone, reschedules }: ScheduleOptions
 ): boolean {
 	if (habit.deleted_at !== null) return false;
 	if (date < habit.start_date) return false;
@@ -89,6 +61,11 @@ export function isHabitPossibleOn(
 		date > localDateAt(habit.archived_at, timeZone)
 	) {
 		return false;
+	}
+	if (reschedules.byHabit.has(habit.id)) {
+		if (moveFrom(habit, date, reschedules)) return false;
+		const moved = moveTo(habit, date, reschedules);
+		if (moved) return !moved.settledEarly;
 	}
 	return matchesSchedule(habit.schedule, date);
 }
@@ -104,7 +81,7 @@ export function isHabitCountedOn(
 	habit: SchedulableHabit,
 	date: CalendarDate,
 	completed: boolean,
-	options: TimeZoneOptions,
+	options: ScheduleOptions,
 	first?: CalendarDate | null
 ): boolean {
 	return countOn(habit, date, completed, options, first).counted;
@@ -130,7 +107,7 @@ export function countOn(
 	habit: SchedulableHabit,
 	date: CalendarDate,
 	completed: boolean,
-	options: TimeZoneOptions,
+	options: ScheduleOptions,
 	first?: CalendarDate | null
 ): DayCount {
 	if (habit.deleted_at !== null) return { counted: false, done: false };
@@ -162,7 +139,7 @@ export const MAX_OCCURRENCE_RANGE_DAYS = 366;
 export function nextOccurrence(
 	habit: SchedulableHabit,
 	from: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): CalendarDate | null {
 	if (habit.deleted_at !== null || !isSupportedSchedule(habit.schedule)) {
 		return null;
@@ -184,7 +161,7 @@ export function occurrencesBetween(
 	habit: SchedulableHabit,
 	from: CalendarDate,
 	to: CalendarDate,
-	options: TimeZoneOptions
+	options: ScheduleOptions
 ): CalendarDate[] {
 	const span = diffInDays(from, to);
 	if (span > MAX_OCCURRENCE_RANGE_DAYS) {

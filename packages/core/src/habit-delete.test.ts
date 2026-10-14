@@ -29,8 +29,9 @@ import {
 } from "./sync.ts";
 import { upcoming } from "./upcoming.ts";
 import { dayView, summarizeYear } from "./views.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const TZ = { timeZone: "America/Sao_Paulo" };
+const TZ = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 const TODAY = "2026-10-15";
 const T0 = Date.UTC(2026, 9, 15, 15);
 const ARCHIVED_AT = Date.UTC(2026, 9, 14, 15);

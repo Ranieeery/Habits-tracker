@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { completionRatio, heatmapLevel, summarizeDay } from "./progress.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
 describe("completionRatio", () => {
 	it("is 0 when nothing is possible and clamps to 1", () => {
@@ -35,7 +36,7 @@ describe("heatmapLevel", () => {
 });
 
 describe("summarizeDay", () => {
-	const sp = { timeZone: "America/Sao_Paulo" };
+	const sp = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 	const base = {
 		start_date: "2026-01-01",
 		archived_at: null,

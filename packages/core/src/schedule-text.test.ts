@@ -11,13 +11,15 @@ import {
 	UNSUPPORTED_SCHEDULE_TEXT,
 	WEEKDAY_SHORT_NAMES,
 } from "./schedule-text.ts";
+import { NO_RESCHEDULES } from "./reschedule-index.ts";
 
-const sp = { timeZone: "America/Sao_Paulo" };
+const sp = { reschedules: NO_RESCHEDULES, timeZone: "America/Sao_Paulo" };
 // 2026-10-09 is a Friday (weekday 5).
 const FRIDAY = "2026-10-09";
 
 function habit(days: number[]): SchedulableHabit {
 	return {
+		id: "h",
 		schedule: { type: "weekdays", days },
 		start_date: FRIDAY,
 		archived_at: null,
@@ -164,6 +166,7 @@ describe("repeatSummary", () => {
 describe("newHabitNotice for the new schedules", () => {
 	it("tells when a habit not happening today comes next", () => {
 		const consulta: SchedulableHabit = {
+			id: "consulta",
 			schedule: { type: "once", date: "2026-11-20" },
 			start_date: "2026-11-20",
 			archived_at: null,

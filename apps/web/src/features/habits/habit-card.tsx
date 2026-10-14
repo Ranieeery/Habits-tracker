@@ -11,19 +11,22 @@ import {
 	overdueLabel,
 } from "@habits/core";
 import type { CSSProperties, ReactNode, Ref } from "react";
+import { useScheduleOptions } from "@/lib/use-schedule-options.ts";
 import { cn } from "@/lib/utils.ts";
 import { ScheduleStrip } from "./schedule-summary.tsx";
 
-/** "Hoje" when it happens today, otherwise when it happens next. */
+/**
+ * "Hoje" when it happens today, otherwise when it happens next (2.16.0: on
+ * the effective date of a postponed occurrence).
+ */
 export function NextBadge({
 	habit,
 	today,
-	timeZone,
 }: {
 	habit: Habit;
 	today: CalendarDate;
-	timeZone: string;
 }) {
+	const { options } = useScheduleOptions();
 	if (habit.archived_at !== null) return null;
 	// A task with a deadline (2.13.0): how long is left, or overdue.
 	const deadline = deadlineOf(habit.schedule);
@@ -49,7 +52,7 @@ export function NextBadge({
 			</span>
 		);
 	}
-	const next = nextOccurrence(habit, today, { timeZone });
+	const next = nextOccurrence(habit, today, options);
 	if (next === null) return null;
 	if (next === today) {
 		return (
@@ -68,7 +71,6 @@ export function NextBadge({
 export interface HabitCardProps {
 	habit: Habit;
 	today: CalendarDate;
-	timeZone: string;
 	/** Past single dates and archived habits. */
 	muted?: boolean;
 	/** The drag handle (reorderable lists only). */
@@ -83,7 +85,6 @@ export interface HabitCardProps {
 export function HabitCard({
 	habit,
 	today,
-	timeZone,
 	muted = false,
 	handle,
 	actions,
@@ -114,9 +115,7 @@ export function HabitCard({
 					>
 						{habit.name}
 					</span>
-					{supported && !muted && (
-						<NextBadge habit={habit} today={today} timeZone={timeZone} />
-					)}
+					{supported && !muted && <NextBadge habit={habit} today={today} />}
 				</div>
 				{supported ? (
 					<ScheduleStrip habit={habit} today={today} muted={muted} />

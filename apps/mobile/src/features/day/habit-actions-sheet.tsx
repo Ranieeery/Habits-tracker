@@ -1,11 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type { Habit } from "@habits/contracts";
+import type { CalendarDate, Habit } from "@habits/contracts";
 import {
 	ARCHIVE_NOTICE,
 	ARCHIVED_BADGE,
 	ARCHIVED_TOAST,
 	type HabitActionId,
 	habitActions,
+	RESCHEDULE_UNDONE_TOAST,
+	type RescheduleAvailability,
+	rescheduledToast,
 	UNARCHIVED_TOAST,
 } from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
@@ -19,7 +22,13 @@ import {
 	View,
 } from "react-native";
 import { errorMessage, isUnauthorized } from "@/data/errors.ts";
-import { useUpdateHabit } from "@/data/hooks.ts";
+import {
+	useNewId,
+	useRescheduleHabit,
+	useScheduleOptions,
+	useUndoReschedule,
+	useUpdateHabit,
+} from "@/data/hooks.ts";
 import { useToday, useUserTimeZone } from "@/data/today.ts";
 import {
 	HabitForm,
@@ -29,9 +38,11 @@ import { BottomSheet } from "@/ui/bottom-sheet.tsx";
 import type { IconName } from "@/ui/button.tsx";
 import { PressableScale } from "@/ui/pressable-scale.tsx";
 import { useToast } from "@/ui/toast.tsx";
+import { type OccurrenceTarget, RescheduleForm } from "./reschedule-form.tsx";
 
 const ICONS: Record<HabitActionId, IconName> = {
 	edit: "pencil-outline",
+	reschedule: "calendar-arrow-right",
 	description: "text-box-outline",
 	archive: "archive-outline",
 	unarchive: "archive-arrow-up-outline",
@@ -47,15 +58,29 @@ const ICONS: Record<HabitActionId, IconName> = {
  * completa" opens the habit's page. "Arquivar"/"Desarquivar" are immediate,
  * with "Desfazer" for 6 s in the toast (it unarchives). The accessibility
  * focus goes to the title on opening and back to `origin` on closing.
+ * 2.16.0: "Adiar" swaps the content for the postponement form
+ * (`RescheduleForm`), written to the outbox like the rest (offline too), with
+ * "Adiado para 27/10" and "Desfazer" in the toast; at the limit the item
+ * stays, disabled, with the reason.
  */
+
+/** What a row adds for "Adiar" (2.16.0). */
+export interface RescheduleContext {
+	availability: RescheduleAvailability;
+	occurrence: OccurrenceTarget;
+	/** "Arquivar"/"Desarquivar" too (false on the preview days). */
+	archive?: boolean;
+}
 export function HabitActionsSheet({
 	habit,
+	context,
 	open,
 	origin,
 	onClose,
 }: {
 	/** The last habit opened: it stays while the sheet slides out. */
 	habit: Habit | null;
+	context: RescheduleContext | null;
 	open: boolean;
 	/** The element to give the focus back to (the row's "more options"). */
 	origin: View | null;
@@ -64,10 +89,17 @@ export function HabitActionsSheet({
 	const router = useRouter();
 	const toast = useToast();
 	const update = useUpdateHabit();
+	const postpone = useRescheduleHabit();
+	const undoPostpone = useUndoReschedule();
+	const newId = useNewId();
+	const { reschedules } = useScheduleOptions();
 	const today = useToday();
 	const timeZone = useUserTimeZone();
 	const { height } = useWindowDimensions();
-	const [editing, setEditing] = useState(false);
+	const [mode, setMode] = useState<"actions" | "edit" | "reschedule">(
+		"actions"
+	);
+	const editing = mode === "edit";
 	const [error, setError] = useState<string>();
 	const titleRef = useRef<View>(null);
 
@@ -87,10 +119,65 @@ export function HabitActionsSheet({
 	}, [open, origin]);
 
 	const close = () => {
-		if (update.isPending) return;
-		setEditing(false);
+		if (update.isPending || postpone.isPending) return;
+		setMode("actions");
 		setError(undefined);
 		onClose();
+	};
+
+	const reschedule = (
+		target: Habit,
+		occurrence: OccurrenceTarget,
+		to: CalendarDate
+	) => {
+		setError(undefined);
+		const id = newId();
+		postpone.mutate(
+			{
+				habitId: target.id,
+				request: {
+					id,
+					original_date: occurrence.original,
+					from_date: occurrence.effective,
+					to_date: to,
+					sequence: occurrence.count + 1,
+				},
+			},
+			{
+				onSuccess: () => {
+					setMode("actions");
+					onClose();
+					toast("info", rescheduledToast(to, today), target.name, {
+						action: {
+							label: "Desfazer",
+							onPress: () =>
+								undoPostpone.mutate(
+									{ habitId: target.id, rescheduleId: id },
+									{
+										onSuccess: () =>
+											toast("info", RESCHEDULE_UNDONE_TOAST, target.name),
+										onError: (failure) => {
+											if (!isUnauthorized(failure)) {
+												toast(
+													"error",
+													"Não foi possível desfazer o adiamento",
+													errorMessage(failure)
+												);
+											}
+										},
+									}
+								),
+						},
+					});
+				},
+				onError: (failure) => {
+					if (!isUnauthorized(failure)) {
+						// The repository's message is core's reason (pt-BR).
+						setError(failure.message || errorMessage(failure));
+					}
+				},
+			}
+		);
 	};
 
 	const setArchived = (target: Habit, archived: boolean, undo = false) =>
@@ -131,7 +218,11 @@ export function HabitActionsSheet({
 		switch (action) {
 			case "edit":
 				setError(undefined);
-				setEditing(true);
+				setMode("edit");
+				return;
+			case "reschedule":
+				setError(undefined);
+				setMode("reschedule");
 				return;
 			case "description":
 				close();
@@ -158,7 +249,7 @@ export function HabitActionsSheet({
 			},
 			{
 				onSuccess: () => {
-					setEditing(false);
+					setMode("actions");
 					onClose();
 					toast("success", "Hábito salvo", values.name);
 				},
@@ -177,7 +268,13 @@ export function HabitActionsSheet({
 	return (
 		<BottomSheet
 			visible={open}
-			title={editing ? "Editar hábito" : (target?.name ?? "")}
+			title={
+				mode === "edit"
+					? "Editar hábito"
+					: mode === "reschedule"
+						? `Adiar ${target?.name ?? ""}`
+						: (target?.name ?? "")
+			}
 			titleRef={titleRef}
 			onClose={close}
 			onShow={() => {
@@ -186,7 +283,26 @@ export function HabitActionsSheet({
 				}
 			}}
 		>
-			{target && editing ? (
+			{target && mode === "reschedule" && context ? (
+				<ScrollView
+					style={{ maxHeight: height * 0.7, flexShrink: 1 }}
+					keyboardShouldPersistTaps="handled"
+				>
+					<RescheduleForm
+						key={`${target.id}:${context.occurrence.effective}`}
+						habit={target}
+						occurrence={context.occurrence}
+						today={today}
+						pending={postpone.isPending}
+						error={error}
+						onCancel={() => {
+							setError(undefined);
+							setMode("actions");
+						}}
+						onSubmit={(to) => reschedule(target, context.occurrence, to)}
+					/>
+				</ScrollView>
+			) : target && editing ? (
 				<>
 					<Text className="text-sm text-night-muted">
 						Vale para todos os dias. Mudar a repetição altera também a contagem
@@ -201,6 +317,7 @@ export function HabitActionsSheet({
 							initial={target}
 							today={today}
 							timeZone={timeZone}
+							reschedules={reschedules}
 							submitLabel="Salvar"
 							pending={update.isPending}
 							error={error}
@@ -222,14 +339,24 @@ export function HabitActionsSheet({
 							</Text>
 						</View>
 					) : null}
-					{habitActions(target).map((action) => (
+					{habitActions(target, context?.availability, {
+						archive: context?.archive ?? true,
+					}).map((action) => (
 						<PressableScale
 							key={action.id}
 							accessibilityRole="button"
 							accessibilityLabel={action.label}
-							accessibilityHint={action.hint}
-							onPress={() => run(target, action.id)}
-							className={`-mx-2 min-h-14 flex-row items-center gap-4 rounded-lg px-3 py-2 ${action.careful ? "active:bg-night-warning-surface" : "active:bg-night-surface-raised"}`}
+							accessibilityHint={action.disabledReason ?? action.hint}
+							// 2.16.0: shown but unavailable, with the reason.
+							accessibilityState={{
+								disabled: action.disabledReason !== undefined,
+							}}
+							onPress={() => {
+								if (action.disabledReason === undefined) {
+									run(target, action.id);
+								}
+							}}
+							className={`-mx-2 min-h-14 flex-row items-center gap-4 rounded-lg px-3 py-2 ${action.disabledReason !== undefined ? "" : action.careful ? "active:bg-night-warning-surface" : "active:bg-night-surface-raised"}`}
 						>
 							<MaterialCommunityIcons
 								name={ICONS[action.id]}
@@ -242,13 +369,13 @@ export function HabitActionsSheet({
 							/>
 							<View className="flex-1">
 								<Text
-									className={`text-base font-medium ${action.careful ? "text-night-warning" : "text-night-foreground"}`}
+									className={`text-base font-medium ${action.disabledReason !== undefined ? "text-night-subtle" : action.careful ? "text-night-warning" : "text-night-foreground"}`}
 								>
 									{action.label}
 								</Text>
-								{action.hint ? (
+								{(action.disabledReason ?? action.hint) ? (
 									<Text className="text-sm text-night-muted">
-										{action.hint}
+										{action.disabledReason ?? action.hint}
 									</Text>
 								) : null}
 							</View>
@@ -265,19 +392,26 @@ export function HabitActionsSheet({
  * for a row (origin = its "more options" button) and `sheet` renders it.
  */
 export function useHabitActionsSheet(): {
-	show: (habit: Habit, origin: View | null) => void;
+	show: (
+		habit: Habit,
+		origin: View | null,
+		context?: RescheduleContext
+	) => void;
 	sheet: ReactNode;
 } {
 	const [state, setState] = useState<{
 		habit: Habit | null;
+		context: RescheduleContext | null;
 		open: boolean;
 		origin: View | null;
-	}>({ habit: null, open: false, origin: null });
+	}>({ habit: null, context: null, open: false, origin: null });
 	return {
-		show: (habit, origin) => setState({ habit, open: true, origin }),
+		show: (habit, origin, context) =>
+			setState({ habit, context: context ?? null, open: true, origin }),
 		sheet: (
 			<HabitActionsSheet
 				habit={state.habit}
+				context={state.context}
 				open={state.open}
 				origin={state.origin}
 				onClose={() => setState((current) => ({ ...current, open: false }))}

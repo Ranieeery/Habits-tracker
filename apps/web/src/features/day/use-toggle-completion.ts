@@ -104,6 +104,8 @@ export function useToggleCompletion(date: CalendarDate) {
 				client.invalidateQueries({ queryKey: queryKeys.days }),
 				client.invalidateQueries({ queryKey: queryKeys.summaries }),
 				client.invalidateQueries({ queryKey: queryKeys.deadlineFirsts }),
+				// 2.16.0: a completion can fulfill a postponed occurrence early.
+				client.invalidateQueries({ queryKey: queryKeys.reschedules }),
 			]),
 	});
 

@@ -8,6 +8,7 @@
 import {
 	Completion,
 	Habit,
+	HabitReschedule,
 	PushSubscription,
 	Schedule,
 	UserSettings,
@@ -16,7 +17,9 @@ import { roundDownToQuarter } from "@habits/core";
 import type {
 	CompletionRow,
 	completions,
+	HabitRescheduleRow,
 	HabitRow,
+	habitReschedules,
 	habits,
 	PushSubscriptionRow,
 	pushSubscriptions,
@@ -26,6 +29,7 @@ import type {
 
 type HabitInsert = typeof habits.$inferInsert;
 type CompletionInsert = typeof completions.$inferInsert;
+type HabitRescheduleInsert = typeof habitReschedules.$inferInsert;
 type UserSettingsInsert = typeof userSettings.$inferInsert;
 type PushSubscriptionInsert = typeof pushSubscriptions.$inferInsert;
 
@@ -74,6 +78,17 @@ export function toCompletionRow(
 
 export function fromCompletionRow(row: CompletionRow): Completion {
 	return Completion.parse(withoutServerFields(row));
+}
+
+export function toRescheduleRow(
+	userId: string,
+	reschedule: HabitReschedule
+): HabitRescheduleInsert {
+	return { ...HabitReschedule.parse(reschedule), user_id: userId };
+}
+
+export function fromRescheduleRow(row: HabitRescheduleRow): HabitReschedule {
+	return HabitReschedule.parse(withoutServerFields(row));
 }
 
 export function toUserSettingsRow(

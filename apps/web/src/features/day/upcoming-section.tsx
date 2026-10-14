@@ -7,7 +7,7 @@ import {
 } from "@/features/habits/schedule-summary.tsx";
 import { habitsQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
-import { useUserTimeZone } from "@/lib/use-today.ts";
+import { useScheduleOptions } from "@/lib/use-schedule-options.ts";
 
 /**
  * "Próximos" on today's view (read-only): the coming dates of habits that do
@@ -18,10 +18,11 @@ import { useUserTimeZone } from "@/lib/use-today.ts";
  */
 export function UpcomingSection({ today }: { today: CalendarDate }) {
 	const { api } = useServices();
-	const timeZone = useUserTimeZone();
+	const { options } = useScheduleOptions();
 	const habits = useQuery(habitsQuery(api));
 	if (!habits.data) return null;
-	const items = upcoming(habits.data, today, { timeZone });
+	// 2.16.0: a postponed occurrence shows on its new date.
+	const items = upcoming(habits.data, today, options);
 	if (items.length === 0) return null;
 
 	return (

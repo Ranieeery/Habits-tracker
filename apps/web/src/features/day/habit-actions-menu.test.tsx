@@ -9,7 +9,7 @@ import {
 	type Habit,
 	UpdateHabitRequest,
 } from "@habits/contracts";
-import { isHabitPossibleOn } from "@habits/core";
+import { isHabitPossibleOn, NO_RESCHEDULES } from "@habits/core";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
@@ -48,7 +48,10 @@ function server({ failPatch = false } = {}) {
 			return json({
 				date,
 				possible_habits: habits.filter((item) =>
-					isHabitPossibleOn(item, date, { timeZone: TIME_ZONE })
+					isHabitPossibleOn(item, date, {
+						timeZone: TIME_ZONE,
+						reschedules: NO_RESCHEDULES,
+					})
 				),
 				completed_habit_ids: [],
 			} satisfies DayResponse);

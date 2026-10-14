@@ -3,6 +3,7 @@ import {
 	eachDay,
 	habitStreaks,
 	heatmapLevel,
+	NO_RESCHEDULES,
 	summarizeDay,
 } from "@habits/core";
 import {
@@ -30,7 +31,7 @@ import { bearerOf, makeApi, signIn } from "./helpers.ts";
 
 const seed = validateSeed(buildSeed());
 const passwordHash = await hashPassword(DEV_USER_PASSWORD);
-const options = { timeZone: SEED_TIME_ZONE };
+const options = { timeZone: SEED_TIME_ZONE, reschedules: NO_RESCHEDULES };
 const live = seed.completions.filter((c) => c.deleted_at === null);
 
 function streaksOf(name: string) {
