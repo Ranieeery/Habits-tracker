@@ -129,6 +129,7 @@ export function HabitAboutScreen() {
 									<View className="rounded-2xl border border-night-border bg-night-surface p-5">
 										<DescriptionText
 											blocks={parseDescription(found.description)}
+											variant="reading"
 										/>
 									</View>
 								) : (

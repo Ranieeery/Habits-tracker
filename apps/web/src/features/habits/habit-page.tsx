@@ -123,7 +123,8 @@ export function HabitPage({ habitId }: { habitId: string }) {
 						{hasDescription(habit) ? (
 							<DescriptionText
 								blocks={parseDescription(habit.description)}
-								className="rounded-2xl border border-night-border bg-night-surface p-5 text-[15px] leading-7 sm:p-6"
+								variant="reading"
+								className="rounded-2xl border border-night-border bg-night-surface p-5 sm:p-6"
 							/>
 						) : (
 							<div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-night-border p-8 text-center">

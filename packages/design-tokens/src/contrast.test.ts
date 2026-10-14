@@ -44,6 +44,16 @@ describe("contrast of the night pairs", () => {
 		}
 	});
 
+	// The web's description quick look (2.14.1) sets its title, secondary
+	// body and action on the popover surface.
+	it("text on overlay", () => {
+		for (const text of [n.foreground, n.muted, n.accent.text]) {
+			expect(contrast(text, n.surface.overlay), text).toBeGreaterThanOrEqual(
+				TEXT
+			);
+		}
+	});
+
 	it("text and icons on the accent (primary button, chosen chip)", () => {
 		expect(contrast(n.accent.on, n.accent.DEFAULT)).toBeGreaterThanOrEqual(
 			TEXT

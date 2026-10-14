@@ -16,7 +16,19 @@ const ids = {
 	ler: "0199c9a0-7777-7000-8000-000000000001",
 	treinar: "0199c9a0-7777-7000-8000-000000000002",
 	beber: "0199c9a0-7777-7000-8000-000000000003",
+	rico: "0199c9a0-7777-7000-8000-000000000004",
 };
+const LONG_NAME =
+	"Ler um capítulo do livro de cabeceira antes de dormir, sem celular por perto";
+const WORD = "Pneumoultramicroscopicossilicovulcanoconiótico";
+const RICH = [
+	`Veja [o guia](https://exemplo.com/guia) e *leia* ${WORD}.`,
+	"- um",
+	"- dois **forte**",
+	"- três",
+	"- quatro",
+	"> citação literal",
+].join("\n");
 const SHORT = "Livro atual: **Duna**";
 const LONG = [
 	"**Treino A**",
@@ -33,6 +45,7 @@ function server() {
 		habit({ id: ids.ler, name: "Ler", description: SHORT }),
 		habit({ id: ids.treinar, name: "Treinar", description: LONG }),
 		habit({ id: ids.beber, name: "Beber água" }),
+		habit({ id: ids.rico, name: LONG_NAME, description: RICH }),
 	];
 	const patches: unknown[] = [];
 	const routes = defaultRoutes({
@@ -85,7 +98,7 @@ describe("description on today's rows", () => {
 		).not.toHaveAccessibleDescription();
 	});
 
-	it("opens a short description whole, without the link to the page", async () => {
+	it("opens a short description whole, still with the link to the page", async () => {
 		const { routes } = server();
 		const { user, requests } = renderApp("/today", { routes });
 		await user.click(
@@ -94,9 +107,11 @@ describe("description on today's rows", () => {
 
 		const dialog = await screen.findByRole("dialog");
 		expect(within(dialog).getByText("Duna").tagName).toBe("STRONG");
+		// 2.14.1: the footer is always there; nothing was cut, so no fade.
 		expect(
-			within(dialog).queryByRole("link", { name: /descrição completa/ })
-		).toBeNull();
+			within(dialog).getByRole("link", { name: "Abrir descrição completa" })
+		).toHaveAttribute("href", `/habits/${ids.ler}`);
+		expect(dialog.querySelector("[data-faded]")).toBeNull();
 		// Opening it is not marking it.
 		expect(requests.some((r) => r.method === "PUT")).toBe(false);
 	});
@@ -111,6 +126,7 @@ describe("description on today's rows", () => {
 		const dialog = await screen.findByRole("dialog");
 		expect(within(dialog).getAllByRole("listitem")).toHaveLength(3);
 		expect(within(dialog).queryByText("prancha")).toBeNull();
+		expect(dialog.querySelector("[data-faded]")).not.toBeNull();
 		await user.click(
 			within(dialog).getByRole("link", { name: "Abrir descrição completa" })
 		);
@@ -121,6 +137,82 @@ describe("description on today's rows", () => {
 		expect(
 			await screen.findByRole("heading", { name: "Treinar" })
 		).toBeInTheDocument();
+	});
+});
+
+describe("quick look layout (2.14.1)", () => {
+	async function open() {
+		const { routes } = server();
+		const rendered = renderApp("/today", { routes });
+		await rendered.user.click(
+			await screen.findByRole("button", { name: `Descrição de ${LONG_NAME}` })
+		);
+		return { ...rendered, dialog: await screen.findByRole("dialog") };
+	}
+
+	it("names the dialog and keeps a long name whole for assistive tech", async () => {
+		const { dialog } = await open();
+		expect(dialog).toHaveAccessibleName(`Descrição de ${LONG_NAME}`);
+		const title = within(dialog).getByText(LONG_NAME);
+		// Clamped to two lines on screen, whole in the DOM and on hover.
+		expect(title).toHaveClass("line-clamp-2", "font-display");
+		expect(title).toHaveAttribute("title", LONG_NAME);
+	});
+
+	it("renders each supported element and leaves the rest literal", async () => {
+		const { dialog } = await open();
+		expect(within(dialog).getByText("forte").tagName).toBe("STRONG");
+		expect(within(dialog).getByText("leia").tagName).toBe("EM");
+		const guide = within(dialog).getByRole("link", { name: "o guia" });
+		expect(guide).toHaveAttribute("href", "https://exemplo.com/guia");
+		expect(guide).toHaveAttribute("target", "_blank");
+		expect(guide).toHaveAttribute("rel", "noopener noreferrer");
+		// Four lines at most (core): the paragraph and three items.
+		expect(
+			within(dialog)
+				.getAllByRole("listitem")
+				.map((item) => item.textContent)
+		).toEqual(["um", "dois forte", "três"]);
+		// Long words wrap inside the card instead of widening it.
+		const body = dialog.querySelector("[data-faded]");
+		expect(body).toHaveClass("wrap-anywhere");
+		expect(body).toHaveTextContent(WORD);
+	});
+
+	it("separates the action and reaches it after the body's links", async () => {
+		const { dialog, user, router } = await open();
+		const action = within(dialog).getByRole("link", {
+			name: "Abrir descrição completa",
+		});
+		expect(action).toHaveClass("min-h-touch", "border-t");
+		const guide = within(dialog).getByRole("link", { name: "o guia" });
+		guide.focus();
+		await user.tab();
+		expect(action).toHaveFocus();
+		await user.keyboard("{Enter}");
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe(`/habits/${ids.rico}`)
+		);
+	});
+
+	it("moves only under motion-safe, so reduced motion stills it", async () => {
+		const { dialog } = await open();
+		const arrow = within(dialog)
+			.getByRole("link", { name: "Abrir descrição completa" })
+			.querySelector("svg");
+		const classes = [...(arrow?.classList ?? [])];
+		const moving = classes.filter((c) =>
+			/transition|translate|duration/.test(c)
+		);
+		expect(moving.length).toBeGreaterThan(0);
+		expect(moving.every((c) => c.startsWith("motion-safe:"))).toBe(true);
+	});
+
+	it("shows no note icon, so no card, without a description", async () => {
+		await open();
+		expect(
+			screen.queryByRole("button", { name: "Descrição de Beber água" })
+		).toBeNull();
 	});
 });
 
@@ -142,6 +234,19 @@ describe("habit page", () => {
 		expect(
 			screen.getByText("[perigo](javascript:alert(1))")
 		).toBeInTheDocument();
+	});
+
+	it("uses the reading typography and keeps unsupported marks literal", async () => {
+		const { routes } = server();
+		renderApp(`/habits/${ids.rico}`, { routes });
+		await screen.findByRole("heading", { name: LONG_NAME });
+
+		const quote = screen.getByText("> citação literal");
+		expect(quote.closest("blockquote")).toBeNull();
+		const body = quote.closest(".wrap-anywhere");
+		expect(body).toHaveClass("leading-7", "text-night-foreground");
+		// The whole text: nothing faded on the page.
+		expect(body).not.toHaveAttribute("data-faded");
 	});
 
 	it("edits the description from the page", async () => {
