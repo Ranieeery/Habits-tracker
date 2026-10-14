@@ -128,10 +128,10 @@ describe("overdue habits on today", () => {
 	it("are absent on a future day too", async () => {
 		const { routes } = overdueRoutes();
 		renderApp("/day/2026-10-10", { routes });
-		expect(
-			await screen.findByRole("checkbox", { name: "Ler" })
-		).toBeInTheDocument();
+		// A preview day (2.14.0): the planned habits, never the overdue ones.
+		expect(await screen.findByText("Ler")).toBeInTheDocument();
 		expect(screen.queryByText(/Atrasado desde/)).toBeNull();
+		expect(screen.queryByText(CONDO_NAME.split(",")[0]!)).toBeNull();
 	});
 
 	it("show on top of the heatmap's Hoje panel", async () => {

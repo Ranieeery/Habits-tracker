@@ -73,4 +73,11 @@ describe("contrast of the night pairs", () => {
 			expect(contrast(ui, n.bg), ui).toBeGreaterThanOrEqual(UI);
 		}
 	});
+
+	// 2.14.0: the dashed outline of the heatmap's preview days is its only
+	// shape (no fill), so it must reach 3:1 on the page and on the panels.
+	it("the preview cells' dashed outline", () => {
+		expect(contrast(n.subtle, n.bg)).toBeGreaterThanOrEqual(UI);
+		expect(contrast(n.subtle, n.surface.DEFAULT)).toBeGreaterThanOrEqual(UI);
+	});
 });

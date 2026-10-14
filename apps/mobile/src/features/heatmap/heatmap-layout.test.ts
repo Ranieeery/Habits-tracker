@@ -94,11 +94,22 @@ describe("dayIndexAt", () => {
 
 describe("canOpen", () => {
 	it("opens past days and today, never the future or padding days", () => {
-		expect(canOpen({ in_year: true, relation: "past" })).toBe(true);
-		expect(canOpen({ in_year: true, relation: "today" })).toBe(true);
-		expect(canOpen({ in_year: true, relation: "future" })).toBe(false);
-		expect(canOpen({ in_year: false, relation: "past" })).toBe(false);
+		const cell = (shown: boolean, relation: GridCell["relation"]) => ({
+			shown,
+			preview: false,
+			relation,
+		});
+		expect(canOpen(cell(true, "past"))).toBe(true);
+		expect(canOpen(cell(true, "today"))).toBe(true);
+		expect(canOpen(cell(true, "future"))).toBe(false);
+		expect(canOpen(cell(false, "past"))).toBe(false);
 		expect(canOpen(undefined)).toBe(false);
+	});
+
+	it("opens the preview days (2.14.0), also in the next year", () => {
+		expect(canOpen({ shown: true, preview: true, relation: "future" })).toBe(
+			true
+		);
 	});
 });
 
@@ -123,6 +134,7 @@ describe("labels", () => {
 		const cell = {
 			date: "2026-10-09",
 			relation: "past" as const,
+			preview: false,
 			completed: 3,
 			possible: 5,
 			ratio: 0.6,
@@ -308,5 +320,104 @@ describe("day preview (2.10.0)", () => {
 			expect(bubbleLeft(290, 100, 300)).toBe(200);
 			expect(bubbleLeft(50, 400, 300)).toBe(0);
 		});
+	});
+});
+
+describe("preview days (2.14.0)", () => {
+	// Friday 2026-10-09: the preview is Saturday 10 to Friday 16, in today's
+	// week and the next; the rest of the year stays plain future days.
+	const grid = buildYearGrid({
+		year: 2026,
+		today: "2026-10-09",
+		summary: [{ date: "2026-10-09", completed: 3, possible: 5 }],
+		previewDays: 7,
+	});
+	const cellOn = (date: string) =>
+		grid.weeks.flatMap((week) => week.days).find((day) => day.date === date)!;
+	const nextIndex = grid.today_week_index! + 1;
+	const nextWeek = grid.weeks[nextIndex]!;
+	const yOf = (dayIndex: number) =>
+		MONTH_ROW_HEIGHT + CELL_PITCH * dayIndex + CELL_PITCH / 2;
+	const xOf = (weekIndex: number) => weekIndex * CELL_PITCH + CELL_PITCH / 2;
+
+	it("keeps the whole year: the 8th day on is drawn but never opens", () => {
+		expect(grid.weeks).toHaveLength(53);
+		// Friday 16 (row 5) opens; Saturday 17 (row 6) is a plain future day.
+		expect(cellAt(xOf(nextIndex), yOf(5), 0, grid.weeks)).toEqual({
+			weekIndex: nextIndex,
+			dayIndex: 5,
+		});
+		expect(cellAt(xOf(nextIndex), yOf(6), 0, grid.weeks)).toBeNull();
+		expect(cellOn("2026-10-17")).toMatchObject({
+			shown: true,
+			preview: false,
+			relation: "future",
+		});
+		expect(canOpen(cellOn("2026-12-31"))).toBe(false);
+		expect(cellLabel(cellOn("2026-12-31"))).toBe(
+			"31 de dezembro de 2026: dia futuro"
+		);
+	});
+
+	it("reads a preview day without its content", () => {
+		expect(cellLabel(cellOn("2026-10-12"))).toBe(
+			"12 de outubro, dia futuro, toque para ver o que está programado"
+		);
+		expect(previewLines(cellOn("2026-10-12"), { filtered: false })).toEqual({
+			title: "seg, 12 de out",
+			detail: "Dia futuro",
+		});
+		expect(previewLines(cellOn("2026-10-12"), { filtered: true })).toEqual({
+			title: "seg, 12 de out",
+			detail: "Dia futuro",
+		});
+	});
+
+	it("lets a screen reader step into the preview, up to today + 7", () => {
+		const current = grid.weeks[grid.today_week_index!]!;
+		// From today (Friday) down to Saturday 10, a preview day.
+		expect(stepDay(current, 5, 1)).toBe(6);
+		// The next week stops on Friday 16.
+		expect(stepDay(nextWeek, 5, 1)).toBe(5);
+		expect(weekLabel(nextWeek)).toBe("Semana de 11 a 17 de outubro");
+		// A week after the preview has nothing to open.
+		expect(stepDay(grid.weeks[nextIndex + 1]!, 0, 1)).toBe(0);
+	});
+
+	it("crosses New Year only when the 7 days do", () => {
+		const december = buildYearGrid({
+			year: 2026,
+			today: "2026-12-28",
+			previewDays: 7,
+		});
+		expect(december.weeks).toHaveLength(54);
+		expect(weekLabel(december.weeks.at(-2)!)).toBe(
+			"Semana de 27 de dezembro a 2 de janeiro"
+		);
+		expect(weekLabel(december.weeks.at(-1)!)).toBe(
+			"Semana de 3 a 4 de janeiro"
+		);
+	});
+
+	it("redraws a column when a day enters or leaves the preview", () => {
+		const before = buildYearGrid({ year: 2026, today: "2026-10-09" });
+		expect(weekSignature(nextWeek)).not.toBe(
+			weekSignature(before.weeks[nextIndex]!)
+		);
+		// Columns after the preview are unchanged.
+		expect(weekSignature(grid.weeks[nextIndex + 1]!)).toBe(
+			weekSignature(before.weeks[nextIndex + 1]!)
+		);
+	});
+
+	it("opens with today's week and the whole preview in view", () => {
+		const visibleWeeks = 10;
+		const start = initialWeekIndex({
+			todayWeekIndex: grid.today_week_index,
+			weekCount: grid.weeks.length,
+			visibleWeeks,
+		});
+		expect(start).toBeLessThanOrEqual(grid.today_week_index!);
+		expect(nextIndex).toBeLessThan(start + visibleWeeks);
 	});
 });

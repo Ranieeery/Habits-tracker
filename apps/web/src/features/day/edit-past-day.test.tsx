@@ -47,6 +47,8 @@ function server(options: { fail?: () => Response; emptyOn?: string } = {}) {
 		}
 	}
 	const routes = defaultRoutes({
+		// Preview days (2.14.0) are built from the habits.
+		"GET /v1/habits": () => json({ habits: [water, read] }),
 		"GET /v1/day": (request) => {
 			const date = new URL(request.url).searchParams.get("date") ?? "";
 			return json({
@@ -96,9 +98,11 @@ describe("the edit button", () => {
 
 	it("is not on a future day", async () => {
 		renderApp(`/day/${TOMORROW}`, { routes: server().routes });
-		await screen.findByText("Somente leitura: este dia ainda não chegou.");
+		// A preview day (2.14.0): read only, without checkboxes.
+		await screen.findByText("Dia futuro, somente leitura");
+		expect(await screen.findByText("Beber água")).toBeInTheDocument();
 		expect(editButton()).not.toBeInTheDocument();
-		expect(screen.getByRole("checkbox", { name: "Beber água" })).toBeDisabled();
+		expect(screen.queryByRole("checkbox")).toBeNull();
 	});
 
 	it("is not on a day older than the window, which says why", async () => {

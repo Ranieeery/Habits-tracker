@@ -99,12 +99,22 @@ describe("neighbor days", () => {
 		).toHaveAttribute("href", "/day/2026-10-05");
 	});
 
-	it("never goes past today", async () => {
+	it("goes from today into the preview days (2.14.0)", async () => {
 		const { user, path } = openDay(TODAY);
 		await title();
+		await user.keyboard("{ArrowRight}");
+		await waitFor(() => expect(path()).toBe("/day/2026-10-10"));
+		expect(
+			await screen.findByText("Dia futuro, somente leitura")
+		).toBeInTheDocument();
+	});
+
+	it("never goes past today + 7", async () => {
+		const { user, path } = openDay("2026-10-16");
+		await screen.findByText("Dia futuro, somente leitura");
 		expect(screen.getByRole("button", { name: "Próximo dia" })).toBeDisabled();
 		await user.keyboard("{ArrowRight}");
-		expect(path()).toBe(`/day/${TODAY}`);
+		expect(path()).toBe("/day/2026-10-16");
 	});
 
 	it("stops at January 1 of the heatmap's first year", async () => {

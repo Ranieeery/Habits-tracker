@@ -4,17 +4,22 @@ import {
 	compareDates,
 	firstDayOfYear,
 	heatmapYearRange,
+	isPreviewDate,
+	PREVIEW_DAYS,
+	previewEnd,
 } from "@habits/core";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { EmptyState } from "@/components/states.tsx";
 import { Button, buttonVariants } from "@/components/ui/button.tsx";
 import { formatLongDate } from "@/lib/format.ts";
 import { habitsQuery } from "@/lib/queries.ts";
 import { useServices } from "@/lib/services.ts";
 import { useToday } from "@/lib/use-today.ts";
 import { DayView } from "./day-view.tsx";
+import { FutureDayView } from "./future-day-view.tsx";
 import { useDayShortcuts } from "./use-day-shortcuts.ts";
 
 /** Always shows the user's current day, and follows it when the date turns. */
@@ -28,8 +33,9 @@ export function TodayPage() {
  * locked again (the past-day unlock is state of one visit only).
  * "Voltar ao histórico" (also Esc) returns to the heatmap; the arrows (also
  * ←/→) step to the neighbor days, from January 1 of the heatmap's first year
- * up to today. Steps replace the history entry, so Back still returns to
- * where the day was opened from.
+ * up to the last preview day (today + PREVIEW_DAYS, 2.14.0, read only).
+ * Steps replace the history entry, so Back still returns to where the day
+ * was opened from. A later date says it is too far instead of a day.
  */
 export function DayPage({ date }: { date: CalendarDate }) {
 	const today = useToday();
@@ -39,9 +45,14 @@ export function DayPage({ date }: { date: CalendarDate }) {
 	const earliest = firstDayOfYear(
 		heatmapYearRange(habits.data ?? [], today).first
 	);
+	// 2.14.0: the next PREVIEW_DAYS can be opened (read only); later dates
+	// cannot, from the heatmap, the arrows or a typed URL.
+	const last = previewEnd(today);
+	const tooFar = compareDates(date, last) > 0;
+	const preview = isPreviewDate(date, today);
 	const previous =
-		compareDates(date, earliest) > 0 ? addDays(date, -1) : undefined;
-	const next = compareDates(date, today) < 0 ? addDays(date, 1) : undefined;
+		compareDates(date, earliest) > 0 && !tooFar ? addDays(date, -1) : undefined;
+	const next = compareDates(date, last) < 0 ? addDays(date, 1) : undefined;
 
 	const goTo = (day: CalendarDate) =>
 		void navigate({ to: "/day/$date", params: { date: day }, replace: true });
@@ -84,7 +95,21 @@ export function DayPage({ date }: { date: CalendarDate }) {
 					/>
 				</nav>
 			</div>
-			<DayView key={date} date={date} today={today} />
+			{tooFar ? (
+				<EmptyState
+					title="Este dia ainda está longe"
+					description={`Dá para ver só os próximos ${PREVIEW_DAYS} dias. Volte ao histórico e escolha outro dia.`}
+					action={
+						<Link to="/" className={buttonVariants({ variant: "outline" })}>
+							Voltar ao histórico
+						</Link>
+					}
+				/>
+			) : preview ? (
+				<FutureDayView key={date} date={date} />
+			) : (
+				<DayView key={date} date={date} today={today} />
+			)}
 		</div>
 	);
 }

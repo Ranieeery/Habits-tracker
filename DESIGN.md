@@ -43,9 +43,13 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 
 ## Componentes e estados
 
-**Célula do heatmap**: quadrado `night-heat-N`; nível 0 com contorno interno `night-border-strong`; níveis 4-5 com brilho estático (`night-glow`). Hoje: anel `night-foreground` com afastamento. Futuro: nível 0 a 40%, inerte. Hover: só `brightness` (a célula não se move). Hover e foco são marcados pela **lente** da grade. Ativo: abre o dia. Todo dia tem rótulo acessível com data e "N de M".
+**Célula do heatmap**: quadrado `night-heat-N`; nível 0 com contorno interno `night-border-strong`; níveis 4-5 com brilho estático (`night-glow`). Hoje: anel `night-foreground` com afastamento. Hover: só `brightness` (a célula não se move). Hover e foco são marcados pela **lente** da grade. Ativo: abre o dia. Todo dia tem rótulo acessível com data e "N de M".
 
-**Grade**: `role="grid"`, uma parada de Tab (hoje ou o último dia focado); ←/→ semana, ↑/↓ dia, Home/End ao longo do dia da semana; futuro é pulado. Coluna de dias fixa com esmaecimento. Rola na horizontal com a semana atual à vista.
+**Prévia dos próximos dias** (2.14.0): no ano corrente, os 7 dias depois de hoje (`PREVIEW_DAYS`) são quadrados com **contorno tracejado** `night-subtle` (≥ 3:1 sobre o fundo e os painéis), sem preenchimento e sem nível. **Nenhum indicador de conteúdo** na grade (nada de ponto, contagem ou cor por tipo): o que está programado só aparece ao abrir o dia. A grade continua até 31/12: os dias depois da prévia seguem como marcadores inertes (nível 0 a 40%, sem abrir). Só quando os 7 dias passam de 31/12 a grade entra no ano seguinte, com o rótulo "jan", até o 7º dia; depois dele não se desenha nada. Rótulo "20 de outubro, dia futuro, toque para ver o que está programado"; tooltip (web) ou balão (celular) só com a data e "Dia futuro". Mesma varredura de entrada das outras células. A legenda termina com um quadrado tracejado e "Futuro".
+
+**Dia futuro**: o cabeçalho de sempre, o aviso com ícone de olho "Dia futuro, somente leitura" e os hábitos programados numa lista **sem checkbox** (um círculo tracejado `night-subtle` no lugar), com a primeira linha da descrição e o ícone de nota; tarefa com prazo naquele dia leva o selo "Vence neste dia" (ícone e texto, estilo do selo de prazo). Sem nada: "Nada programado para este dia". Sem barra de progresso, "Novo hábito", edição ou "Desfazer". Uma data além de hoje+7 nunca abre: "Este dia ainda está longe" com o caminho de volta.
+
+**Grade**: `role="grid"`, uma parada de Tab (hoje ou o último dia focado); ←/→ semana, ↑/↓ dia, Home/End ao longo do dia da semana; alcança os dias da prévia e nada além. Coluna de dias fixa com esmaecimento. Rola na horizontal; no ano corrente abre com a última coluna da prévia perto da borda direita (hoje, os 7 dias e a semana atual à vista).
 
 **Lente**: um único anel `night-accent-text` que marca a célula sob o mouse ou com foco (é o indicador de foco das células) e desliza entre células, levando o tooltip junto. Nos vãos entre células fica parada; some ao sair da grade ou rolar.
 
@@ -114,7 +118,7 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 ## Teclado
 
 - Heatmap: grade com setas, Home/End e Enter (ver "Grade").
-- Tela de um dia aberta pelo heatmap: **Esc** volta ao histórico; **←/→** vão ao dia anterior/próximo (até hoje). Nada disso age com diálogo ou calendário aberto (o Esc fecha só ele) nem com foco num campo.
+- Tela de um dia aberta pelo heatmap: **Esc** volta ao histórico; **←/→** vão ao dia anterior/próximo (até hoje+7, os dias da prévia em somente leitura). Nada disso age com diálogo ou calendário aberto (o Esc fecha só ele) nem com foco num campo.
 - Atalhos aparecem no próprio controle (`aria-keyshortcuts`, dica `Esc` visível a partir de `md`).
 
 ## Acessibilidade
@@ -134,7 +138,7 @@ O celular é o uso principal, quase sempre com **uma mão**. Mesma identidade, m
 - **Seletores de dia e mês** (2.7.0): "Dias do mês" e "Todo ano" usam o desenho do calendário (7 colunas que preenchem a largura, dias sem borda de 44 dp, escolhido em `night-accent`, cada dia escolhido como um quadrado separado, para dias vizinhos não virarem uma faixa). "Dias do mês" não mostra mês nem ano; "Todo ano" é um calendário como o de "Começa em", com setas passando pelos meses, sem ano.
 - **Toque**: botões, chips, pílulas e cartões afundam um pouco (escala 0,97 em 100 ms); a lista do dia entra com fade ao trocar de dia; cartões reordenados deslizam. Nada disso com movimento reduzido.
 - **Hábitos**: cartões como no web (faixa D S T Q Q S S ou ícone do tipo, selo "Hoje"/"Próxima"), "Novo hábito" no rodapé fixo e um modo "Reordenar" com setas subir/descer de 44 dp (arrastar fica para depois).
-- **Heatmap**: colunas = semanas, células de 28 dp em passo de 32, rolagem horizontal abrindo na semana atual. **Consultar um dia** (2.10.0, o equivalente ao hover do web): segurar um quadrado mostra um balão acima do dedo com a data e o resultado ("Qui, 8 de out" / "3 de 5 · 60%"), em `night-surface-overlay` com borda `night-border` e setinha; arrastar sem soltar troca o dia (a grade não rola enquanto segura); soltar só fecha. Toque rápido continua abrindo o dia. Para leitor de tela, **um elemento por semana** ("Semana de 4 a 10 de outubro"): deslizar para cima/baixo escolhe o dia, toque duplo abre.
+- **Heatmap**: colunas = semanas, células de 28 dp em passo de 32, rolagem horizontal abrindo na semana atual. **Consultar um dia** (2.10.0, o equivalente ao hover do web): segurar um quadrado mostra um balão acima do dedo com a data e o resultado ("Qui, 8 de out" / "3 de 5 · 60%"), em `night-surface-overlay` com borda `night-border` e setinha; arrastar sem soltar troca o dia (a grade não rola enquanto segura); soltar só fecha. Toque rápido continua abrindo o dia. Os 7 dias da prévia (2.14.0) usam o mesmo toque e o mesmo balão ("Dia futuro", sem conteúdo) e abrem o dia em somente leitura, também offline. Para leitor de tela, **um elemento por semana** ("Semana de 4 a 10 de outubro"): deslizar para cima/baixo escolhe o dia, toque duplo abre.
 - **Safe areas**: Android é edge-to-edge; telas usam `Screen` (safe area em cima nas abas, teclado empurra o conteúdo). O brilho do fundo passa por baixo da barra de status.
 - **Háptico**: `selection` ao marcar/desmarcar um hábito; nunca em rolagem, navegação ou carregamento.
 - **Movimento**: Reanimated no thread de UI, só `transform` e `opacity`, nenhum `setState` por quadro. Toques frequentes (marcar, abrir dia) têm só retorno curto (≤ 150 ms ou nada); abas nunca deslizam. Varredura de entrada e pulso como em "Movimento". Preferência "remover animações" do sistema (`AccessibilityInfo`) = nenhuma animação.

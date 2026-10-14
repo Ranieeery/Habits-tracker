@@ -2,15 +2,22 @@ import type { GridCell } from "@habits/core";
 import { Link } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils.ts";
-import { CELL_SIZE, cellLabel, LEVEL_CLASSES } from "./heatmap-utils.ts";
+import {
+	CELL_SIZE,
+	cellLabel,
+	LEVEL_CLASSES,
+	PREVIEW_CLASSES,
+} from "./heatmap-utils.ts";
 
 const SHAPE = cn(CELL_SIZE, "block shrink-0 rounded-md md:rounded-sm");
 
 /**
- * One day of the grid: a `gridcell` holding a link to the day (past days and
- * today), or an inert square (future days, padding of other years).
- * `tabbable` is the grid's roving tab stop; `step` orders the entrance
- * sweep (0 plays first).
+ * One day of the grid: a `gridcell` holding a link to the day (past days,
+ * today and the preview days), an inert square (the rest of the year's
+ * future days), or nothing (padding of other years). Preview days
+ * (2.14.0) are dashed outlines with no level: what is planned only shows on
+ * the day screen. `tabbable` is the grid's roving tab stop; `step` orders
+ * the entrance sweep (0 plays first).
  */
 export function HeatmapCell({
 	cell,
@@ -32,7 +39,7 @@ export function HeatmapCell({
 	};
 
 	// Days of the neighbor years only keep the grid aligned.
-	if (!cell.in_year) {
+	if (!cell.shown) {
 		return (
 			<div
 				role="gridcell"
@@ -42,8 +49,9 @@ export function HeatmapCell({
 		);
 	}
 
-	// Like the legacy app, days that have not happened yet are placeholders.
-	if (cell.relation === "future") {
+	// Future days after the preview (the rest of the year) stay placeholders,
+	// like in the legacy app.
+	if (cell.relation === "future" && !cell.preview) {
 		return (
 			<div role="gridcell" {...position} className="shrink-0">
 				<div
@@ -66,14 +74,15 @@ export function HeatmapCell({
 				aria-label={cellLabel(cell)}
 				tabIndex={tabbable ? 0 : -1}
 				data-date={cell.date}
-				data-level={cell.level}
+				data-level={cell.preview ? undefined : cell.level}
 				data-relation={cell.relation}
+				data-preview={cell.preview ? "" : undefined}
 				data-heat-cell=""
 				aria-current={isToday ? "date" : undefined}
 				style={style}
 				className={cn(
 					SHAPE,
-					LEVEL_CLASSES[cell.level],
+					cell.preview ? PREVIEW_CLASSES : LEVEL_CLASSES[cell.level],
 					// Hover and focus are marked by the grid's lens; the cell only
 					// brightens (no motion of its own).
 					"hover:brightness-125",

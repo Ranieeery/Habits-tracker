@@ -9,10 +9,14 @@ import {
 	getDayEditState,
 	isCalendarDate,
 	isDayEditable,
+	isPreviewDate,
+	PREVIEW_DAYS,
+	previewEnd,
+	previewItems,
 } from "@habits/core";
 import { nightColors } from "@habits/design-tokens";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeIn, ReduceMotion } from "react-native-reanimated";
 import { isSettled, useHabits } from "@/data/hooks.ts";
@@ -33,6 +37,7 @@ import { EmptyState, QueryState } from "@/ui/states.tsx";
 import { EditDayFooter } from "./edit-day-sheet.tsx";
 import { DayItemsList } from "./day-items-list.tsx";
 import { NewHabitSheet } from "./new-habit-sheet.tsx";
+import { PreviewList } from "./preview-list.tsx";
 import { UpcomingSection } from "./upcoming-section.tsx";
 import { useDayItems } from "./use-day-items.ts";
 
@@ -56,6 +61,9 @@ export function DayScreen() {
 			</Screen>
 		);
 	}
+	// 2.14.0: only the next PREVIEW_DAYS can be opened (a deep link or an
+	// old route to a later date says so instead of showing the day).
+	if (date > previewEnd(today)) return <TooFar />;
 	// Keyed by date: another day starts locked again.
 	return <DayView key={date} date={date} today={today} />;
 }
@@ -89,6 +97,13 @@ export function DayView({
 	const router = useRouter();
 	const { day, view, change, dismissUndo } = useDayItems(date);
 	const editState = getDayEditState(date, today);
+	// 2.14.0: a preview day lists what is planned, read only, from the same
+	// local day view (offline too), computed only when it is opened.
+	const preview = isPreviewDate(date, today);
+	const planned = useMemo(
+		() => (preview && day.data ? previewItems(day.data) : null),
+		[preview, day.data]
+	);
 	const [unlocked, setUnlocked] = useState(false);
 	const isToday = editState === "today";
 	const editable = isDayEditable(editState, unlocked);
@@ -145,7 +160,9 @@ export function DayView({
 			<Animated.View entering={DAY_ENTER} style={{ gap: 24 }}>
 				<QueryState query={day} loadingLabel="Carregando o dia…">
 					{() =>
-						view === null ? null : view.items.length === 0 && isToday ? (
+						planned !== null ? (
+							<PreviewContent items={planned} />
+						) : view === null ? null : view.items.length === 0 && isToday ? (
 							<TodayEmptyState />
 						) : view.items.length === 0 ? (
 							<EmptyState
@@ -174,6 +191,55 @@ export function DayView({
 			</Animated.View>
 			{isToday ? <UpcomingSection today={today} /> : null}
 		</Screen>
+	);
+}
+
+/** A date past the preview: nothing to show, a way back. */
+function TooFar() {
+	const router = useRouter();
+	return (
+		<Screen edges={[]}>
+			<Stack.Screen options={{ title: "Dia futuro" }} />
+			<EmptyState
+				title="Este dia ainda está longe"
+				description={`Dá para ver só os próximos ${PREVIEW_DAYS} dias. Volte ao histórico e escolha outro dia.`}
+				action={
+					<Button
+						variant="outline"
+						label="Voltar"
+						onPress={() =>
+							router.canGoBack() ? router.back() : router.navigate("/history")
+						}
+					/>
+				}
+			/>
+		</Screen>
+	);
+}
+
+/** A preview day (2.14.0): the read-only notice, then what is planned. */
+function PreviewContent({ items }: { items: ReturnType<typeof previewItems> }) {
+	return (
+		<>
+			<View className="flex-row items-center gap-2">
+				<MaterialCommunityIcons
+					name="eye-outline"
+					size={16}
+					color={nightColors.muted}
+				/>
+				<Text className="flex-1 text-sm text-night-muted">
+					Dia futuro, somente leitura
+				</Text>
+			</View>
+			{items.length === 0 ? (
+				<EmptyState
+					title="Nada programado para este dia"
+					description="Hábitos aparecem nos dias em que se repetem."
+				/>
+			) : (
+				<PreviewList items={items} />
+			)}
+		</>
 	);
 }
 

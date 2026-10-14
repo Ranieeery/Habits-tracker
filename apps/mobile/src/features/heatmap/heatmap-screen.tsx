@@ -5,6 +5,7 @@ import {
 	heatmapYearRange,
 	overviewNeedsPreviousYear,
 	overviewStats,
+	PREVIEW_DAYS,
 	trendNeedsPreviousYear,
 } from "@habits/core";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -51,7 +52,8 @@ import { TrendSection } from "./trend-section.tsx";
  * "Tendência" (getting better?), "Destaques" (what stands out this year?)
  * and "Por hábito" (how is each one doing? a tap filters the map). The
  * filter is memory only and resets when the tab loses focus. Tapping a past
- * day opens the day screen; today opens the Hoje tab.
+ * day, or one of the next PREVIEW_DAYS (2.14.0, read only), opens the day
+ * screen; today opens the Hoje tab.
  */
 export function HeatmapScreen() {
 	const router = useRouter();
@@ -84,7 +86,16 @@ export function HeatmapScreen() {
 	useHideSplashWhen(isSettled(summary));
 
 	const grid = useMemo(
-		() => summary.data && buildYearGrid({ year, today, summary: summary.data }),
+		// The current year also shows the next PREVIEW_DAYS (2.14.0): read-only
+		// cells without counts; core ignores it for other years.
+		() =>
+			summary.data &&
+			buildYearGrid({
+				year,
+				today,
+				summary: summary.data,
+				previewDays: PREVIEW_DAYS,
+			}),
 		[year, today, summary.data]
 	);
 	const recent = useMemo(

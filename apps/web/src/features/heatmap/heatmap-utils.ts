@@ -1,5 +1,10 @@
 import type { GridCell, HeatmapLevel } from "@habits/core";
-import { formatFullDate, formatLongDate, formatPercent } from "@/lib/format.ts";
+import {
+	formatDayMonth,
+	formatFullDate,
+	formatLongDate,
+	formatPercent,
+} from "@/lib/format.ts";
 
 // Literal class names so Tailwind generates them (no string building). Level
 // 0 is outlined so empty days still read as cells; the two brightest levels
@@ -15,23 +20,41 @@ export const LEVEL_CLASSES: Record<HeatmapLevel, string> = {
 	5: `bg-night-heat-5 ${GLOW}`,
 };
 
+/**
+ * A preview day (2.14.0): a dashed outline and no fill, never a level or any
+ * hint of what is planned. `night-subtle` keeps the outline above 3:1 on the
+ * page (`night-border-strong` is 1.9:1).
+ */
+export const PREVIEW_CLASSES =
+	"border border-dashed border-night-subtle bg-transparent";
+
 /** 44px touch targets on phones, 28px squares from `md` up. */
 export const CELL_SIZE = "size-touch md:size-7";
 
 /** Width of the sticky weekday column (kept out of the scroll padding). */
 export const WEEKDAY_COLUMN = "w-8";
 
-/** "9 de outubro de 2026: 3 de 5 hábitos concluídos (60%)" */
+/**
+ * "9 de outubro de 2026: 3 de 5 hábitos concluídos (60%)"; a preview day:
+ * "20 de outubro, dia futuro, toque para ver o que está programado".
+ */
 export function cellLabel(cell: GridCell): string {
+	if (cell.preview) {
+		return `${formatDayMonth(cell.date)}, dia futuro, toque para ver o que está programado`;
+	}
 	const date = formatFullDate(cell.date);
 	const today = cell.relation === "today" ? " (hoje)" : "";
 	if (cell.possible === 0) return `${date}${today}: nenhum hábito previsto`;
 	return `${date}${today}: ${cell.completed} de ${cell.possible} hábitos concluídos (${formatPercent(cell.ratio)})`;
 }
 
-/** What the hover/focus tooltip shows: the day and "3 de 5 hábitos (60%)". */
+/**
+ * What the hover/focus tooltip shows: the day and "3 de 5 hábitos (60%)",
+ * or for a preview day only "Dia futuro" (nothing about its content).
+ */
 export function tooltipText(cell: GridCell): { title: string; detail: string } {
 	const title = `${formatLongDate(cell.date)}${cell.relation === "today" ? " (hoje)" : ""}`;
+	if (cell.preview) return { title, detail: "Dia futuro" };
 	if (cell.possible === 0) return { title, detail: "Nenhum hábito previsto" };
 	return {
 		title,
@@ -39,9 +62,12 @@ export function tooltipText(cell: GridCell): { title: string; detail: string } {
 	};
 }
 
-/** Cells reachable by the keyboard: past days and today of the year. */
+/**
+ * Cells that open a day (and that the keyboard reaches): past days and today
+ * of the year, and the preview days.
+ */
 export function isNavigable(cell: GridCell): boolean {
-	return cell.in_year && cell.relation !== "future";
+	return cell.shown && (cell.relation !== "future" || cell.preview);
 }
 
 const STEPS: Record<string, number> = {

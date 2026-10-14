@@ -1,6 +1,6 @@
 import { HEATMAP_LEVEL_COUNT, type HeatmapLevel } from "@habits/core";
 import { cn } from "@/lib/utils.ts";
-import { LEVEL_CLASSES } from "./heatmap-utils.ts";
+import { LEVEL_CLASSES, PREVIEW_CLASSES } from "./heatmap-utils.ts";
 
 // Matches `heatmapLevel` in @habits/core: one level per 20%.
 const LEVEL_DESCRIPTIONS: Record<HeatmapLevel, string> = {
@@ -35,6 +35,14 @@ export function HeatmapLegend() {
 				))}
 			</ul>
 			<span aria-hidden="true">Mais</span>
+			{/* 2.14.0: the preview days, by shape and word (never color alone). */}
+			<span className="ml-2 flex items-center gap-1.5">
+				<span
+					aria-hidden="true"
+					className={cn("size-3.5 rounded-[4px]", PREVIEW_CLASSES)}
+				/>
+				Futuro
+			</span>
 		</div>
 	);
 }

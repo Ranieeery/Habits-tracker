@@ -22,6 +22,11 @@ export function formatFullDate(date: CalendarDate): string {
 	return fmt(date, "D [de] MMMM [de] YYYY");
 }
 
+/** "9 de outubro" */
+export function formatDayMonth(date: CalendarDate): string {
+	return fmt(date, "D [de] MMMM");
+}
+
 /** "09/10" */
 export function formatShortDate(date: CalendarDate): string {
 	return fmt(date, "DD/MM");

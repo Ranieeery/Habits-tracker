@@ -20,6 +20,17 @@ export interface GridCell {
 	date: CalendarDate;
 	/** False for the padding days of the first and last weeks. */
 	in_year: boolean;
+	/**
+	 * Whether the cell is drawn: every day of the year (future ones beyond
+	 * the preview stay inert placeholders), plus the preview days that fall
+	 * in the next year. Without a preview, equal to `in_year`.
+	 */
+	shown: boolean;
+	/**
+	 * A future day inside the preview window (`isPreviewDate`, 2.14.0): drawn
+	 * as a read-only cell that opens its day. Never carries counts.
+	 */
+	preview: boolean;
 	relation: DayRelation;
 	completed: number;
 	possible: number;
@@ -46,21 +57,38 @@ export interface BuildYearGridInput {
 	/** The user's local date, from `todayIn(timeZone, nowMs)`. */
 	today: CalendarDate;
 	summary?: readonly SummaryDay[];
+	/**
+	 * Future days to add after today (2.14.0, `PREVIEW_DAYS` in the apps;
+	 * default 0: no preview). Only for the year that holds `today`: those days
+	 * are marked `preview`. The grid still covers the whole year; only when
+	 * the preview goes past December 31 does it grow into the next year, up to
+	 * the week of `today + previewDays`, where later days are not shown.
+	 */
+	previewDays?: number;
 }
 
 /**
  * Full-year heatmap grid in weeks starting on Sunday, from the week containing
- * January 1 to the week containing December 31. Rendering (rows or columns,
- * scrolling, hiding future days) is up to each client.
+ * January 1 to the week containing December 31 (or, when the preview crosses
+ * New Year, the week containing its last day). Rendering (rows or columns,
+ * scrolling) is up to each client. The counts come only from `summary`:
+ * preview days are always 0 of 0.
  */
 export function buildYearGrid({
 	year,
 	today,
 	summary = [],
+	previewDays = 0,
 }: BuildYearGridInput): YearGrid {
 	const byDate = new Map(summary.map((day) => [day.date, day]));
+	const yearPrefix = `${String(year).padStart(4, "0")}-`;
+	const previewTo =
+		previewDays > 0 && today.startsWith(yearPrefix)
+			? addDays(today, previewDays)
+			: null;
 	const first = startOfWeek(firstDayOfYear(year));
-	const last = lastDayOfYear(year);
+	const yearEnd = lastDayOfYear(year);
+	const last = previewTo !== null && previewTo > yearEnd ? previewTo : yearEnd;
 	const weekCount = Math.floor(diffInDays(first, last) / 7) + 1;
 
 	let todayWeekIndex: number | null = null;
@@ -73,9 +101,13 @@ export function buildYearGrid({
 			const possible = day?.possible ?? 0;
 			const ratio = completionRatio(completed, possible);
 			if (date === today) todayWeekIndex = weekIndex;
+			const inYear = date.startsWith(yearPrefix);
+			const preview = previewTo !== null && date > today && date <= previewTo;
 			return {
 				date,
-				in_year: date.startsWith(`${String(year).padStart(4, "0")}-`),
+				in_year: inYear,
+				shown: inYear || preview,
+				preview,
 				relation: date < today ? "past" : date === today ? "today" : "future",
 				completed,
 				possible,
@@ -96,12 +128,15 @@ export interface MonthLabel {
 	week_index: number;
 }
 
-/** Where each month of the grid's year starts, in week columns. */
+/**
+ * Where each month of the grid starts, in week columns: the months of its
+ * year, plus January of the next year when the preview reaches it.
+ */
 export function monthLabels(grid: YearGrid): MonthLabel[] {
 	const labels: MonthLabel[] = [];
 	grid.weeks.forEach((week, weekIndex) => {
 		for (const cell of week.days) {
-			if (cell.in_year && cell.date.endsWith("-01")) {
+			if (cell.shown && cell.date.endsWith("-01")) {
 				labels.push({
 					month: parseCalendarDate(cell.date).month,
 					week_index: weekIndex,

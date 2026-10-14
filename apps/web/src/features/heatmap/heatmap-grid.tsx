@@ -97,15 +97,29 @@ export function HeatmapGrid({ grid }: { grid: YearGrid }) {
 		if (entering) setEntering(false);
 	};
 
+	// The column of the last preview day (2.14.0): the current week or the
+	// next one. Placing it near the right edge keeps today, the next 7 days
+	// and the current week in view.
+	const previewWeek = useMemo(() => {
+		const weeks = grid.weeks;
+		for (let index = weeks.length - 1; index >= 0; index--) {
+			if (weeks[index]!.days.some((cell) => cell.preview)) return index;
+		}
+		return null;
+	}, [grid]);
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
 		if (!scroller) return;
-		const column = scroller.querySelector<HTMLElement>("[data-current-week]");
+		const column = scroller.querySelector<HTMLElement>(
+			previewWeek === null
+				? "[data-current-week]"
+				: `[role=gridcell][data-col="${previewWeek}"]`
+		);
 		// Another year (no current week): show its end, the most recent days.
 		scroller.scrollLeft = column
 			? scrollLeftFor(column, scroller.clientWidth)
 			: scroller.scrollWidth;
-	}, [grid.year, currentWeek]);
+	}, [grid.year, currentWeek, previewWeek]);
 
 	// Pulse today's square when its completed count goes up, dip it when it
 	// goes down.

@@ -168,14 +168,17 @@ describe("today's 'Com prazo'", () => {
 
 	it("is absent on past and future days", async () => {
 		const { routes } = today();
-		for (const date of ["2026-10-08", "2026-10-10"]) {
-			const { unmount } = renderAppOn(date, routes);
-			expect(
-				await screen.findByRole("checkbox", { name: "Ler" })
-			).toBeInTheDocument();
-			expect(screen.queryByText("Com prazo")).toBeNull();
-			unmount();
-		}
+		const past = renderAppOn("2026-10-08", routes);
+		expect(
+			await screen.findByRole("checkbox", { name: "Ler" })
+		).toBeInTheDocument();
+		expect(screen.queryByText("Com prazo")).toBeNull();
+		past.unmount();
+		// A preview day (2.14.0) lists what is planned, without checkboxes.
+		renderAppOn("2026-10-10", routes);
+		expect(await screen.findByText("Ler")).toBeInTheDocument();
+		expect(screen.queryByText("Com prazo")).toBeNull();
+		expect(screen.queryByRole("checkbox")).toBeNull();
 	});
 });
 

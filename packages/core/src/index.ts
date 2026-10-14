@@ -15,6 +15,7 @@ export * from "./ids.ts";
 export * from "./insights.ts";
 export * from "./overdue.ts";
 export * from "./overview.ts";
+export * from "./preview.ts";
 export * from "./progress.ts";
 export * from "./reminders.ts";
 export * from "./schedule.ts";

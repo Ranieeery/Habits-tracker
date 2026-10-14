@@ -74,11 +74,18 @@ export function dayIndexAt(y: number): number | null {
 	return index >= 0 && index < 7 ? index : null;
 }
 
-/** A day opens its day screen: inside the year and not in the future. */
+/**
+ * A day opens its day screen: a drawn day that is not in the future, or a
+ * preview day (2.14.0, read only).
+ */
 export function canOpen(
-	cell: Pick<GridCell, "in_year" | "relation"> | undefined
+	cell: Pick<GridCell, "shown" | "preview" | "relation"> | undefined
 ): boolean {
-	return cell !== undefined && cell.in_year && cell.relation !== "future";
+	return (
+		cell !== undefined &&
+		cell.shown &&
+		(cell.relation !== "future" || cell.preview)
+	);
 }
 
 /**
@@ -90,15 +97,24 @@ export function weekSignature(week: GridWeek): string {
 	return week.days
 		.map(
 			(day) =>
-				`${day.in_year ? 1 : 0}${day.relation[0]}${day.level}:${day.completed}/${day.possible}`
+				`${day.shown ? 1 : 0}${day.preview ? 1 : 0}${day.relation[0]}${day.level}:${day.completed}/${day.possible}`
 		)
 		.join(",");
 }
 
-/** "9 de outubro de 2026 (hoje): 3 de 5 hábitos concluídos (60%)" */
+/**
+ * "9 de outubro de 2026 (hoje): 3 de 5 hábitos concluídos (60%)"; a preview
+ * day: "20 de outubro, dia futuro, toque para ver o que está programado".
+ */
 export function cellLabel(
-	cell: Pick<GridCell, "date" | "relation" | "completed" | "possible" | "ratio">
+	cell: Pick<
+		GridCell,
+		"date" | "relation" | "preview" | "completed" | "possible" | "ratio"
+	>
 ): string {
+	if (cell.preview) {
+		return `${formatDayMonth(cell.date)}, dia futuro, toque para ver o que está programado`;
+	}
 	const date = formatFullDate(cell.date);
 	const today = cell.relation === "today" ? " (hoje)" : "";
 	if (cell.relation === "future") return `${date}: dia futuro`;
@@ -108,7 +124,7 @@ export function cellLabel(
 
 /** "Semana de 4 a 10 de outubro", "Semana de 27 de setembro a 3 de outubro" */
 export function weekLabel(week: GridWeek): string {
-	const days = week.days.filter((day) => day.in_year);
+	const days = week.days.filter((day) => day.shown);
 	const first = days[0]?.date ?? week.start;
 	const last = days.at(-1)?.date ?? week.start;
 	if (first === last) return `Semana de ${formatDayMonth(first)}`;
@@ -138,7 +154,7 @@ export function defaultDayIndex(week: GridWeek): number {
 	}
 	return Math.max(
 		0,
-		week.days.findIndex((day) => day.in_year)
+		week.days.findIndex((day) => day.shown)
 	);
 }
 
@@ -182,7 +198,7 @@ export interface GridPoint {
  * The day under a point of the scrolling list (2.10.0 day preview): `x` and
  * `y` from the list's top-left corner, `scrollX` its horizontal offset.
  * Null over the month labels, outside the weeks, or on a day that cannot be
- * opened (outside the year, or in the future).
+ * opened (outside the year, or in the future beyond the preview).
  */
 export function cellAt(
 	x: number,
@@ -197,15 +213,19 @@ export function cellAt(
 	return canOpen(cell) ? { weekIndex, dayIndex } : null;
 }
 
-/** The two lines of the day preview: "qui, 8 de out" and "3 de 5 · 60%". */
+/**
+ * The two lines of the day preview: "qui, 8 de out" and "3 de 5 · 60%"; a
+ * preview day (2.14.0) says only "Dia futuro" (nothing about its content).
+ */
 export function previewLines(
 	cell: Pick<
 		GridCell,
-		"date" | "relation" | "completed" | "possible" | "ratio"
+		"date" | "relation" | "preview" | "completed" | "possible" | "ratio"
 	>,
 	{ filtered }: { filtered: boolean }
 ): { title: string; detail: string } {
 	const title = `${formatCompactDate(cell.date)}${cell.relation === "today" ? " (hoje)" : ""}`;
+	if (cell.preview) return { title, detail: "Dia futuro" };
 	if (filtered) {
 		// One habit (the history filter): it was due that day or not.
 		if (cell.possible === 0) return { title, detail: "Sem previsão" };

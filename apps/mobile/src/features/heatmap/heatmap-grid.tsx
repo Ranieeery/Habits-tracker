@@ -71,7 +71,8 @@ const PREVIEW_HOLD_MS = 300;
  * tap opens it. Holding a square (2.10.0) shows its date and result in a
  * bubble, like the web's hover tooltip; sliding the finger moves it to
  * other days (the list does not scroll meanwhile) and lifting it only
- * closes the bubble.
+ * closes the bubble. The preview days (2.14.0) take part in all of this
+ * through `canOpen`: dashed squares that open their read-only day.
  */
 export function HeatmapGrid({
 	grid,
@@ -427,9 +428,20 @@ function DayCell({
 	pressed: boolean;
 	reduced: boolean;
 }) {
-	if (!cell.in_year) return <View style={styles.slot} />;
+	if (!cell.shown) return <View style={styles.slot} />;
 	if (cell.relation === "today") {
 		return <TodayCell cell={cell} pressed={pressed} reduced={reduced} />;
+	}
+	// 2.14.0: a preview day is only a dashed outline, never a level or any
+	// hint of what is planned (that shows on its day screen).
+	if (cell.preview) {
+		return (
+			<View style={styles.slot}>
+				<View
+					style={[styles.cell, styles.preview, pressed && styles.pressed]}
+				/>
+			</View>
+		);
 	}
 	return (
 		<View style={styles.slot}>
@@ -505,5 +517,11 @@ const styles = StyleSheet.create({
 	glow: { boxShadow: `0 0 8px ${withAlpha(nightColors.glow, 0.55)}` },
 	today: { borderWidth: 2, borderColor: nightColors.foreground },
 	future: { opacity: 0.4 },
+	// `subtle` keeps the outline above 3:1 (`border.strong` is 1.9:1).
+	preview: {
+		borderWidth: 1.5,
+		borderStyle: "dashed",
+		borderColor: nightColors.subtle,
+	},
 	pressed: { borderWidth: 2, borderColor: nightColors.accent.text },
 });
