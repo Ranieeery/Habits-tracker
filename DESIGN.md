@@ -1,6 +1,6 @@
 # DESIGN.md
 
-Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/design-tokens/src/tokens.ts` (fonte única); aqui só aparecem os **nomes** dos tokens. Vale em **todo o web** (2.4.0) e em **todo o mobile** (tela principal na 2.5.0, demais telas na 2.6.0). Regras próprias do celular em "Mobile".
+Referência visual do Habits desde a 2.4.0. Os valores ficam só em `packages/design-tokens/src/tokens.ts` (fonte única); aqui só aparecem os **nomes** dos tokens. As regras de comportamento citadas aqui estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#regras-dos-hábitos). Vale em **todo o web** (2.4.0) e em **todo o mobile** (tela principal na 2.5.0, demais telas na 2.6.0). Regras próprias do celular em "Mobile".
 
 ## Identidade e tom
 
@@ -57,7 +57,7 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 
 **Painel/cartão**: `night-surface` + borda `night-border` + `rounded-xl`; título na fonte de exibição. Use painel para agrupar ação (ex.: "Hoje"), não para cada número.
 
-**Botões** (`Button`: `default` = `night-accent`, `secondary`, `outline`, `ghost`, `danger`, `success` só para "concluído", `link`): primário só um por área. Hover clareia o fundo; foco = anel global; desabilitado = 50% de opacidade, sem ponteiro; carregando = rótulo com "…" ("Salvando…") e desabilitado.
+**Botões** (`Button`: `default` = `night-accent`, `secondary`, `outline`, `ghost`, `danger`, `careful` (aviso, ações cuidadosas como "Descartar"), `success` só para "concluído", `link`): primário só um por área. Hover clareia o fundo; foco = anel global; desabilitado = 50% de opacidade, sem ponteiro; carregando = rótulo com "…" ("Salvando…") e desabilitado.
 
 **Ações destrutivas** (2.11.0): arquivar é o caminho padrão; "Apagar" (`danger` ou ícone de lixeira) só aparece para hábitos já arquivados, sempre depois de uma confirmação com "Cancelar" em foco que diz o que se perde (o histórico sai do mapa), e termina com "Desfazer" por 6 s.
 
@@ -71,7 +71,7 @@ Regras: só tokens (nada de hex nem classes de cor do Tailwind); alpha só por m
 
 **Campos e toggles**: borda `night-border-strong`, fundo `night-bg`; marcado = `night-success` com ícone `night-bg`; erro = texto `night-danger` abaixo do campo, ligado por `aria-describedby`.
 
-**Linha de hábito** (dia e painel Hoje): a linha inteira é o alvo (44 px), checkbox à esquerda, nome riscado em `night-muted` quando feito, pulso ao marcar. Na aba Hoje, o botão "mais opções" na ponta (2.15.0, abaixo).
+**Linha de hábito** (dia e painel Hoje): a linha inteira é o alvo (44 px), checkbox à esquerda, nome riscado em `night-muted` quando feito, pulso ao marcar. Em toda tela de dia, o botão "mais opções" na ponta (2.15.0, abaixo).
 
 **Botão "mais opções"** (2.15.0; desde 2.16.1 em **toda tela de dia**: `/today` e `/day/*` no web; no celular, a aba Hoje, inclusive os dias da faixa, e os dias abertos pelo Histórico, passados, hoje ou da prévia; itens normais, atrasados e com prazo. Só o painel Hoje da tela do heatmap no web não tem, e ali o botão direito continua sendo o do navegador): ícone de três pontos na **vertical** (`⋮`) em `night-muted`, sempre visível, na extremidade da linha, depois do ícone de nota, centralizado na vertical. Alvo próprio de 44 px (no celular, 44 dp mais um pequeno `hitSlop`), fora do alvo de marcar: tocar nele **nunca** marca o hábito. Hover e pressionado em `night-surface-raised` (o ícone sobe para `night-foreground` no web); aberto, fica com o mesmo fundo. Presente também nos dias somente leitura da aba Hoje: as ações mudam o hábito, não o dia. Rótulo "Mais opções de {nome}".
 
@@ -158,7 +158,7 @@ O celular é o uso principal, quase sempre com **uma mão**. Mesma identidade, m
 - **Toque**: botões, chips, pílulas e cartões afundam um pouco (escala 0,97 em 100 ms); a lista do dia entra com fade ao trocar de dia; cartões reordenados deslizam. Nada disso com movimento reduzido.
 - **Hábitos**: cartões como no web (faixa D S T Q Q S S ou ícone do tipo, selo "Hoje"/"Próxima"), "Novo hábito" no rodapé fixo e um modo "Reordenar" com setas subir/descer de 44 dp (arrastar fica para depois).
 - **Heatmap**: colunas = semanas, células de 28 dp em passo de 32, rolagem horizontal abrindo na semana atual. **Consultar um dia** (2.10.0, o equivalente ao hover do web): segurar um quadrado mostra um balão acima do dedo com a data e o resultado ("Qui, 8 de out" / "3 de 5 · 60%"), em `night-surface-overlay` com borda `night-border` e setinha; arrastar sem soltar troca o dia (a grade não rola enquanto segura); soltar só fecha. Toque rápido continua abrindo o dia. Os 7 dias da prévia (2.14.0) usam o mesmo toque e o mesmo balão ("Dia futuro", sem conteúdo) e abrem o dia em somente leitura, também offline. Para leitor de tela, **um elemento por semana** ("Semana de 4 a 10 de outubro"): deslizar para cima/baixo escolhe o dia, toque duplo abre.
-- **Adiar** (2.16.0): na folha do menu, a visão "Adiar" troca o conteúdo da mesma folha (atalhos de 56 dp, seletor de datas, efeito, "Adiar"); a prévia de 7 dias ganha o `⋮` só nas linhas que podem ser adiadas (sem toque longo: as linhas da prévia não são alvo de marcar).
+- **Adiar** (2.16.0): na folha do menu, a visão "Adiar" troca o conteúdo da mesma folha (atalhos de 56 dp, seletor de datas, efeito, "Adiar"). Desde 2.16.1, toda linha da prévia de 7 dias tem o `⋮` e o toque longo de 1 s (o toque curto não faz nada: as linhas da prévia não são alvo de marcar); "Adiar" aparece só onde vale.
 - **Menu de ações** (2.15.0; desde 2.16.1 em toda tela de dia): `⋮` na ponta de cada linha e toque longo de 1 s na linha abrem a mesma folha, na aba Hoje e nos dias abertos pelo Histórico, inclusive os da prévia (ver "Menu de ações do hábito"); o toque curto continua marcando.
 - **Descartar alterações** (2.16.2): nas folhas ("Novo hábito", "Editar hábito" do menu) o aviso é um cartão centralizado `night-surface-overlay` dentro da mesma janela da folha (nunca dois Modals); nas telas `habit/new` e `habit/[id]`, a seta do cabeçalho e o voltar do Android (botão e gesto) param antes de sair e mostram o mesmo cartão. Ao abrir, o teclado fecha (não cobre os botões) e o TalkBack começa em "Continuar editando"; botões de 44 dp que descem para duas linhas com fonte grande. A alça das folhas é só visual: não há arrastar para baixo.
 - **Folha de descrição** (2.14.1): folha inferior `night-surface` com alça, nome em `DisplayText` (2 linhas), corpo que rola sozinho entrando com fade de 150 ms e, embaixo, fixo, o divisor e "Abrir descrição completa" (ver "Resumo da descrição"). Com "remover animações", a folha aparece sem deslizar e o corpo sem fade.
