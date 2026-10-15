@@ -22,7 +22,7 @@
 	"overrides": [
 		{
 			"files": ["*.yml", "*.yaml", "*.md"],
-			"options": { "useTabs": false }
+			"options": { "useTabs": false, "tabWidth": 2 }
 		}
 	]
 }

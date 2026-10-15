@@ -19,12 +19,6 @@
 			"skillPath": "plugins/frontend-design/skills/frontend-design/SKILL.md",
 			"computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
 		},
-		"redesign-existing-projects": {
-			"source": "Leonxlnx/taste-skill",
-			"sourceType": "github",
-			"skillPath": "skills/redesign-skill/SKILL.md",
-			"computedHash": "52f2ade5449b7005942ebd221e53808a245b3e088ff096c44a374e1e481e9f6b"
-		},
 		"vercel-react-native-skills": {
 			"source": "vercel-labs/agent-skills",
 			"sourceType": "github",

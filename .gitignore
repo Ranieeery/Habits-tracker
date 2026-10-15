@@ -35,5 +35,9 @@ credentials.json
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
 
+# Claude Code local settings and session state
+.claude/settings.local.json
+.claude/*.local.*
+
 # Skill installer staging copies (the real skills live in .claude/skills)
 .agents/
