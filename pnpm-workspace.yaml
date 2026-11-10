@@ -9,7 +9,7 @@ catalog:
   react-dom: 19.2.3
   typescript: ~6.0.3
   vitest: ^4.1.11
-  zod: ^4.6.5
+  zod: ^4.6.6
 
 # Dependencies allowed to run install scripts (native binaries).
 allowBuilds:
