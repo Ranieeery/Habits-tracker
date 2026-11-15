@@ -37,6 +37,8 @@ jobs:
             turbo-${{ runner.os }}-
 
       - run: pnpm install --frozen-lockfile
+      # Single-document lockfile (Dependabot) and the EAS pnpm pin.
+      - run: pnpm lockfile:check
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck

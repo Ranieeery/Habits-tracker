@@ -17,7 +17,8 @@ Sem ordem nem versão definida; a versão só é escolhida quando algo for feito
 Valem mesmo sem desenvolvimento novo: parte do que já foi feito ainda não está em produção. Comandos em [DEPLOYMENT.md](DEPLOYMENT.md).
 
 - Publicar as versões ainda não implantadas, na ordem do CHANGELOG. A 2.12.0 (`0007`) e a 2.16.0 (`0008`) têm migration: backup e `db:migrate:remote` antes da API. Atualizar o celular antes de criar a primeira tarefa com prazo (2.13.0) e antes de adiar (2.16.0).
-- Builds de produção: a 2.9.0 mudou o fingerprint (ícones nativos) e precisa de um build novo (`gh workflow run mobile-build -f profile=production`); as versões seguintes vão por OTA para esse build.
+- Builds de produção: a 2.9.0 mudou o fingerprint (ícones nativos) e precisa de um build novo (`gh workflow run mobile-build -f profile=production`); as versões seguintes vão por OTA para esse build. A 2.16.3 muda o fingerprint de novo (patches nativos do Expo SDK 57): outro build de produção, e o OTA da 2.16.3 só chega a ele.
+- Dependabot para npm (2.16.3): ativar os security updates (`gh api -X PUT repos/$REPO/automated-security-fixes`, ou Settings → Code security → Dependabot security updates) e conferir os itens de [MANUAL-CHECKS.md](MANUAL-CHECKS.md#2163-dependency-updates-and-dependabot) depois do push.
 - Configuração inicial do CI/CD, se ainda faltar: ambientes e segredos do GitHub, tokens da Cloudflare, bucket R2, variável do EAS e o [checklist pós-deploy](DEPLOYMENT.md#checklist-pós-deploy).
 - Medir a CPU de login em produção de novo depois de mudanças na autenticação.
 - Restringir a chave de API do Firebase (`google-services.json`) no Google Cloud Console ao package Android e ao SHA-1 do app.

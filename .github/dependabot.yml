@@ -1,6 +1,7 @@
-# GitHub Actions only: Dependabot supports pnpm up to v10, and this repo uses
-# pnpm 12. npm dependencies: `pnpm audit` in CI (informative) and manual
-# `pnpm update` (README.md, "Atualizações de dependências").
+# Dependabot: GitHub Actions and the npm dependencies of the pnpm workspace.
+# Policy and how to review the PRs: docs/DEPLOYMENT.md, "Atualizações de
+# dependências". Dependabot reads pnpm-lock.yaml only as a single YAML document
+# ("pmOnFail: ignore" in pnpm-workspace.yaml, guarded by `pnpm lockfile:check`).
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -11,4 +12,54 @@ updates:
       prefix: ci
     groups:
       actions:
+        patterns: ["*"]
+
+  # Version updates: weekly, minor and patch only, in two grouped PRs (prod and
+  # dev). Security updates come as soon as an alert opens, grouped too; the
+  # ignore rules below are documented for version updates only, so a security
+  # fix may still arrive as a major: review it like any other PR.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    # At least pnpm's minimumReleaseAge (1 day), or the install in the PR fails.
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: chore
+    ignore:
+      # Majors are planned by hand (docs/DEPLOYMENT.md).
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Versions set by the Expo SDK: change them only through
+      # `pnpm exec expo install --fix` (or an SDK upgrade) in apps/mobile.
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "babel-preset-expo"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "@react-native-community/*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "@types/react"
+      # NativeWind stays v4 and css-interop must match the version it pins
+      # (Tailwind v3 in apps/mobile is held by the major rule above).
+      - dependency-name: "nativewind"
+      - dependency-name: "react-native-css-interop"
+      # TypeScript stays 6.0.x until typescript-eslint supports 7 (CLAUDE.md).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-minor"]
+    groups:
+      production:
+        dependency-type: production
+        update-types: ["minor", "patch"]
+      development:
+        dependency-type: development
+        update-types: ["minor", "patch"]
+      security:
+        applies-to: security-updates
         patterns: ["*"]

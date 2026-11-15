@@ -8,6 +8,11 @@ Versions before 2.0.0 (the legacy app made of three separate projects: Fastify s
 
 ## [Unreleased]
 
+### Security
+
+- Dependencies updated within their current minor and patch ranges (Hono, Expo SDK 57 patches, TanStack, Vitest, Workbox and others), closing 54 of the 60 advisories reported by `pnpm audit`. The 6 left (`decode-uri-component`, `minimatch`, `glob`, `esbuild`, `deepmerge`) are only fixed in new majors of transitive dependencies of Expo, Workbox and drizzle-kit.
+- Dependabot now watches the npm dependencies too: weekly grouped PRs with minor and patch updates (versions set by the Expo SDK excluded), and security PRs as soon as an alert opens.
+
 ### Changed
 
 - Documentation restructured: README as the entry point, `docs/` for architecture, decisions, development, deployment, roadmap and manual checks, this changelog as the only version history, MIT license and a security policy. No behavior change.

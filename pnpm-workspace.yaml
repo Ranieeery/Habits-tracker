@@ -2,14 +2,20 @@ packages:
   - apps/*
   - packages/*
 
+# Do not record or switch to the "packageManager" pnpm version. Otherwise pnpm 12
+# writes pnpm-lock.yaml as two YAML documents, which Dependabot cannot read (no
+# alerts or security updates). CI pins pnpm through pnpm/action-setup and EAS
+# through "pnpm" in apps/mobile/eas.json; scripts/check-lockfile.mjs guards both.
+pmOnFail: ignore
+
 # Shared versions; reference them with "catalog:" in package.json.
 catalog:
-  "@types/react": ~19.2.0
+  "@types/react": ~19.2.18
   react: 19.2.3
   react-dom: 19.2.3
   typescript: ~6.0.3
-  vitest: ^4.1.11
-  zod: ^4.6.6
+  vitest: ^4.1.12
+  zod: ^4.6.7
 
 # Dependencies allowed to run install scripts (native binaries).
 allowBuilds:

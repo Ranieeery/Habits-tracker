@@ -4,6 +4,17 @@ Device and browser checks that automated tests do not cover, per version, newest
 
 To simulate dates locally: `pnpm --filter api db:seed:local --today <YYYY-MM-DD>` with a development build on the local API (or the PC's date for the web); for the cron, `curl "http://localhost:8787/cdn-cgi/local/scheduled?cron=*/15+*+*+*+*&time=<ms>"`.
 
+## 2.16.3: dependency updates and Dependabot
+
+Pending, after the push and a new production build (the fingerprint changed: `9fc2aad…` → `274ae9d…` on Windows, from Expo SDK 57 native patches, so the OTA does not reach the 2.16.2 build). Use test habits.
+
+1. GitHub → Insights → Dependency graph lists the npm packages of every workspace (not only the Actions).
+2. Security → Dependabot lists the advisories left by `pnpm audit` (`decode-uri-component`, `minimatch`, `glob`, `esbuild`, `deepmerge`); security updates are enabled in Settings → Code security.
+3. The first Monday after the push: at most two grouped PRs (`production`, `development`) with only minor/patch updates, none for `expo*`, `react-native*`, `react` or NativeWind, and `checks` green on them (including `pnpm lockfile:check`).
+4. `gh workflow run mobile-build -f profile=production` succeeds with pnpm 12.10.1 (the EAS log shows the version) and the install matches the lockfile.
+5. On the phone (Ajustes shows 2.16.3): sign in, mark and unmark a habit offline and online, open the heatmap, receive a reminder, and the app checks for an OTA on launch.
+6. Web: sign in, the PWA installs and works offline, and the heatmap loads.
+
 ## 2.16.2: confirm before discarding changes
 
 Pending, after the deploy (web, then the OTA; JS only, same fingerprint `9fc2aad…` before and after on Windows; the API carries only the version). Confirm in Ajustes that the phone runs 2.16.2. Use test habits (do not touch real data). The sheets have no drag to dismiss (the handle is only drawn), so "arrastar para baixo" does not apply. Implementation: `features/habits/use-discard-guard.ts`, `ui/confirm-dialog.tsx`, `BottomSheet` `overlay`, `usePreventRemove` in `habit-screens.tsx`.

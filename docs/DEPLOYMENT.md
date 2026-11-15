@@ -170,7 +170,7 @@ Workflows em `.github/workflows/`:
 
 | Workflow           | Quando                                            | O que faz                                                                                                                                                                                                                            |
 | ------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `checks.yml`       | reutilizado pelos outros                          | `pnpm install --frozen-lockfile`, `format:check`, `lint`, `typecheck`, `test`, `migrations:check`, build do web, bundle do app mobile (`expo export`), `wrangler deploy --dry-run` da API e do web. Sem segredos.                    |
+| `checks.yml`       | reutilizado pelos outros                          | `pnpm install --frozen-lockfile`, `lockfile:check`, `format:check`, `lint`, `typecheck`, `test`, `migrations:check`, build do web, bundle do app mobile (`expo export`), `wrangler deploy --dry-run` da API e do web. Sem segredos.  |
 | `ci.yml`           | pull requests, segunda-feira 08:00 UTC, ou manual | `checks` + `pnpm audit --prod` (informativo: avisos viram um alerta amarelo, nunca um X).                                                                                                                                            |
 | `deploy.yml`       | push na `main`, ou manual                         | `checks`; depois, no Environment `production` (com **sua aprovação**): backup do D1 no R2, migrations remotas, deploy da API, build e deploy do web, smoke test e, se o app mudou, EAS Update. Nunca cancela um deploy em andamento. |
 | `backup.yml`       | domingo 07:00 UTC, ou manual                      | Confere o `/health` e exporta o D1 para o R2 (Environment `backup`, sem aprovação).                                                                                                                                                  |
@@ -205,10 +205,11 @@ gh secret set EXPO_TOKEN            --env production --repo $REPO
 gh secret set CLOUDFLARE_API_TOKEN  --env backup     --repo $REPO   # token de backup
 gh secret set CLOUDFLARE_ACCOUNT_ID --env backup     --repo $REPO
 
-# repositório: forks precisam de aprovação, token dos workflows só lê, Dependabot alerts
+# repositório: forks precisam de aprovação, token dos workflows só lê, Dependabot alerts e security updates
 gh api -X PUT repos/$REPO/actions/permissions/fork-pr-contributor-approval -f approval_policy=all_external_contributors
 gh api -X PUT repos/$REPO/actions/permissions/workflow -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
 gh api -X PUT repos/$REPO/vulnerability-alerts
+gh api -X PUT repos/$REPO/automated-security-fixes   # Dependabot security updates (PRs)
 ```
 
 No PowerShell: use `$REPO = "<voce>/<repo>"` e `$ME = gh api user --jq .id`, e troque os blocos `<<EOF` por `@" … "@ | gh api … --input -`. Pelo site: Settings → Environments, e Settings → Actions → General. O Account ID aparece em `pnpm --filter api exec wrangler whoami`.
@@ -495,7 +496,10 @@ No app e no navegador:
 ### Atualizações de dependências
 
 - **Actions:** o Dependabot abre PRs semanais (agrupados), e o CI valida.
-- **Pacotes npm:** o Dependabot não suporta pnpm 12 (só até a v10). O CI roda `pnpm audit --prod` em cada PR e toda segunda-feira, só como aviso. Para atualizar: `pnpm outdated -r` mostra o que está velho e `pnpm update -r <pacote>@latest` atualiza (no mobile, use `pnpm exec expo install --fix` para alinhar com o SDK); depois typecheck, lint e testes.
+- **Pacotes npm (Dependabot, desde a 2.16.3):** toda segunda-feira, dois PRs agrupados (`production` e `development`) com updates minor e patch, publicados há pelo menos 3 dias. Security updates chegam assim que um alerta abre, também agrupados, e podem trazer uma major: revise-os como qualquer PR. O motivo de cada regra está em [D11](DECISIONS.md#d11-cicd-e-operação), e a configuração em `.github/dependabot.yml`. Os PRs são `chore` e não sobem a versão; se um deles corrigir algo que o usuário perceba, suba a versão e registre no CHANGELOG ao fazer o merge.
+- **Fora do Dependabot:** majors, e as versões definidas pelo Expo SDK (`expo*`, `@expo/*`, `react-native*`, `react`, `react-dom`, `@types/react`, NativeWind). No mobile, `pnpm exec expo install --fix` alinha com o SDK; nos outros pacotes, `pnpm outdated -r` mostra o que está velho e `pnpm update -r <pacote>@latest` atualiza. Depois, typecheck, lint e testes. Mudança em pacote nativo altera o fingerprint e pede um build novo, não um OTA.
+- **`pnpm audit --prod`** continua no CI (cada PR e toda segunda-feira), só como aviso.
+- **Versão do pnpm:** ao mudar o `packageManager`, mude também o `pnpm` dos três perfis do `apps/mobile/eas.json` (o `pnpm lockfile:check` cobra). Se o lockfile ganhar um primeiro documento `---` com `packageManagerDependencies`, apague esse documento e rode `pnpm install`.
 
 ## Limites dos planos gratuitos
 

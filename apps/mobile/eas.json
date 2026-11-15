@@ -7,6 +7,7 @@
 		"development": {
 			"developmentClient": true,
 			"distribution": "internal",
+			"pnpm": "12.10.1",
 			"environment": "development",
 			"android": {
 				"buildType": "apk"
@@ -14,6 +15,7 @@
 		},
 		"preview": {
 			"distribution": "internal",
+			"pnpm": "12.10.1",
 			"channel": "preview",
 			"environment": "preview",
 			"android": {
@@ -22,6 +24,7 @@
 		},
 		"production": {
 			"distribution": "internal",
+			"pnpm": "12.10.1",
 			"channel": "production",
 			"environment": "production",
 			"autoIncrement": true,

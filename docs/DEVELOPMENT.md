@@ -17,7 +17,7 @@ Como preparar o ambiente, rodar, testar e contribuir. A arquitetura está em [AR
 ## Requisitos
 
 - Node 24 (`.node-version`; mínimo 22.13 pelo `engines`, e 22.18 para os scripts `.ts` rodados com type stripping).
-- pnpm 12 (fixado em `packageManager`; `corepack enable` resolve).
+- pnpm 12, na versão do `packageManager` (`pnpm self-update <versão>`, ou `corepack enable`). O pnpm não troca de versão sozinho (`pmOnFail: ignore`, ver [D11](DECISIONS.md#d11-cicd-e-operação)), e uma versão diferente pode reescrever o lockfile.
 - Para o mobile: um aparelho Android com um development build (ver abaixo). JDK 17 e Android SDK 36 só para build local.
 
 ## Primeira execução
@@ -60,6 +60,7 @@ pnpm typecheck         # tsc em todos os pacotes (o build:types da api roda ante
 pnpm lint              # eslint (config na raiz; web e mobile estendem)
 pnpm test              # vitest em todos os pacotes
 pnpm format            # prettier --write . (format:check para conferir)
+pnpm lockfile:check    # lockfile com um só documento (Dependabot) e pnpm do eas.json igual ao packageManager
 ```
 
 ### API (`apps/api`)
