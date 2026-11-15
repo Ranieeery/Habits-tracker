@@ -22,7 +22,7 @@
 		"@habits/design-tokens": "workspace:*",
 		"@tanstack/react-query": "^5.107.1",
 		"@tanstack/react-router": "^1.170.46",
-		"better-auth": "1.7.7",
+		"better-auth": "1.7.22",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"dayjs": "^1.11.23",
