@@ -29,12 +29,12 @@
 		"cpu-report": "node scripts/cpu-report.ts"
 	},
 	"dependencies": {
-		"@better-auth/expo": "1.7.7",
+		"@better-auth/expo": "1.7.22",
 		"@habits/contracts": "workspace:*",
 		"@habits/core": "workspace:*",
-		"@hono/swagger-ui": "0.6.1",
+		"@hono/swagger-ui": "0.6.2",
 		"@hono/zod-openapi": "1.6.3",
-		"better-auth": "1.7.7",
+		"better-auth": "1.7.22",
 		"drizzle-orm": "^0.45.4",
 		"hono": "^4.13.18",
 		"zod": "catalog:"
