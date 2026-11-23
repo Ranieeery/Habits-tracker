@@ -40,11 +40,11 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-plugin": "^1.8.2",
+		"@cloudflare/vitest-plugin": "^1.8.5",
 		"@types/node": "^24.19.2",
 		"drizzle-kit": "^0.31.11",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
-		"wrangler": "^4.162.0"
+		"wrangler": "^4.165.0"
 	}
 }
